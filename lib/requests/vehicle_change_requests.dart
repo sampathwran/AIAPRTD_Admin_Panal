@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/vehicle_request_provider.dart';
 import 'dashboard_stats.dart';
 import 'request_list.dart';
 
@@ -37,6 +39,40 @@ class _VehicleChangeRequestsState extends State<VehicleChangeRequests> {
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xff1B2735), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.sync, color: Colors.blue),
+            tooltip: "Migrate Old Vehicles",
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Starting vehicle migration...")),
+              );
+              await Provider.of<VehicleRequestProvider>(context, listen: false)
+                  .migrateApprovedVehiclesToMemberCollection();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Migration completed!")),
+                );
+              }
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.build_circle_rounded, color: Colors.orange),
+            tooltip: "Fix Stuck Pending Vehicles",
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Fixing stuck vehicles...")),
+              );
+              await Provider.of<VehicleRequestProvider>(context, listen: false)
+                  .fixStuckPendingVehicles();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Stuck vehicles fixed! Check pending list.")),
+                );
+              }
+            },
+          )
+        ],
       ),
       body: SingleChildScrollView(
         physics: const BouncingScrollPhysics(),

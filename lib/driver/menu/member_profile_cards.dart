@@ -123,18 +123,107 @@ class _PersonalDetailsCardState extends State<PersonalDetailsCard> {
           _buildSectionTitle(Icons.badge_rounded, 'Personal Details'),
           const Divider(height: 16),
           _editableInfoTile(context, 'System Join Date', _currentJoinDate, docId),
-          _infoTile('First Name', widget.memberData['firstName']),
-          _infoTile('Last Name', widget.memberData['lastName']),
-          _infoTile('Membership No', widget.memberData['membershipNo']),
-          _infoTile('NIC Number', widget.memberData['nic']),
-          _infoTile('Mobile Connection', widget.memberData['mobile']),
-          _infoTile('Gender', widget.memberData['gender']),
-          _infoTile('Date of Birth', widget.memberData['dob']),
-          _infoTile('Religion Origin', widget.memberData['religion']),
-          _infoTile('Residential Address', widget.memberData['address']),
+          _editableTextInfoTile(context, 'Full Name', widget.memberData['fullName'], docId, 'fullName'),
+          _editableTextInfoTile(context, 'First Name', widget.memberData['firstName'], docId, 'firstName'),
+          _editableTextInfoTile(context, 'Last Name', widget.memberData['lastName'], docId, 'lastName'),
+          _editableTextInfoTile(context, 'Membership No', widget.memberData['membershipNo'], docId, 'membershipNo'),
+          _editableTextInfoTile(context, 'NIC Number', widget.memberData['nic'], docId, 'nic'),
+          _editableTextInfoTile(context, 'Mobile Connection', widget.memberData['mobile'], docId, 'mobile'),
+          _editableTextInfoTile(context, 'Gender', widget.memberData['gender'], docId, 'gender'),
+          _editableTextInfoTile(context, 'Date of Birth', widget.memberData['dob'], docId, 'dob'),
+          _editableTextInfoTile(context, 'Religion Origin', widget.memberData['religion'], docId, 'religion'),
+          _editableTextInfoTile(context, 'Residential Address', widget.memberData['address'], docId, 'address'),
         ],
       ),
     );
+  }
+
+  Widget _editableTextInfoTile(BuildContext context, String label, dynamic value, String docId, String fieldKey) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 130, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54, fontSize: 11))),
+          Expanded(
+            child: Text(value?.toString() ?? 'Not Set', style: const TextStyle(color: Color(0xFF334155), fontSize: 11, fontWeight: FontWeight.w700)),
+          ),
+          InkWell(
+            onTap: () => _updateTextField(context, docId, label, value?.toString(), fieldKey),
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
+              child: const Icon(Icons.edit_rounded, size: 14, color: Color(0xFF1E3A8A)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<void> _updateTextField(BuildContext context, String docId, String label, String? currentValue, String fieldKey) async {
+    if (docId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Error: Member Document ID not found!')));
+      return;
+    }
+
+    final TextEditingController controller = TextEditingController(text: currentValue ?? '');
+
+    final bool? shouldUpdate = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit $label', style: const TextStyle(fontSize: 16)),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(
+              hintText: 'Enter new $label',
+              border: const OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF1E3A8A),
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      }
+    );
+
+    if (shouldUpdate == true) {
+      final newValue = controller.text.trim();
+      try {
+        await FirebaseFirestore.instance.collection('member').doc(docId).update({
+          fieldKey: newValue,
+        });
+
+        setState(() {
+          widget.memberData[fieldKey] = newValue;
+        });
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: Colors.green, content: Text('$label updated successfully!')),
+          );
+        }
+      } catch (error) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(backgroundColor: Colors.red, content: Text('Failed to update $label: $error')),
+          );
+        }
+      }
+    }
   }
 
   Widget _editableInfoTile(BuildContext context, String label, dynamic value, String docId) {
@@ -225,13 +314,99 @@ class _PersonalDetailsCardState extends State<PersonalDetailsCard> {
 }
 
 // 🟢 3. Vehicle Info Card
-class VehicleInfoCard extends StatelessWidget {
+class VehicleInfoCard extends StatefulWidget {
   final Map<String, dynamic> memberData;
   const VehicleInfoCard({super.key, required this.memberData});
 
   @override
+  State<VehicleInfoCard> createState() => _VehicleInfoCardState();
+}
+
+class _VehicleInfoCardState extends State<VehicleInfoCard> {
+  // Key to force FutureBuilder rebuild
+  int _refreshKey = 0;
+
+  Future<void> _updateVehicleField(String membershipNo, String fieldPath, String label, String currentValue) async {
+    final TextEditingController controller = TextEditingController(text: currentValue);
+    final bool? shouldUpdate = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit $label', style: const TextStyle(fontSize: 16)),
+          content: TextField(
+            controller: controller,
+            decoration: InputDecoration(hintText: 'Enter new $label', border: const OutlineInputBorder()),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldUpdate == true) {
+      final newValue = controller.text.trim();
+      try {
+        if (fieldPath.startsWith('member/')) {
+          final docId = widget.memberData['docId'] ?? widget.memberData['membershipNo'];
+          final field = fieldPath.split('/')[1];
+          await FirebaseFirestore.instance.collection('member').doc(docId).update({field: newValue});
+          setState(() { widget.memberData[field] = newValue; });
+        } else {
+          // Update vehicle doc
+          final parts = fieldPath.split('.');
+          if (parts.length == 1) {
+            await FirebaseFirestore.instance.collection('vehicles').doc(membershipNo).update({parts[0]: newValue});
+          } else if (parts.length == 2 && parts[0] == 'details') {
+            await FirebaseFirestore.instance.collection('vehicles').doc(membershipNo).set({
+              'details': {parts[1]: newValue}
+            }, SetOptions(merge: true));
+          }
+          setState(() { _refreshKey++; });
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.green, content: Text('$label updated successfully!')));
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(backgroundColor: Colors.red, content: Text('Failed to update $label: $error')));
+        }
+      }
+    }
+  }
+
+  Widget _editableVehicleTile(String label, String value, String fieldPath, String membershipNo) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(width: 130, child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black54, fontSize: 11))),
+          Expanded(
+            child: Text(value, style: const TextStyle(color: Color(0xFF334155), fontSize: 11, fontWeight: FontWeight.w700)),
+          ),
+          InkWell(
+            onTap: () => _updateVehicleField(membershipNo, fieldPath, label, value),
+            borderRadius: BorderRadius.circular(4),
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(4)),
+              child: const Icon(Icons.edit_rounded, size: 14, color: Color(0xFF1E3A8A)),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final String membershipNo = memberData['membershipNo']?.toString() ?? '';
+    final String membershipNo = widget.memberData['membershipNo']?.toString() ?? '';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -249,6 +424,7 @@ class VehicleInfoCard extends StatelessWidget {
             )
           else
             FutureBuilder<DocumentSnapshot>(
+              key: ValueKey(_refreshKey),
               future: FirebaseFirestore.instance.collection('vehicles').doc(membershipNo).get(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -263,17 +439,19 @@ class VehicleInfoCard extends StatelessWidget {
                 String vehicleCategory = '-';
                 String makeAndModel = '-';
                 String plateNumber = '-';
-                String wpId = memberData['wp_id']?.toString() ?? '-';
-                String platform = memberData['platform']?.toString() ?? 'AIAPRTD';
-                String rating = memberData['rating']?.toString() ?? '0.0';
+                String brand = '-';
+                String model = '-';
+                String wpId = widget.memberData['wp_id']?.toString() ?? '-';
+                String platform = widget.memberData['platform']?.toString() ?? 'AIAPRTD';
+                String rating = widget.memberData['rating']?.toString() ?? '0.0';
 
                 String lastSync = '-';
-                if (memberData['lastLocationUpdate'] != null) {
-                  if (memberData['lastLocationUpdate'] is Timestamp) {
-                    DateTime dt = (memberData['lastLocationUpdate'] as Timestamp).toDate();
+                if (widget.memberData['lastLocationUpdate'] != null) {
+                  if (widget.memberData['lastLocationUpdate'] is Timestamp) {
+                    DateTime dt = (widget.memberData['lastLocationUpdate'] as Timestamp).toDate();
                     lastSync = "${dt.year}-${dt.month.toString().padLeft(2,'0')}-${dt.day.toString().padLeft(2,'0')} ${dt.hour}:${dt.minute}";
                   } else {
-                    lastSync = memberData['lastLocationUpdate'].toString();
+                    lastSync = widget.memberData['lastLocationUpdate'].toString();
                   }
                 }
 
@@ -282,8 +460,8 @@ class VehicleInfoCard extends StatelessWidget {
                   vehicleCategory = vehicleDoc['selectedCategory']?.toString() ?? '-';
 
                   final details = vehicleDoc['details'] as Map<String, dynamic>? ?? {};
-                  String brand = details['brand']?.toString() ?? '';
-                  String model = details['model']?.toString() ?? '';
+                  brand = details['brand']?.toString() ?? '-';
+                  model = details['model']?.toString() ?? '-';
                   makeAndModel = '$brand $model'.trim();
                   if (makeAndModel.isEmpty) makeAndModel = '-';
 
@@ -301,11 +479,12 @@ class VehicleInfoCard extends StatelessWidget {
 
                 return Column(
                   children: [
-                    _infoTile('Vehicle Category', vehicleCategory),
-                    _infoTile('Vehicle Registration', plateNumber),
-                    _infoTile('Primary Category', makeAndModel),
-                    _infoTile('Western Province ID', wpId),
-                    _infoTile('Operating Platform', platform),
+                    _editableVehicleTile('Vehicle Category', vehicleCategory, 'selectedCategory', membershipNo),
+                    _editableVehicleTile('Vehicle Registration', plateNumber, 'details.vehicleNumber', membershipNo),
+                    _editableVehicleTile('Brand', brand, 'details.brand', membershipNo),
+                    _editableVehicleTile('Model', model, 'details.model', membershipNo),
+                    _editableVehicleTile('Western Province ID', wpId, 'member/wp_id', membershipNo),
+                    _editableVehicleTile('Operating Platform', platform, 'member/platform', membershipNo),
                     _infoTile('Performance Rating', '⭐ $rating Stars'),
                     _infoTile('Last Live Sync', lastSync),
                   ],
@@ -411,7 +590,7 @@ class PaymentHistoryCard extends StatelessWidget {
             )
           else
             FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('payments').doc(membershipNo).get(),
+              future: FirebaseFirestore.instance.collection('payment_slip').doc(membershipNo).get(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(

@@ -16,7 +16,10 @@ class VehicleRequestProvider with ChangeNotifier {
   Future<bool> approveRequest(String requestId) async {
     _setProcessing(true);
     try {
-      DocumentSnapshot snap = await FirebaseFirestore.instance.collection('vehicles').doc(requestId).get();
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      final String membershipNo = requestId; // In vehicles collection, docId is membershipNo
+
+      DocumentSnapshot snap = await firestore.collection('vehicles').doc(requestId).get();
       if (!snap.exists || snap.data() == null) {
         _setProcessing(false);
         return false;
@@ -29,11 +32,57 @@ class VehicleRequestProvider with ChangeNotifier {
         return false; // Category එක නැත්නම් Approve කරන්න එපා
       }
 
-      await FirebaseFirestore.instance.collection('vehicles').doc(requestId).update({
+      // 1. Find Member Document
+      String? memberDocId;
+      Map<String, dynamic>? memberData;
+
+      QuerySnapshot memberQuery = await firestore.collection('member').where('membershipNo', isEqualTo: membershipNo).get();
+      if (memberQuery.docs.isNotEmpty) {
+        memberDocId = memberQuery.docs.first.id;
+        memberData = memberQuery.docs.first.data() as Map<String, dynamic>?;
+      } else {
+        // Fallback: Check if document ID itself is the membershipNo
+        DocumentSnapshot docSnap = await firestore.collection('member').doc(membershipNo).get();
+        if (docSnap.exists) {
+          memberDocId = docSnap.id;
+          memberData = docSnap.data() as Map<String, dynamic>?;
+        }
+      }
+
+      final WriteBatch batch = firestore.batch();
+
+      if (memberDocId != null && memberData != null) {
+        final DocumentReference memberRef = firestore.collection('member').doc(memberDocId);
+        
+        // 2. Handle Vehicle History
+        if (memberData.containsKey('currentVehicle') && memberData['currentVehicle'] != null) {
+          final Map<String, dynamic> oldVehicle = Map<String, dynamic>.from(memberData['currentVehicle']);
+          List<dynamic> history = List.from(memberData['vehicleHistory'] ?? []);
+          history.add(oldVehicle);
+          
+          batch.update(memberRef, {
+            'vehicleHistory': history,
+          });
+        }
+
+        // 3. Set New Current Vehicle
+        batch.update(memberRef, {
+          'currentVehicle': {
+            ...data,
+            'approvedAt': FieldValue.serverTimestamp(),
+          }
+        });
+      }
+
+      // 4. Update Vehicles Collection Status
+      batch.update(firestore.collection('vehicles').doc(requestId), {
         'status': 'approved',
         'canEdit': false,
         'processedAt': FieldValue.serverTimestamp(),
       });
+      
+      await batch.commit();
+
       _setProcessing(false);
       return true;
     } catch (e) {
@@ -168,6 +217,128 @@ class VehicleRequestProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint("Error rejecting photo: $e");
+    }
+  }
+
+  // =========================================================================
+  // 7. Data Migration: Move existing approved vehicles to member collection
+  // =========================================================================
+  Future<void> migrateApprovedVehiclesToMemberCollection() async {
+    _setProcessing(true);
+    try {
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      
+      // Get all approved vehicles
+      QuerySnapshot vehiclesSnap = await firestore
+          .collection('vehicles')
+          .where('status', isEqualTo: 'approved')
+          .get();
+
+      debugPrint("Found ${vehiclesSnap.docs.length} approved vehicles to migrate.");
+
+      final WriteBatch batch = firestore.batch();
+      int count = 0;
+
+      for (var vehicleDoc in vehiclesSnap.docs) {
+        String membershipNo = vehicleDoc.id;
+        Map<String, dynamic> vehicleData = vehicleDoc.data() as Map<String, dynamic>;
+
+        // Find corresponding member
+        String? memberDocId;
+        QuerySnapshot memberQuery = await firestore.collection('member').where('membershipNo', isEqualTo: membershipNo).get();
+        
+        if (memberQuery.docs.isNotEmpty) {
+          memberDocId = memberQuery.docs.first.id;
+        } else {
+          DocumentSnapshot docSnap = await firestore.collection('member').doc(membershipNo).get();
+          if (docSnap.exists) {
+            memberDocId = docSnap.id;
+          }
+        }
+
+        if (memberDocId != null) {
+          DocumentReference memberRef = firestore.collection('member').doc(memberDocId);
+          
+          batch.update(memberRef, {
+            'currentVehicle': {
+              ...vehicleData,
+              'migratedAt': FieldValue.serverTimestamp(),
+            }
+          });
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        await batch.commit();
+        debugPrint("Successfully migrated $count vehicles to member collection.");
+      } else {
+        debugPrint("No vehicles needed migration.");
+      }
+      
+      _setProcessing(false);
+    } catch (e) {
+      debugPrint("Error migrating vehicles: $e");
+      _setProcessing(false);
+    }
+  }
+
+  // =========================================================================
+  // 7.5 Fix Stuck Pending Vehicles
+  // =========================================================================
+  Future<void> fixStuckPendingVehicles() async {
+    _setProcessing(true);
+    try {
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      
+      QuerySnapshot vehiclesSnap = await firestore
+          .collection('vehicles')
+          .where('status', isEqualTo: 'approved')
+          .get();
+
+      int fixedCount = 0;
+      final WriteBatch batch = firestore.batch();
+
+      for (var vehicleDoc in vehiclesSnap.docs) {
+        Map<String, dynamic> data = vehicleDoc.data() as Map<String, dynamic>;
+        
+        bool hasPending = false;
+        
+        // Check documents
+        List<dynamic> docs = data['documents'] ?? [];
+        for (var docItem in docs) {
+          if (docItem is Map && docItem['status'] == 'pending') {
+            hasPending = true;
+            break;
+          }
+        }
+        
+        // Check vehicle photos
+        if (!hasPending && data['vehiclePhotos'] != null) {
+          Map<String, dynamic> photos = Map<String, dynamic>.from(data['vehiclePhotos']);
+          for (var photo in photos.values) {
+            if (photo is Map && photo['status'] == 'pending') {
+              hasPending = true;
+              break;
+            }
+          }
+        }
+
+        if (hasPending) {
+          batch.update(vehicleDoc.reference, {'status': 'pending'});
+          fixedCount++;
+        }
+      }
+
+      if (fixedCount > 0) {
+        await batch.commit();
+        debugPrint("Fixed $fixedCount stuck vehicles!");
+      }
+
+      _setProcessing(false);
+    } catch (e) {
+      debugPrint("Error fixing stuck vehicles: $e");
+      _setProcessing(false);
     }
   }
 

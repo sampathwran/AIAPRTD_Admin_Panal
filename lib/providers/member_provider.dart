@@ -14,7 +14,7 @@ class MemberProvider with ChangeNotifier {
   List<Map<String, dynamic>> get allMembersList => _allMembersList;
 
   // =========================================================================
-  // 🗺️ 1. NEW GETTERS: ONLINE / OFFLINE STATUS SEPARATION
+  // 🟢 1. NEW GETTERS: ONLINE / OFFLINE STATUS SEPARATION
   // =========================================================================
   List<Map<String, dynamic>> get onlineMembersList =>
       _allMembersList.where((m) => m['onlineStatus'] == 'online').toList();
@@ -47,7 +47,7 @@ class MemberProvider with ChangeNotifier {
   void startListeningToMembers() {
     final FirebaseFirestore firestore = FirebaseFirestore.instance;
 
-    debugPrint("🔄 PROVIDER: startListeningToMembers() කෝල් වුණා මචං!");
+    debugPrint("🚀 PROVIDER: startListeningToMembers() 🔥 Started!");
 
     if (_memberSubscription != null) {
       _memberSubscription?.cancel();
@@ -57,7 +57,7 @@ class MemberProvider with ChangeNotifier {
 
     _memberSubscription = firestore.collection('member').snapshots().listen(
           (querySnapshot) {
-        debugPrint("🔥 PROVIDER FIRESTORE: ඩේටාබේස් එකෙන් ලයිව් සිග්නල් එකක් ආවා!");
+        debugPrint("🔥 PROVIDER FIRESTORE: ✨ Fetched Members Data!");
 
         _allMembersList = querySnapshot.docs.map((doc) {
           final Map<String, dynamic> data = Map<String, dynamic>.from(doc.data());
@@ -70,8 +70,11 @@ class MemberProvider with ChangeNotifier {
             data['payment_history'] = <Map<String, dynamic>>[];
           }
 
+          // 💡 🎯 FIXED: membershipNo එක field එකක් විදිහට නැත්නම් doc.id එක ගන්නවා (AIAPRTD-25-0001 වගේ)
+          final String originalMemNo = data['membershipNo']?.toString() ?? '';
+          data['membershipNo'] = originalMemNo.isNotEmpty && originalMemNo != '-' ? originalMemNo : doc.id;
+
           // 🛠️ SAFETY LAYER
-          data['membershipNo'] = data['membershipNo']?.toString() ?? '-';
           data['nic'] = data['nic']?.toString() ?? '-';
           data['mobile'] = data['mobile']?.toString() ?? '-';
           data['fullName'] = data['fullName']?.toString() ?? 'Unknown';
@@ -111,7 +114,7 @@ class MemberProvider with ChangeNotifier {
             data['lastSync'] = '-';
           }
 
-          // 🏦 බැංකු විස්තර වලට හිස් අගයන් ලබාදීම (Load වෙනකම් Error එන්නේ නැති වෙන්න)
+          // 🏦 Bank Details (Load වෙනකන් Error නැතිවෙන්න)
           data['bankName'] = 'Loading...';
           data['accountHolderName'] = 'Loading...';
           data['accountNumber'] = 'Loading...';
@@ -122,9 +125,9 @@ class MemberProvider with ChangeNotifier {
         }).toList();
 
         _isLoading = false;
-        notifyListeners(); // 💡 UI එකට පරක්කු නොකර Data ටික යවනවා
+        notifyListeners(); // 🔄 UI එකට Data යවනවා
 
-        // 💡 ඊට පස්සේ Background එකේ බැංකු විස්තර Fetch කරලා ලිස්ට් එක අප්ඩේට් කරනවා
+        // 🏦 Background එකෙන් Bank Details Fetch කරනවා
         _fetchBankDetailsInBackground();
       },
       onError: (error) {
@@ -136,7 +139,7 @@ class MemberProvider with ChangeNotifier {
   }
 
   // =========================================================================
-  // 🏦 BACKGROUND FETCH: Bank Details (Stream එක හිරවෙන්නේ නැති වෙන්න)
+  // 🏦 BACKGROUND FETCH: Bank Details
   // =========================================================================
   Future<void> _fetchBankDetailsInBackground() async {
     bool hasUpdates = false;
@@ -166,7 +169,7 @@ class MemberProvider with ChangeNotifier {
     }
 
     if (hasUpdates) {
-      notifyListeners(); // 💡 බැංකු විස්තර ආවට පස්සේ ආයෙත් UI එක අලුත් කරනවා
+      notifyListeners(); // 🔄 UI එක Update කරනවා
     }
   }
 

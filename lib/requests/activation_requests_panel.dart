@@ -7,6 +7,7 @@ import 'profile_update_requests.dart';
 import 'vehicle_change_requests.dart';
 import 'kyc_verification_requests.dart';
 import 'bank_account_details_change.dart';
+import 'profile_image_requests.dart';
 
 class ActivationRequestsPanel extends StatelessWidget {
   const ActivationRequestsPanel({super.key});
@@ -24,14 +25,13 @@ class ActivationRequestsPanel extends StatelessWidget {
         .snapshots();
 
     final Stream<QuerySnapshot> vehicleStream = FirebaseFirestore.instance
-        .collection('vehicle_requests')
+        .collection('vehicles')
         .where('status', isEqualTo: 'pending')
         .snapshots();
 
     final Stream<QuerySnapshot> kycStream = FirebaseFirestore.instance
-        .collection('requests')
-        .where('status', isEqualTo: 'pending')
-        .where('requestType', isEqualTo: 'kyc_verification')
+        .collection('verify_kyc')
+        .where('kycApprovalStatus', isEqualTo: 'pending')
         .snapshots();
 
     final Stream<QuerySnapshot> bankStream = FirebaseFirestore.instance
@@ -39,12 +39,17 @@ class ActivationRequestsPanel extends StatelessWidget {
         .where('status', isEqualTo: 'pending')
         .snapshots();
 
-    // 💡 NEW: rxdart වල CombineLatestStream පාවිච්චි කරනවා
+    final Stream<QuerySnapshot> imageStream = FirebaseFirestore.instance
+        .collection('profile_image_requests')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+
     final Stream<List<QuerySnapshot>> combinedStream = CombineLatestStream.list([
       profileStream,
       vehicleStream,
       kycStream,
       bankStream,
+      imageStream,
     ]);
 
     return StreamBuilder<List<QuerySnapshot>>(
@@ -72,14 +77,16 @@ class ActivationRequestsPanel extends StatelessWidget {
         int vehicleCount = 0;
         int kycCount = 0;
         int bankCount = 0;
+        int imageCount = 0;
 
-        if (snapshot.hasData && snapshot.data!.length >= 4) {
+        if (snapshot.hasData && snapshot.data!.length >= 5) {
           profileCount = snapshot.data![0].docs.length;
           vehicleCount = snapshot.data![1].docs.length;
           kycCount = snapshot.data![2].docs.length;
           bankCount = snapshot.data![3].docs.length;
+          imageCount = snapshot.data![4].docs.length;
 
-          totalPending = profileCount + vehicleCount + kycCount + bankCount;
+          totalPending = profileCount + vehicleCount + kycCount + bankCount + imageCount;
         }
 
         return Scaffold(
@@ -121,8 +128,8 @@ class ActivationRequestsPanel extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             physics: const BouncingScrollPhysics(),
             children: [
-              // 📊 SUMMARY CARD
-              _buildSummaryCard(totalPending, profileCount, vehicleCount, kycCount, bankCount),
+              // 💡 SUMMARY CARD
+              _buildSummaryCard(totalPending, profileCount, vehicleCount, kycCount, bankCount, imageCount),
               const SizedBox(height: 16),
 
               Row(
@@ -143,8 +150,8 @@ class ActivationRequestsPanel extends StatelessWidget {
               _buildRequestTile(
                 context: context,
                 index: "1",
-                title: "Profile Image Updates",
-                icon: Icons.account_circle_rounded,
+                title: "Profile Detail Updates",
+                icon: Icons.manage_accounts_rounded,
                 targetPage: const ProfileUpdateRequests(),
                 count: profileCount,
                 accentColor: Colors.blue,
@@ -154,6 +161,17 @@ class ActivationRequestsPanel extends StatelessWidget {
               _buildRequestTile(
                 context: context,
                 index: "2",
+                title: "Profile Image Approvals",
+                icon: Icons.account_circle_rounded,
+                targetPage: const ProfileImageRequests(),
+                count: imageCount,
+                accentColor: Colors.indigo,
+              ),
+              const SizedBox(height: 10),
+
+              _buildRequestTile(
+                context: context,
+                index: "3",
                 title: "Vehicle Change Requests",
                 icon: Icons.published_with_changes_rounded,
                 targetPage: const VehicleChangeRequests(),
@@ -164,7 +182,7 @@ class ActivationRequestsPanel extends StatelessWidget {
 
               _buildRequestTile(
                 context: context,
-                index: "3",
+                index: "4",
                 title: "KYC Profile Verifications",
                 icon: Icons.gpp_good_rounded,
                 targetPage: const KYCVerificationRequests(),
@@ -175,7 +193,7 @@ class ActivationRequestsPanel extends StatelessWidget {
 
               _buildRequestTile(
                 context: context,
-                index: "4",
+                index: "5",
                 title: "Bank Account Updates",
                 icon: Icons.account_balance_rounded,
                 targetPage: const BankAccountDetailsChangeRequests(),
@@ -189,7 +207,7 @@ class ActivationRequestsPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildSummaryCard(int total, int profileCount, int vehicleCount, int kycCount, int bankCount) {
+  Widget _buildSummaryCard(int total, int profileCount, int vehicleCount, int kycCount, int bankCount, int imageCount) {
     final bool hasRequests = total > 0;
 
     return Container(
@@ -248,17 +266,18 @@ class ActivationRequestsPanel extends StatelessWidget {
               const SizedBox(height: 14),
               const Divider(color: Colors.white24, height: 1),
               const SizedBox(height: 12),
-              Wrap(
-                spacing: 12,
-                runSpacing: 8,
-                alignment: WrapAlignment.center,
-                children: [
-                  _buildSubCountItem("Profile", profileCount),
-                  _buildSubCountItem("Vehicles", vehicleCount),
-                  _buildSubCountItem("KYC", kycCount),
-                  _buildSubCountItem("Bank", bankCount),
-                ],
-              ),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  alignment: WrapAlignment.center,
+                  children: [
+                    _buildSubCountItem("Details", profileCount),
+                    _buildSubCountItem("Images", imageCount),
+                    _buildSubCountItem("Vehicles", vehicleCount),
+                    _buildSubCountItem("KYC", kycCount),
+                    _buildSubCountItem("Bank", bankCount),
+                  ],
+                ),
             ]
           ],
         ),

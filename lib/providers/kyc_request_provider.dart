@@ -15,13 +15,13 @@ class KycRequestProvider with ChangeNotifier {
   // 📊 GETTERS: STATUS SEPARATION (Pending, Approved, Rejected)
   // =========================================================================
   List<Map<String, dynamic>> get pendingRequests =>
-      _allKycRequests.where((k) => k['status'] == 'pending').toList();
+      _allKycRequests.where((k) => k['kycApprovalStatus'] == 'pending').toList();
 
   List<Map<String, dynamic>> get approvedRequests =>
-      _allKycRequests.where((k) => k['status'] == 'approved').toList();
+      _allKycRequests.where((k) => k['kycApprovalStatus'] == 'approved').toList();
 
   List<Map<String, dynamic>> get rejectedRequests =>
-      _allKycRequests.where((k) => k['status'] == 'rejected').toList();
+      _allKycRequests.where((k) => k['kycApprovalStatus'] == 'rejected').toList();
 
   int get totalPendingCount => pendingRequests.length;
 
@@ -68,7 +68,7 @@ class KycRequestProvider with ChangeNotifier {
           data['faceVerificationUrl'] = data['faceVerificationUrl']?.toString() ?? '';
 
           // 🟢 ස්ටේටස්
-          data['status'] = data['status']?.toString() ?? 'pending';
+          data['kycApprovalStatus'] = data['kycApprovalStatus']?.toString() ?? 'pending';
 
           // 🕒 වෙලාව හැන්ඩල් කිරීම
           if (data['submittedAt'] != null && data['submittedAt'] is Timestamp) {

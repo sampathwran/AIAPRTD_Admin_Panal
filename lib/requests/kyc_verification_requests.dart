@@ -28,7 +28,8 @@ class KYCVerificationRequests extends StatelessWidget {
     try {
       // 1. 💡 'verify_kyc' කලෙක්ෂන් එකේ status එක approved කරනවා
       await firestore.collection('verify_kyc').doc(membershipNo).update({
-        'status': 'approved',
+        'kycApprovalStatus': 'approved',
+        'faceKycStatus': 'approved',
         'fullName': updatedKycData['fullName'],
         'nic': updatedKycData['nic'],
         'mobile': updatedKycData['mobile'],
@@ -38,9 +39,9 @@ class KYCVerificationRequests extends StatelessWidget {
       });
 
       // 2. 'member' කලෙක්ෂන් එක අප්ඩේට් කරද්දී Driver Active කරවනවා
-      await firestore.collection('member').doc(membershipNo).update({
-        'status': 'active',
-        'isDetailsSubmitted': true, // 👈 🎯 මේක true කරපු ගමන් User App එකේ Pending Screen එක අයින් වෙනවා!
+      await firestore.collection('member').doc(membershipNo).set({
+        'kycApprovalStatus': 'approved',
+        'faceKycStatus': 'approved',
         'fullName': updatedKycData['fullName'],
         'nic': updatedKycData['nic'],
         'mobile': updatedKycData['mobile'],
@@ -50,7 +51,9 @@ class KYCVerificationRequests extends StatelessWidget {
         'idCardFrontUrl': originalItem['idCardFrontUrl'],
         'idCardBackUrl': originalItem['idCardBackUrl'],
         'faceVerificationUrl': originalItem['faceVerificationUrl'],
-      });
+        'user_email': originalItem['user_email'],
+        'gender': originalItem['gender'] ?? '',
+      }, SetOptions(merge: true));
 
       // 3. WordPress DB Real-time Sync (ඇඩ්මින් වෙනස් කරපු නමත් වෙබ් එකට යවනවා 🎯)
       final url = Uri.parse('https://aiaprtd.lk/wp-json/aiaprtd-sync/v1/update-profile');
@@ -90,14 +93,15 @@ class KYCVerificationRequests extends StatelessWidget {
     try {
       // 'verify_kyc' එකෙන් Reject කිරීම
       await FirebaseFirestore.instance.collection('verify_kyc').doc(membershipNo).update({
-        'status': 'rejected',
+        'kycApprovalStatus': 'rejected',
+        'faceKycStatus': 'rejected',
       });
 
       // User හට ආයෙත් Form එක පිරවීමට අවස්ථාව දීම
-      await FirebaseFirestore.instance.collection('member').doc(membershipNo).update({
-        'isDetailsSubmitted': false,
-        'status': 'rejected',
-      });
+      await FirebaseFirestore.instance.collection('member').doc(membershipNo).set({
+        'kycApprovalStatus': 'rejected',
+        'faceKycStatus': 'rejected',
+      }, SetOptions(merge: true));
 
       if (!context.mounted) return;
       if (isFromSlider) Navigator.pop(context); // Side Panel එක වහනවා
@@ -129,7 +133,7 @@ class KYCVerificationRequests extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('verify_kyc')
-            .where('status', isEqualTo: 'pending')
+            .where('kycApprovalStatus', isEqualTo: 'pending')
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
