@@ -19,6 +19,7 @@ import '../driver/menu/votes_panel.dart';
 import '../driver/menu/ads_management_panel.dart';
 import '../driver/menu/notifications_panel.dart';
 import '../driver/menu/system_settings_panel.dart';
+import '../driver/menu/membership_fee_approvals_panel.dart'; // 👈 NEW
 
 // =========================================================================
 // 🎯 FIXED IMPORT PATH: අපි සාදාගත් අලුත්ම rates ෆෝල්ඩර් එකට පාත් එක හැදුවා මචං
@@ -35,6 +36,7 @@ import 'sub_panels/ongoing_trips_panel.dart';
 import 'sub_panels/today_complete_panel.dart';
 import 'sub_panels/canceled_trips_panel.dart';
 import 'sub_panels/complaints_panel.dart';
+import 'sub_panels/scheduled_bookings_full_panel.dart';
 
 class MainDashboardLayout extends StatefulWidget {
   const MainDashboardLayout({super.key});
@@ -74,6 +76,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       case 'Online Members': return OnlineMembersPanel(onBack: goBack);
       case 'Offline Members': return OfflineMembersPanel(onBack: goBack);
       case 'Inactive Members': return InactiveMembersPanel(onBack: goBack);
+      case 'Scheduled Bookings': return ScheduledBookingsFullPanel(onBack: goBack);
       case 'Ongoing Trips': return OngoingTripsPanel(onBack: goBack);
       case 'Today Complete': return TodayCompletePanel(onBack: goBack);
       case 'Canceled Trips': return CanceledTripsPanel(onBack: goBack);
@@ -98,6 +101,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       case 10: return const NotificationsPanel();
       case 11: return const VehicleCategoryRatesPanel(); // 💡 ඔන්න දැන් පැනල් එක බය නැතුව ලෝඩ් වෙනවා මචං
       case 12: return const SystemSettingsPanel();
+      case 13: return const MembershipFeeApprovalsPanel(); // 👈 NEW
       default: return const DriversOverviewPanel();
     }
   }

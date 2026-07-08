@@ -47,6 +47,7 @@ class DashboardStatsGrid extends StatelessWidget {
       {'title': 'Offline Members', 'value': offlineMembersCount.toString(), 'icon': Icons.cloud_off_rounded, 'color': Colors.grey},
       {'title': 'Inactive Members', 'value': inactiveMembersCount.toString(), 'icon': Icons.person_off_rounded, 'color': Colors.orange},
       // 💡 Trips සහ complaints ටික ඔයාගේ අදාළ අනෙක් providers හදපු ගමන් මේ විදිහටම live කරගන්න පුළුවන් මචං
+      {'title': 'Scheduled Bookings', 'value': '24', 'icon': Icons.calendar_month_rounded, 'color': Colors.deepOrange},
       {'title': 'Ongoing Trips', 'value': '45', 'icon': Icons.local_taxi_rounded, 'color': Colors.purple},
       {'title': 'Today Complete', 'value': '180', 'icon': Icons.check_circle_rounded, 'color': Colors.teal},
       {'title': 'Canceled Trips', 'value': '12', 'icon': Icons.cancel_rounded, 'color': Colors.red},
@@ -54,7 +55,7 @@ class DashboardStatsGrid extends StatelessWidget {
     ];
 
     double screenWidth = MediaQuery.of(context).size.width;
-    int crossAxisCount = screenWidth > 1400 ? 5 : (screenWidth > 1100 ? 4 : 3);
+    int crossAxisCount = screenWidth > 1400 ? 5 : (screenWidth > 1100 ? 4 : (screenWidth > 800 ? 3 : (screenWidth > 500 ? 2 : 1)));
 
     // 💡 සාමාජික දත්ත බාගත වෙමින් පවතිනවා නම් පොඩි ලස්සන loading indicator එකක් දෙනවා (Layout එක කැඩෙන්නේ නැති වෙන්න)
     if (memberProvider.isLoading && allMembers.isEmpty) {

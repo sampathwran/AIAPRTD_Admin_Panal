@@ -15,6 +15,7 @@ import '../../screens/sub_panels/ongoing_trips_panel.dart';
 import '../../screens/sub_panels/today_complete_panel.dart';
 import '../../screens/sub_panels/canceled_trips_panel.dart';
 import '../../screens/sub_panels/complaints_panel.dart';
+import '../../screens/sub_panels/upcoming_bookings_panel.dart';
 
 // 💡 සටහන: උඩ තියෙන relative paths (../../) වෙනුවට ඔයාගේ project name එක දාලා
 // package imports විදිහට පාවිච්චි කරන්නත් පුළුවන් මචං (වඩාත්ම standard ක්‍රමය):
@@ -60,6 +61,7 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
         TodayCompletePanel(onBack: _navigateToDashboard),  // Index 7
         CanceledTripsPanel(onBack: _navigateToDashboard),  // Index 8
         ComplaintsPanel(onBack: _navigateToDashboard),     // Index 9
+        UpcomingBookingsPanel(onBack: _navigateToDashboard), // Index 10
       ],
     );
   }
@@ -146,10 +148,14 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
                 return StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance.collection('complaints').snapshots(),
                   builder: (context, complaintsSnapshot) {
-                    int ongoingTrips = 0;
+                    return StreamBuilder<QuerySnapshot>(
+                      stream: FirebaseFirestore.instance.collection('all_bookings').snapshots(),
+                      builder: (context, bookingsSnapshot) {
+                        int ongoingTrips = 0;
                     int todayCompleted = 0;
                     int canceledTrips = 0;
                     int activeComplaints = complaintsSnapshot.data?.docs.length ?? 0;
+                    int upcomingBookings = 0;
 
                     if (tripsSnapshot.hasData) {
                       for (var doc in tripsSnapshot.data!.docs) {
@@ -168,16 +174,25 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
                       }
                     }
 
+                    if (bookingsSnapshot.hasData) {
+                      for (var doc in bookingsSnapshot.data!.docs) {
+                        final data = doc.data() as Map<String, dynamic>;
+                        final status = data['status'] ?? '';
+                        if (status == 'pending') upcomingBookings++;
+                      }
+                    }
+
                     return GridView.count(
-                      crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 4 : (MediaQuery.of(context).size.width > 768 ? 2 : 2),
+                      crossAxisCount: MediaQuery.of(context).size.width > 1200 ? 5 : (MediaQuery.of(context).size.width > 768 ? 3 : 2),
                       shrinkWrap: true,
                       crossAxisSpacing: 12,
                       mainAxisSpacing: 12,
                       childAspectRatio: 1.4,
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
+                        _buildMetricCard('Upcoming Bookings', upcomingBookings.toString(), Icons.event_available_rounded, Colors.orange, 10),
                         _buildMetricCard('Ongoing Rides', ongoingTrips.toString(), Icons.local_taxi_rounded, Colors.purple, 6),
-                        _buildMetricCard("Today's Completed", todayCompleted.toString(), Icons.check_circle_rounded, Colors.teal, 7),
+                        _buildMetricCard('Completed Trips', todayCompleted.toString(), Icons.check_circle_rounded, Colors.teal, 7),
                         _buildMetricCard('Canceled Audits', canceledTrips.toString(), Icons.cancel_rounded, Colors.red, 8),
                         _buildMetricCard('Support Tickets', activeComplaints.toString(), Icons.assignment_late_rounded, Colors.redAccent, 9),
                       ],
@@ -185,7 +200,12 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
                   },
                 );
               },
-            ),
+            );
+          },
+        ),
+        const SizedBox(height: 28),
+
+            // (Removed embedded view as it is now in a separate subpanel)
           ],
         ),
       ),

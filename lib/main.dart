@@ -11,6 +11,7 @@ import 'providers/passenger_provider.dart';
 import 'providers/vehicle_request_provider.dart';
 import 'providers/profile_image_provider.dart';
 import 'providers/change_bank_details_provider.dart';
+import 'providers/admin_trips_provider.dart';
 import 'screens/main_dashboard_layout.dart';
 import 'admin_login_page.dart'; // 💡 අලුතින් හදපු Login Page එක (import එක ෆෝල්ඩර් එක අනුව වෙනස් කරගන්න)
 import 'firebase_options.dart';
@@ -33,6 +34,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => VehicleRequestProvider()),
         ChangeNotifierProvider(create: (_) => ProfileImageProvider()),
         ChangeNotifierProvider(create: (_) => ChangeBankDetailsProvider()),
+        ChangeNotifierProvider(create: (_) => AdminTripsProvider()),
       ],
       child: const AIAPRTDAdminApp(),
     ),
