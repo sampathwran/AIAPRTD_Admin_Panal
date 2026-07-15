@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.example.aiaprtd_admin_dashboard"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
