@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
 import 'package:aiaprtd_admin_dashboard/core/widgets/modern_stat_card.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class DashboardStatsGrid extends StatelessWidget {
   final Function(String pageTitle) onCardTap;
@@ -17,10 +18,8 @@ class DashboardStatsGrid extends StatelessWidget {
 
     final totalMembersCount = allMembers.length;
     final activeMembersCount = allMembers.where((d) {
-      return d['status'] == 'active' ||
-          d['kycApprovalStatus'] == 'approved' ||
-          d['adminApproval'] == 'Approved' ||
-          d['isApproved'] == true;
+      final statusResult = calculateMemberStatus(d);
+      return statusResult['isActive'] == true;
     }).length;
     final onlineMembersCount = allMembers
         .where((d) => d['isOnline'] == true || d['onlineStatus'] == 'online')
@@ -30,10 +29,8 @@ class DashboardStatsGrid extends StatelessWidget {
       return !isOnline;
     }).length;
     final inactiveMembersCount = allMembers.where((d) {
-      return d['status'] != 'active' &&
-          d['kycApprovalStatus'] != 'approved' &&
-          d['adminApproval'] != 'Approved' &&
-          d['isApproved'] != true;
+      final statusResult = calculateMemberStatus(d);
+      return statusResult['isActive'] != true;
     }).length;
     
     return LayoutBuilder(
@@ -47,9 +44,9 @@ class DashboardStatsGrid extends StatelessWidget {
           crossAxisCount: crossAxisCount,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          crossAxisSpacing: 16,
-          mainAxisSpacing: 16,
-          childAspectRatio: 1.6,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: 4.5,
           children: [
             InkWell(
               onTap: () => onCardTap('Total Members List'),
@@ -62,7 +59,7 @@ class DashboardStatsGrid extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () => onCardTap('Drivers Overview'),
+              onTap: () => onCardTap('Active Members'),
               child: ModernStatCard(
                 title: 'Active Members',
                 value: activeMembersCount.toString(),
@@ -72,7 +69,7 @@ class DashboardStatsGrid extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () => onCardTap('Drivers Overview'),
+              onTap: () => onCardTap('Online Members'),
               child: ModernStatCard(
                 title: 'Online Members',
                 value: onlineMembersCount.toString(),
@@ -82,7 +79,7 @@ class DashboardStatsGrid extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () => onCardTap('Drivers Overview'),
+              onTap: () => onCardTap('Offline Members'),
               child: ModernStatCard(
                 title: 'Offline Members',
                 value: offlineMembersCount.toString(),
@@ -92,7 +89,7 @@ class DashboardStatsGrid extends StatelessWidget {
               ),
             ),
             InkWell(
-              onTap: () => onCardTap('Drivers Overview'),
+              onTap: () => onCardTap('Inactive Members'),
               child: ModernStatCard(
                 title: 'Inactive Members',
                 value: inactiveMembersCount.toString(),

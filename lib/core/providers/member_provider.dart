@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
+import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class MemberProvider with ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _memberSubscription;
@@ -31,10 +32,8 @@ class MemberProvider with ChangeNotifier {
   // =========================================================================
   List<Map<String, dynamic>> get activeMembersList =>
       _allMembersList.where((m) {
-        return m['status'] == 'active' ||
-            m['kycApprovalStatus'] == 'approved' ||
-            m['adminApproval'] == 'Approved' ||
-            m['isApproved'] == true;
+        final statusResult = calculateMemberStatus(m);
+        return statusResult['isActive'] == true;
       }).toList();
 
   List<Map<String, dynamic>> get activationRequests => _allMembersList
@@ -49,6 +48,49 @@ class MemberProvider with ChangeNotifier {
   void setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
+  }
+
+  Future<void> syncAllMembersStatus() async {
+    setLoading(true);
+    try {
+      final batch = FirebaseFirestore.instance.batch();
+      int count = 0;
+
+      for (var member in _allMembersList) {
+        final docId = member['doc_id'] as String?;
+        if (docId == null) continue;
+
+        final statusResult = calculateMemberStatus(member);
+        final bool isActive = statusResult['isActive'] == true;
+        final String newStatus = isActive ? 'active member' : 'inactive member';
+        final String reason = statusResult['reason'] ?? '';
+        final List<String> reasonsList = reason.isEmpty ? [] : reason.split(' • ');
+
+        final currentProfileStatus = member['profile_status']?.toString();
+        final currentStatus = member['status']?.toString();
+        final currentReason = member['inactiveReason']?.toString();
+
+        if (currentProfileStatus != newStatus || currentStatus != newStatus || currentReason != reason) {
+          final docRef = FirebaseFirestore.instance.collection('member').doc(docId);
+          batch.update(docRef, {
+            'status': newStatus, // Legacy fallback
+            'inactiveReason': reason, // Legacy fallback
+            'profile_status': newStatus,
+            'inactive_reasons': reasonsList,
+          });
+          count++;
+        }
+      }
+
+      if (count > 0) {
+        debugPrint('dY" Syncing status for $count members...');
+        await batch.commit();
+        debugPrint('o" Successfully synced member statuses.');
+      }
+    } catch (e) {
+      debugPrint('?O Error syncing member statuses: $e');
+    }
+    setLoading(false);
   }
 
   void startListeningToMembers() {
@@ -109,7 +151,7 @@ class MemberProvider with ChangeNotifier {
                   data['primaryVehicle']?.toString() ?? '-';
               data['user_email'] = data['user_email']?.toString() ?? '-';
               data['wp_id'] = data['wp_id']?.toString() ?? '-';
-              data['status'] = data['status']?.toString() ?? 'pending';
+              data['status'] = data['status']?.toString() ?? 'N/A';
               data['isApproved'] = data['isApproved'] ?? false;
               data['profileImage'] = data['profileImage']?.toString() ?? '';
 
@@ -154,6 +196,9 @@ class MemberProvider with ChangeNotifier {
 
             // 🏦 Background එකෙන් Bank Details Fetch කරනවා
             _fetchBankDetailsInBackground();
+
+            // Background fetch for member inactive reasons (Real-time Firebase Sync logic)
+            _fetchInactiveReasonsInBackground();
           },
           onError: (error) {
             debugPrint("❌ PROVIDER ERROR: Firebase Error: $error");
@@ -212,6 +257,45 @@ class MemberProvider with ChangeNotifier {
     _allMembersList[index]['accountNumber'] = '-';
     _allMembersList[index]['branchName'] = '-';
     _allMembersList[index]['branchCode'] = '-';
+  }
+
+  // =========================================================================
+  // BACKGROUND FETCH: Member Inactive Reasons
+  // =========================================================================
+  Future<void> _fetchInactiveReasonsInBackground() async {
+    bool hasUpdates = false;
+
+    for (var i = 0; i < _allMembersList.length; i++) {
+      final String mNo = _allMembersList[i]['membershipNo'];
+      if (mNo != '-') {
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('member_inactive_reasons')
+              .doc(mNo)
+              .get();
+          if (doc.exists && doc.data() != null) {
+            final data = doc.data()!;
+            final String status = data['status']?.toString().toUpperCase() ?? '';
+            _allMembersList[i]['profile_status'] = status == 'ACTIVE' ? 'active member' : 'inactive member';
+            
+            final issues = data['issues'];
+            if (issues is List) {
+              _allMembersList[i]['inactive_reasons'] = issues.map((e) => (e['reason'] ?? '').toString()).toList();
+            } else {
+              _allMembersList[i]['inactive_reasons'] = [];
+            }
+            
+            hasUpdates = true;
+          }
+        } catch (e) {
+          debugPrint('Error fetching inactive reasons for $mNo: $e');
+        }
+      }
+    }
+
+    if (hasUpdates) {
+      notifyListeners();
+    }
   }
 
   @override

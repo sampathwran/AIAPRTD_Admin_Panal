@@ -14,8 +14,8 @@ import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_pan
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/ongoing_trips_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/online_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/today_complete_panel.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/upcoming_bookings_panel.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class DriversOverviewPanel extends StatefulWidget {
   const DriversOverviewPanel({super.key});
@@ -67,12 +67,14 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
     final allDrivers = memberProvider.allMembersList;
 
     final totalMembers = allDrivers.length;
-    final activeMembers = allDrivers
-        .where((d) => d['status'] == 'active')
-        .length;
-    final inactiveMembers = allDrivers
-        .where((d) => d['status'] != 'active')
-        .length;
+    final activeMembers = allDrivers.where((d) {
+      final statusResult = calculateMemberStatus(d);
+      return statusResult['isActive'] == true;
+    }).length;
+    final inactiveMembers = allDrivers.where((d) {
+      final statusResult = calculateMemberStatus(d);
+      return statusResult['isActive'] == false;
+    }).length;
     final onlineMembers = allDrivers.where(_isOnline).length;
     final offlineMembers = totalMembers - onlineMembers;
     final now = DateTime.now();
@@ -265,7 +267,7 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
       onTap: () => setState(() => _currentViewIndex = targetIndex),
       borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(8),
@@ -278,52 +280,46 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
             ),
           ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icon, color: accentColor, size: 21),
-                ),
-                const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Color(0xFF9CA3AF),
-                  size: 16,
-                ),
-              ],
+            Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: accentColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icon, color: accentColor, size: 18),
             ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: Color(0xFF111827),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: Color(0xFF111827),
+                      height: 1.1,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFF64748B),
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(height: 1),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 10,
+                      color: Color(0xFF64748B),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -410,9 +406,9 @@ class _ResponsiveMetricGrid extends StatelessWidget {
         return GridView.count(
           crossAxisCount: count,
           shrinkWrap: true,
-          crossAxisSpacing: 14,
-          mainAxisSpacing: 14,
-          childAspectRatio: count == 1 ? 2.6 : 1.45,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: count == 1 ? 4.5 : 3.8,
           physics: const NeverScrollableScrollPhysics(),
           children: children,
         );
