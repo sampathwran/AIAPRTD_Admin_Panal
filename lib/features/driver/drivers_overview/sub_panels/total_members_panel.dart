@@ -267,7 +267,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                           ),
                                         ),
                                         SizedBox(
-                                          width: 110,
+                                          width: 160,
                                           child: Text(
                                             'Status',
                                             style: TextStyle(
@@ -451,61 +451,47 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                   ),
                                                 ),
                                                 SizedBox(
-                                                  width: 110,
+                                                  width: 160,
                                                   child: Align(
                                                     alignment:
                                                         Alignment.centerLeft,
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: isActive
-                                                            ? Colors
-                                                                  .green
-                                                                  .shade50
-                                                            : Colors
-                                                                  .amber
-                                                                  .shade50,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
+                                                    child: Tooltip(
+                                                      message: isActive 
+                                                          ? 'Active Member' 
+                                                          : inactiveReason.isNotEmpty 
+                                                              ? inactiveReason 
+                                                              : 'Inactive Member',
+                                                      child: Container(
+                                                        padding:
+                                                            const EdgeInsets.symmetric(
+                                                              horizontal: 6,
+                                                              vertical: 3,
                                                             ),
-                                                      ),
-                                                      child: Column(
-                                                        mainAxisAlignment: MainAxisAlignment.center,
-                                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                                        children: [
-                                                          Text(
-                                                            statusText,
-                                                            style: TextStyle(
-                                                              color: isActive
-                                                                  ? Colors.green.shade700
-                                                                  : Colors.amber.shade700,
-                                                              fontSize: 8,
-                                                              fontWeight: FontWeight.bold,
-                                                            ),
-                                                          ),
-                                                          if (!isActive && inactiveReason.isNotEmpty)
-                                                            Padding(
-                                                              padding: const EdgeInsets.only(top: 2),
-                                                              child: Tooltip(
-                                                                message: inactiveReason,
-                                                                child: Text(
-                                                                  inactiveReason,
-                                                                  maxLines: 1,
-                                                                  overflow: TextOverflow.ellipsis,
-                                                                  style: const TextStyle(
-                                                                    fontSize: 7,
-                                                                    color: Colors.redAccent,
-                                                                    fontWeight: FontWeight.w600,
-                                                                  ),
-                                                                ),
+                                                        decoration: BoxDecoration(
+                                                          color: isActive
+                                                              ? Colors
+                                                                    .green
+                                                                    .shade50
+                                                              : Colors
+                                                                    .red
+                                                                    .shade50,
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                4,
                                                               ),
-                                                            ),
-                                                        ],
+                                                        ),
+                                                        child: Text(
+                                                          statusText,
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                          style: TextStyle(
+                                                            color: isActive
+                                                                ? Colors.green.shade700
+                                                                : Colors.red.shade700,
+                                                            fontSize: 8,
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
                                                       ),
                                                     ),
                                                   ),

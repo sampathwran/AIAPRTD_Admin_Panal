@@ -469,33 +469,17 @@ class _MemberRow extends StatelessWidget {
                   flex: 2,
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        AdminStatusPill(
-                          label: statusText,
-                          icon: statusIcon,
-                          color: statusColor,
-                        ),
-                        if (!isActive && inactiveReason.isNotEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 4, left: 2),
-                            child: Tooltip(
-                              message: inactiveReason,
-                              child: Text(
-                                inactiveReason,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 9,
-                                  color: Colors.redAccent,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
+                    child: Tooltip(
+                      message: isActive 
+                          ? 'Active Member'
+                          : inactiveReason.isNotEmpty 
+                              ? inactiveReason 
+                              : 'Inactive Member',
+                      child: AdminStatusPill(
+                        label: statusText,
+                        icon: statusIcon,
+                        color: statusColor,
+                      ),
                     ),
                   ),
                 ),
