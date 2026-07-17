@@ -60,6 +60,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
 
     switch (title) {
       case 'Total Members':
+      case 'Total Members List':
         return TotalMembersPanel(onBack: goBack);
       case 'Active Members':
         return ActiveMembersPanel(onBack: goBack);

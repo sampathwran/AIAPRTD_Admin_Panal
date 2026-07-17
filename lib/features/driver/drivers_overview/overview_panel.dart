@@ -221,6 +221,7 @@ class _LiveMapSection extends StatefulWidget {
 
 class _LiveMapSectionState extends State<_LiveMapSection> {
   String _selectedCategory = 'All';
+  Map<String, int> _categoryCounts = {};
 
   final List<Map<String, String>> _categories = [
     {'id': 'All', 'label': 'All'},
@@ -283,7 +284,7 @@ class _LiveMapSectionState extends State<_LiveMapSection> {
                         ),
                       ),
                       child: Text(
-                        cat['label']!,
+                        "${cat['label']!} ${_categoryCounts[cat['id']] != null ? '(${_categoryCounts[cat['id']]})' : ''}",
                         style: TextStyle(
                           color: isSelected ? Colors.white : AdminColors.muted,
                           fontSize: 12,
@@ -303,6 +304,13 @@ class _LiveMapSectionState extends State<_LiveMapSection> {
               borderRadius: BorderRadius.circular(8),
               child: LiveTrackingMap(
                 selectedCategory: _selectedCategory,
+                onCountsUpdated: (counts) {
+                  if (mounted) {
+                    setState(() {
+                      _categoryCounts = counts;
+                    });
+                  }
+                },
               ),
             ),
           ),

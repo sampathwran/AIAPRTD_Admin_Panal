@@ -17,7 +17,8 @@ class ProfileHeaderCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusResult = calculateMemberStatus(memberData);
     final bool isActive = statusResult['isActive'] == true;
-    final String displayStatus = isActive ? 'ACTIVE' : 'INACTIVE';
+    final String displayStatus = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
+    final String inactiveReason = statusResult['reason'] ?? '';
     final String membershipNo = memberData['membershipNo']?.toString() ?? '-';
 
     final imageProvider = Provider.of<ProfileImageProvider>(context);
@@ -99,6 +100,21 @@ class ProfileHeaderCard extends StatelessWidget {
                       displayStatus,
                       _getStatusColor(displayStatus),
                     ),
+                    if (!isActive && inactiveReason.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          inactiveReason,
+                          style: const TextStyle(
+                            fontSize: 10,
+                            color: Colors.redAccent,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -110,17 +126,14 @@ class ProfileHeaderCard extends StatelessWidget {
   }
 
   MaterialColor _getStatusColor(String status) {
-    switch (status) {
-      case 'ACTIVE':
-        return Colors.green;
-      case 'INACTIVE':
-        return Colors.amber;
-      case 'REJECTED':
-      case 'BANNED':
-      case 'SUSPENDED':
-        return Colors.red;
-      default:
-        return Colors.grey;
+    if (status == 'ACTIVE' || status == 'ACTIVE MEMBER') {
+      return Colors.green;
+    } else if (status == 'INACTIVE' || status == 'INACTIVE MEMBER') {
+      return Colors.amber;
+    } else if (status == 'REJECTED' || status == 'BANNED' || status == 'SUSPENDED') {
+      return Colors.red;
+    } else {
+      return Colors.grey;
     }
   }
 

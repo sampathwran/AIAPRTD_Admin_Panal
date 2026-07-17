@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class InactiveMembersPanel extends StatefulWidget {
   final VoidCallback onBack;
@@ -41,7 +42,8 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
 
     // 💡 Realtime Filtering: Status එක 'active' නොවන (pending/inactive) අය වෙන් කරලා ගන්නවා
     final inactiveMembers = memberProvider.allMembersList.where((driver) {
-      return driver['status'] != 'active';
+      final status = driver['status']?.toString().toLowerCase() ?? '';
+      return status != 'active' && status != 'active member';
     }).toList();
 
     final filteredMembers = inactiveMembers.where((driver) {
@@ -268,8 +270,8 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
                                           36, // Row එකක උස 36px දක්වා සිහින් කළා
                                       itemBuilder: (context, index) {
                                         final driver = filteredMembers[index];
-                                        final currentStatus =
-                                            driver['status'] ?? 'pending';
+                                        final statusResult = calculateMemberStatus(driver);
+                                        final String currentStatus = statusResult['isActive'] == true ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
 
                                         return Container(
                                           decoration: const BoxDecoration(

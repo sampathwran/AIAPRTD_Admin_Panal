@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:math' as math;
 
 class VehicleTracker {
   final String id;
@@ -57,8 +58,9 @@ class VehicleTracker {
 
 class LiveTrackingMap extends StatefulWidget {
   final String? selectedCategory;
+  final Function(Map<String, int>)? onCountsUpdated;
 
-  const LiveTrackingMap({super.key, this.selectedCategory});
+  const LiveTrackingMap({super.key, this.selectedCategory, this.onCountsUpdated});
 
   @override
   State<LiveTrackingMap> createState() => _LiveTrackingMapState();
@@ -127,7 +129,7 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
     try {
       for (var entry in iconPaths.entries) {
-        final Uint8List markerIcon = await _getBytesFromAsset(entry.value, 75); // Target width 75 for smaller icon
+        final Uint8List markerIcon = await _getBytesFromAsset(entry.value, 45); // Smaller icon
         final BitmapDescriptor icon = BitmapDescriptor.bytes(markerIcon);
         _cachedVehicleIcons[entry.key] = icon;
       }
@@ -143,6 +145,22 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
     }
   }
 
+  double _calculateHeading(LatLng start, LatLng end) {
+    if (start.latitude == end.latitude && start.longitude == end.longitude) return 0.0;
+    final double lat1 = start.latitude * math.pi / 180.0;
+    final double lng1 = start.longitude * math.pi / 180.0;
+    final double lat2 = end.latitude * math.pi / 180.0;
+    final double lng2 = end.longitude * math.pi / 180.0;
+
+    final double dLng = lng2 - lng1;
+    final double y = math.sin(dLng) * math.cos(lat2);
+    final double x = math.cos(lat1) * math.sin(lat2) -
+        math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
+
+    final double brng = math.atan2(y, x);
+    return (brng * 180.0 / math.pi + 360.0) % 360.0;
+  }
+
   void _startTracking() {
     _memberSubscription = FirebaseFirestore.instance
         .collection('member')
@@ -156,7 +174,7 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
         if (data['latitude'] != null && data['longitude'] != null) {
           final double lat = double.tryParse(data['latitude'].toString()) ?? 0.0;
           final double lng = double.tryParse(data['longitude'].toString()) ?? 0.0;
-          final double heading = double.tryParse(data['bearing'].toString()) ??
+          double heading = double.tryParse(data['bearing'].toString()) ??
               double.tryParse(data['heading'].toString()) ?? 0.0;
           final String name = data['fullName'] ?? 'Unknown Driver';
           final String memberNo = data['membershipNo']?.toString() ?? '';
@@ -170,10 +188,15 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
             tracker.memberNo = memberNo;
             tracker.isAvailable = isAvailable;
 
-            if (tracker.currentPosition != newPos) {
+            if (tracker.currentPosition.latitude != newPos.latitude || tracker.currentPosition.longitude != newPos.longitude) {
               tracker.latAnimation = Tween<double>(begin: tracker.currentPosition.latitude, end: newPos.latitude).animate(tracker.controller);
               tracker.lngAnimation = Tween<double>(begin: tracker.currentPosition.longitude, end: newPos.longitude).animate(tracker.controller);
               
+              // Dynamically calculate heading based on movement if missing or 0
+              if (heading == 0.0) {
+                 heading = _calculateHeading(tracker.currentPosition, newPos);
+              }
+
               double startHeading = tracker.currentHeading;
               double endHeading = heading;
               double diff = endHeading - startHeading;
@@ -269,32 +292,72 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     
-    // Canvas is tall. We anchor at bottom (0.5, 1.0) which puts the empty space over the car
-    // and the badge at the very top.
-    const double width = 90;
-    const double height = 140; 
+    // Smaller dimensions so it scales well when zooming out
+    const double width = 80;
+    const double height = 100; 
     
-    final TextPainter textPainter = TextPainter(
-      textDirection: TextDirection.ltr,
-    );
+    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
       text: last4,
       style: const TextStyle(
-        fontSize: 24,
+        fontSize: 16,
         color: Colors.white,
-        fontWeight: FontWeight.bold,
+        fontWeight: FontWeight.w900,
+        letterSpacing: 1.0,
       ),
     );
     textPainter.layout();
     
-    final double textX = (width - textPainter.width) / 2;
-    final double textY = 0.0;
+    final double paddingHorizontal = 8.0;
+    final double paddingVertical = 4.0;
     
-    final Rect bgRect = Rect.fromLTWH(textX - 8, textY, textPainter.width + 16, textPainter.height + 6);
-    final Paint bgPaint = Paint()..color = const Color(0xFF7367F0);
-    canvas.drawRRect(RRect.fromRectAndRadius(bgRect, const Radius.circular(6)), bgPaint);
+    final double boxWidth = textPainter.width + (paddingHorizontal * 2);
+    final double boxHeight = textPainter.height + (paddingVertical * 2);
     
-    textPainter.paint(canvas, Offset(textX, textY + 3));
+    final double startX = (width - boxWidth) / 2;
+    final double startY = 10.0; // Space for shadow
+    
+    final Path tooltipPath = Path();
+    final double radius = 6.0;
+    final double arrowWidth = 10.0;
+    final double arrowHeight = 6.0;
+
+    tooltipPath.moveTo(startX + radius, startY);
+    tooltipPath.lineTo(startX + boxWidth - radius, startY);
+    tooltipPath.arcToPoint(Offset(startX + boxWidth, startY + radius), radius: Radius.circular(radius));
+    tooltipPath.lineTo(startX + boxWidth, startY + boxHeight - radius);
+    tooltipPath.arcToPoint(Offset(startX + boxWidth - radius, startY + boxHeight), radius: Radius.circular(radius));
+    
+    // Arrow pointing down
+    tooltipPath.lineTo(width / 2 + (arrowWidth / 2), startY + boxHeight);
+    tooltipPath.lineTo(width / 2, startY + boxHeight + arrowHeight);
+    tooltipPath.lineTo(width / 2 - (arrowWidth / 2), startY + boxHeight);
+    
+    tooltipPath.lineTo(startX + radius, startY + boxHeight);
+    tooltipPath.arcToPoint(Offset(startX, startY + boxHeight - radius), radius: Radius.circular(radius));
+    tooltipPath.lineTo(startX, startY + radius);
+    tooltipPath.arcToPoint(Offset(startX + radius, startY), radius: Radius.circular(radius));
+    tooltipPath.close();
+
+    // Soft shadow
+    canvas.drawShadow(tooltipPath, const Color(0xFF000000), 5.0, true);
+    
+    // Background fill (Dark Gray/Black)
+    final Paint bgPaint = Paint()..color = const Color(0xFF111827);
+    canvas.drawPath(tooltipPath, bgPaint);
+    
+    // Border (Amber)
+    final Paint borderPaint = Paint()
+      ..color = const Color(0xFFF59E0B)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+    canvas.drawPath(tooltipPath, borderPaint);
+    
+    // Draw text centered
+    textPainter.paint(
+      canvas, 
+      Offset(startX + paddingHorizontal, startY + paddingVertical)
+    );
     
     final ui.Image markerAsImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
     final ByteData? byteData = await markerAsImage.toByteData(format: ui.ImageByteFormat.png);
@@ -310,8 +373,14 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
     if (!mounted) return;
     
     final Set<Marker> newMarkers = {};
+    final Map<String, int> counts = {'All': 0};
+
     for (var tracker in _trackers.values) {
       if (!tracker.metadataLoaded) continue;
+
+      // Update counts
+      counts['All'] = (counts['All'] ?? 0) + 1;
+      counts[tracker.categoryKey] = (counts[tracker.categoryKey] ?? 0) + 1;
 
       if (widget.selectedCategory != null && widget.selectedCategory != 'All') {
         if (tracker.categoryKey != widget.selectedCategory) continue;
@@ -354,6 +423,12 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
       );
     }
     _markersNotifier.value = newMarkers;
+
+    if (widget.onCountsUpdated != null) {
+      Future.microtask(() {
+        if (mounted) widget.onCountsUpdated!(counts);
+      });
+    }
   }
 
   @override

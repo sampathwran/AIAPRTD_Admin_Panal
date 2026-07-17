@@ -40,7 +40,8 @@ class _ActiveMembersPanelState extends State<ActiveMembersPanel> {
     final memberProvider = Provider.of<MemberProvider>(context);
 
     final activeMembers = memberProvider.allMembersList.where((driver) {
-      return driver['status'] == 'active';
+      final status = driver['status']?.toString().toLowerCase() ?? '';
+      return status == 'active' || status == 'active member';
     }).toList();
 
     final filteredMembers = activeMembers.where((driver) {

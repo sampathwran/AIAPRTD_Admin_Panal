@@ -62,7 +62,8 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
     }).toList();
 
     final activeCount = filteredMembers.where((d) {
-      return calculateMemberStatus(d)['isActive'] == true;
+      final statusResult = calculateMemberStatus(d);
+      return statusResult['isActive'] == true;
     }).length;
     final onlineCount = filteredMembers.where((d) {
       return d['isOnline'] == true || d['onlineStatus'] == 'online';
@@ -96,6 +97,15 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
               _searchController.clear();
               setState(() => _searchQuery = '');
             },
+            onRefresh: () async {
+              await memberProvider.syncAllMembersStatus();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Member statuses synced with database')),
+                );
+              }
+            },
+            isLoading: memberProvider.isLoading,
           ),
           const SizedBox(height: 14),
           Expanded(
@@ -194,6 +204,8 @@ class _DirectoryToolbar extends StatelessWidget {
   final int online;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
+  final VoidCallback onRefresh;
+  final bool isLoading;
 
   const _DirectoryToolbar({
     required this.controller,
@@ -203,6 +215,8 @@ class _DirectoryToolbar extends StatelessWidget {
     required this.online,
     required this.onChanged,
     required this.onClear,
+    required this.onRefresh,
+    required this.isLoading,
   });
 
   @override
@@ -248,6 +262,27 @@ class _DirectoryToolbar extends StatelessWidget {
                 label: '$online ONLINE',
                 icon: Icons.sensors_rounded,
                 color: AdminColors.passenger,
+              ),
+              Container(
+                margin: const EdgeInsets.only(left: 8),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: AdminColors.primary,
+                        ),
+                      )
+                    : Tooltip(
+                        message: 'Sync Member Status',
+                        child: IconButton(
+                          icon: const Icon(Icons.sync_rounded, color: AdminColors.primary, size: 22),
+                          onPressed: onRefresh,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ),
               ),
             ],
           );
@@ -380,31 +415,16 @@ class _MemberRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final statusResult = calculateMemberStatus(member);
     final bool isActive = statusResult['isActive'] == true;
-    final String statusText = isActive ? 'ACTIVE' : 'INACTIVE';
+    final String inactiveReason = statusResult['reason'] ?? '';
+    final String statusText = isActive 
+        ? 'ACTIVE MEMBER' 
+        : (inactiveReason.isNotEmpty ? 'INACTIVE: $inactiveReason' : 'INACTIVE MEMBER');
+
     final bool isOnline =
         member['isOnline'] == true || member['onlineStatus'] == 'online';
 
-    Color statusColor;
-    IconData statusIcon;
-    switch (statusText) {
-      case 'ACTIVE':
-        statusColor = AdminColors.success;
-        statusIcon = Icons.verified_rounded;
-        break;
-      case 'INACTIVE':
-        statusColor = AdminColors.warning;
-        statusIcon = Icons.pending_rounded;
-        break;
-      case 'REJECTED':
-      case 'BANNED':
-      case 'SUSPENDED':
-        statusColor = AdminColors.danger;
-        statusIcon = Icons.cancel_rounded;
-        break;
-      default:
-        statusColor = AdminColors.muted;
-        statusIcon = Icons.info_outline_rounded;
-    }
+    Color statusColor = isActive ? AdminColors.success : AdminColors.warning;
+    IconData statusIcon = isActive ? Icons.verified_rounded : Icons.pending_rounded;
 
     return SizedBox(
       height: 52,
@@ -447,12 +467,35 @@ class _MemberRow extends StatelessWidget {
                 ),
                 Expanded(
                   flex: 2,
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: AdminStatusPill(
-                      label: statusText,
-                      icon: statusIcon,
-                      color: statusColor,
+                  child: Padding(
+                    padding: const EdgeInsets.only(right: 16.0),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AdminStatusPill(
+                          label: statusText,
+                          icon: statusIcon,
+                          color: statusColor,
+                        ),
+                        if (!isActive && inactiveReason.isNotEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4, left: 2),
+                            child: Tooltip(
+                              message: inactiveReason,
+                              child: Text(
+                                inactiveReason,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 9,
+                                  color: Colors.redAccent,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 ),

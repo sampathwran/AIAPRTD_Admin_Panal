@@ -358,30 +358,69 @@ bool _isDocumentExpired(Map<dynamic, dynamic> document) {
 }
 
 Map<String, dynamic> calculateMemberStatus(Map<String, dynamic> activeData) {
-  final Map<String, dynamic> feeCheck = checkMembershipFeeStatus(activeData);
+  // If the Member app has already calculated and synced the profile_status, use it directly!
+  if (activeData.containsKey('profile_status')) {
+    final bool isActive = activeData['profile_status'] == 'active member';
+    
+    String reasonStr = '';
+    if (activeData['inactive_reasons'] is List) {
+       final reasons = List<String>.from(activeData['inactive_reasons']);
+       reasonStr = reasons.join(' • ');
+    } else {
+       reasonStr = activeData['inactiveReason']?.toString() ?? '';
+    }
 
-  if (feeCheck['isFeePaidValid'] == false) {
     return {
-      'isActive': false,
-      'reason': feeCheck['reason'] ?? 'Membership fee verification required.',
-      'source': 'fee',
+      'isActive': isActive,
+      'reason': reasonStr,
+      'source': 'synced_profile_status',
     };
+  }
+
+  // Fallback for members who haven't updated their app yet
+  List<String> reasons = [];
+  bool isActive = true;
+
+  final Map<String, dynamic> feeCheck = checkMembershipFeeStatus(activeData);
+  if (feeCheck['isFeePaidValid'] == false) {
+    isActive = false;
+    reasons.add(feeCheck['reason'] ?? 'Membership fee verification required.');
   }
 
   final Map<String, dynamic> kycCheck = PersonalKYCChecker.checkKYCStatus(activeData);
-
   if (kycCheck['isVerified'] == false) {
-    return {
-      'isActive': false,
-      'reason': kycCheck['reason'] ?? 'Personal profile or face verification pending.',
-      'source': 'kyc',
-    };
+    isActive = false;
+    if (kycCheck['reason'] != null && kycCheck['reason'] != "Verification pending ⏳") {
+      reasons.add(kycCheck['reason']);
+    } else {
+      reasons.add("Personal profile or face verification pending.");
+    }
+  }
+
+  // Profile image check
+  final String profileImageUrl = activeData['profileImageUrl']?.toString() ?? activeData['imageUrl']?.toString() ?? '';
+  if (profileImageUrl.isEmpty) {
+    isActive = false;
+    reasons.add("Profile image is not uploaded.");
   }
 
   final Map<String, dynamic> vehicleCheck = checkMemberSystemStatus(activeData);
+  if (vehicleCheck['isActive'] == false) {
+    isActive = false;
+    reasons.add(vehicleCheck['reason'] ?? 'Vehicle documents not found');
+  }
+
+  // Check admin explicitly blocked
+  final String adminApproval = activeData['adminApproval']?.toString().toLowerCase() ?? '';
+  final String status = activeData['status']?.toString().toLowerCase() ?? '';
+  if (adminApproval == 'rejected' || status == 'blocked' || status == 'rejected') {
+    isActive = false;
+    reasons.add(activeData['inactiveReason']?.toString() ?? activeData['rejectionReason']?.toString() ?? "Account has been restricted by Admin.");
+  }
 
   return {
-    ...vehicleCheck,
-    'source': 'vehicle',
+    'isActive': isActive,
+    'reason': reasons.join(' • '),
+    'source': 'legacy_fallback',
   };
 }

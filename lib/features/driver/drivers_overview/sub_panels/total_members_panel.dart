@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class TotalMembersPanel extends StatefulWidget {
   final VoidCallback onBack;
@@ -307,8 +309,12 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                         itemExtent: 36,
                                         itemBuilder: (context, index) {
                                           final driver = filteredMembers[index];
-                                          final bool isActive =
-                                              driver['status'] == 'active';
+                                          final statusResult = calculateMemberStatus(driver);
+                                          final bool isActive = statusResult['isActive'] == true;
+                                          final String inactiveReason = statusResult['reason'] ?? '';
+                                          final String statusText = isActive 
+                                              ? 'ACTIVE MEMBER' 
+                                              : (inactiveReason.isNotEmpty ? 'INACTIVE: $inactiveReason' : 'INACTIVE MEMBER');
 
                                           // 💡 FIXED: මෙතන තිබුණු Bracket issues සියල්ලම ක්ලීන් කරලා සම්පූර්ණ Row එක පිළිවෙලට හැදුවා මචං
                                           return Container(
@@ -348,10 +354,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                         backgroundColor:
                                                             Colors.blue.shade50,
                                                         child: Text(
-                                                          (driver['firstName'] ??
-                                                                  'D')
-                                                              .toString()
-                                                              .substring(0, 1)
+                                                          ((driver['firstName'] ?? '').toString().trim().isNotEmpty ? (driver['firstName'] ?? '').toString().trim().substring(0, 1) : ((driver['fullName'] ?? '').toString().trim().isNotEmpty ? (driver['fullName'] ?? '').toString().trim().substring(0, 1) : 'D'))
                                                               .toUpperCase(),
                                                           style: TextStyle(
                                                             color: Colors
@@ -471,23 +474,38 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                               12,
                                                             ),
                                                       ),
-                                                      child: Text(
-                                                        (driver['status'] ??
-                                                                'pending')
-                                                            .toString()
-                                                            .toUpperCase(),
-                                                        style: TextStyle(
-                                                          color: isActive
-                                                              ? Colors
-                                                                    .green
-                                                                    .shade700
-                                                              : Colors
-                                                                    .amber
-                                                                    .shade700,
-                                                          fontSize: 8,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                        ),
+                                                      child: Column(
+                                                        mainAxisAlignment: MainAxisAlignment.center,
+                                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                                        children: [
+                                                          Text(
+                                                            statusText,
+                                                            style: TextStyle(
+                                                              color: isActive
+                                                                  ? Colors.green.shade700
+                                                                  : Colors.amber.shade700,
+                                                              fontSize: 8,
+                                                              fontWeight: FontWeight.bold,
+                                                            ),
+                                                          ),
+                                                          if (!isActive && inactiveReason.isNotEmpty)
+                                                            Padding(
+                                                              padding: const EdgeInsets.only(top: 2),
+                                                              child: Tooltip(
+                                                                message: inactiveReason,
+                                                                child: Text(
+                                                                  inactiveReason,
+                                                                  maxLines: 1,
+                                                                  overflow: TextOverflow.ellipsis,
+                                                                  style: const TextStyle(
+                                                                    fontSize: 7,
+                                                                    color: Colors.redAccent,
+                                                                    fontWeight: FontWeight.w600,
+                                                                  ),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                        ],
                                                       ),
                                                     ),
                                                   ),

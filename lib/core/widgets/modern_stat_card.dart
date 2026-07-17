@@ -20,47 +20,45 @@ class ModernStatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdminSurface(
-      padding: const EdgeInsets.all(16), // Reduced from 20
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: AdminText.body.copyWith(fontWeight: FontWeight.w600),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, color: iconColor, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: AdminText.title.copyWith(fontSize: 18, height: 1.1),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-              ),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: iconColor.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                Text(
+                  title,
+                  style: AdminText.body.copyWith(fontWeight: FontWeight.w600, fontSize: 10),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                child: Icon(icon, color: iconColor, size: 20),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12), // Reduced from 16
-          Expanded( // Wrap in Expanded to prevent overflow if height is small
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                value,
-                style: AdminText.title.copyWith(fontSize: 24), // Slightly smaller font
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+                if (bottomWidget != null) ...[
+                  DefaultTextStyle(
+                    style: AdminText.body.copyWith(fontSize: 9, color: AdminColors.muted),
+                    child: bottomWidget!,
+                  ),
+                ],
+              ],
             ),
           ),
-          if (bottomWidget != null) ...[
-            const SizedBox(height: 12), // Reduced from 16
-            bottomWidget!,
-          ],
         ],
       ),
     );
