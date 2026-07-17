@@ -194,6 +194,12 @@ class MemberProvider with ChangeNotifier {
               data['branchName'] = 'Loading...';
               data['branchCode'] = 'Loading...';
 
+              // 🚨 CRITICAL: Remove any legacy profile_status/inactive_reasons from 
+              // the raw Firestore 'member' doc so that ONLY the real-time stream 
+              // from 'member_inactive_reasons' collection controls the status.
+              data.remove('profile_status');
+              data.remove('inactive_reasons');
+
               return data;
             }).toList();
 
@@ -270,14 +276,17 @@ class MemberProvider with ChangeNotifier {
   // 📌 APPLY CACHED INACTIVE REASONS TO MEMBER LIST
   // =========================================================================
   void _applyCachedInactiveReasons() {
+    int appliedCount = 0;
     for (var i = 0; i < _allMembersList.length; i++) {
       final mNo = _allMembersList[i]['membershipNo']?.toString() ?? '';
       if (mNo.isNotEmpty && _cachedInactiveReasons.containsKey(mNo)) {
         final cached = _cachedInactiveReasons[mNo]!;
         _allMembersList[i]['profile_status'] = cached['profile_status'];
         _allMembersList[i]['inactive_reasons'] = cached['inactive_reasons'];
+        appliedCount++;
       }
     }
+    debugPrint('📌 APPLY CACHE: Applied inactive reasons to $appliedCount / ${_allMembersList.length} members (cache has ${_cachedInactiveReasons.length} entries)');
   }
 
   // =========================================================================
@@ -292,6 +301,7 @@ class MemberProvider with ChangeNotifier {
         .collection('member_inactive_reasons')
         .snapshots()
         .listen((querySnapshot) {
+      debugPrint('🔄 INACTIVE REASONS STREAM: Received ${querySnapshot.docs.length} docs');
       bool hasUpdates = false;
 
       for (var doc in querySnapshot.docs) {
