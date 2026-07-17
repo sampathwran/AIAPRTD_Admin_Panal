@@ -11,6 +11,9 @@ class MemberProvider with ChangeNotifier {
   bool _isLoading = false;
   List<Map<String, dynamic>> _allMembersList = [];
 
+  // 📌 Cache: membershipNo => { 'status': 'ACTIVE'/'INACTIVE', 'reasons': [...] }
+  final Map<String, Map<String, dynamic>> _cachedInactiveReasons = {};
+
   int get selectedMenuIndex => _selectedMenuIndex;
   bool get isLoading => _isLoading;
   List<Map<String, dynamic>> get allMembersList => _allMembersList;
@@ -195,6 +198,10 @@ class MemberProvider with ChangeNotifier {
             }).toList();
 
             _isLoading = false;
+
+            // 📌 Apply cached inactive reasons to freshly loaded member list
+            _applyCachedInactiveReasons();
+
             notifyListeners(); // 🔄 UI එකට Data යවනවා
 
             // 🏦 Background එකෙන් Bank Details Fetch කරනවා
@@ -260,7 +267,21 @@ class MemberProvider with ChangeNotifier {
   }
 
   // =========================================================================
-  // BACKGROUND STREAM: Member Inactive Reasons
+  // 📌 APPLY CACHED INACTIVE REASONS TO MEMBER LIST
+  // =========================================================================
+  void _applyCachedInactiveReasons() {
+    for (var i = 0; i < _allMembersList.length; i++) {
+      final mNo = _allMembersList[i]['membershipNo']?.toString() ?? '';
+      if (mNo.isNotEmpty && _cachedInactiveReasons.containsKey(mNo)) {
+        final cached = _cachedInactiveReasons[mNo]!;
+        _allMembersList[i]['profile_status'] = cached['profile_status'];
+        _allMembersList[i]['inactive_reasons'] = cached['inactive_reasons'];
+      }
+    }
+  }
+
+  // =========================================================================
+  // 🔄 STREAM: member_inactive_reasons (Real-Time)
   // =========================================================================
   void _startListeningToInactiveReasons() {
     if (_inactiveReasonsSubscription != null) {
@@ -277,18 +298,29 @@ class MemberProvider with ChangeNotifier {
         final mNo = doc.id;
         final data = doc.data() as Map<String, dynamic>;
         
-        // Find member in memory
+        final String status = data['status']?.toString().toUpperCase() ?? '';
+        final String profileStatus = status == 'ACTIVE' ? 'active member' : 'inactive member';
+        
+        List<String> inactiveReasons = [];
+        final issues = data['issues'];
+        if (issues is List) {
+          inactiveReasons = issues
+              .map((e) => (e is Map ? e['reason'] ?? '' : '').toString())
+              .where((r) => r.isNotEmpty)
+              .toList();
+        }
+
+        // Update cache regardless of whether member is in memory yet
+        _cachedInactiveReasons[mNo] = {
+          'profile_status': profileStatus,
+          'inactive_reasons': inactiveReasons,
+        };
+
+        // Also apply directly to existing list if member already loaded
         final index = _allMembersList.indexWhere((m) => m['membershipNo'] == mNo);
         if (index != -1) {
-          final String status = data['status']?.toString().toUpperCase() ?? '';
-          _allMembersList[index]['profile_status'] = status == 'ACTIVE' ? 'active member' : 'inactive member';
-          
-          final issues = data['issues'];
-          if (issues is List) {
-            _allMembersList[index]['inactive_reasons'] = issues.map((e) => (e['reason'] ?? '').toString()).toList();
-          } else {
-            _allMembersList[index]['inactive_reasons'] = [];
-          }
+          _allMembersList[index]['profile_status'] = profileStatus;
+          _allMembersList[index]['inactive_reasons'] = inactiveReasons;
           hasUpdates = true;
         }
       }
