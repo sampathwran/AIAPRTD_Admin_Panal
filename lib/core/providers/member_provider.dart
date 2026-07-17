@@ -5,6 +5,7 @@ import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class MemberProvider with ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _memberSubscription;
+  StreamSubscription<QuerySnapshot>? _inactiveReasonsSubscription;
 
   int _selectedMenuIndex = 0;
   bool _isLoading = false;
@@ -104,6 +105,8 @@ class MemberProvider with ChangeNotifier {
 
     setLoading(true);
 
+    _startListeningToInactiveReasons();
+
     _memberSubscription = firestore
         .collection('member')
         .snapshots()
@@ -196,9 +199,6 @@ class MemberProvider with ChangeNotifier {
 
             // 🏦 Background එකෙන් Bank Details Fetch කරනවා
             _fetchBankDetailsInBackground();
-
-            // Background fetch for member inactive reasons (Real-time Firebase Sync logic)
-            _fetchInactiveReasonsInBackground();
           },
           onError: (error) {
             debugPrint("❌ PROVIDER ERROR: Firebase Error: $error");
@@ -260,47 +260,49 @@ class MemberProvider with ChangeNotifier {
   }
 
   // =========================================================================
-  // BACKGROUND FETCH: Member Inactive Reasons
+  // BACKGROUND STREAM: Member Inactive Reasons
   // =========================================================================
-  Future<void> _fetchInactiveReasonsInBackground() async {
-    bool hasUpdates = false;
+  void _startListeningToInactiveReasons() {
+    if (_inactiveReasonsSubscription != null) {
+      _inactiveReasonsSubscription?.cancel();
+    }
+    
+    _inactiveReasonsSubscription = FirebaseFirestore.instance
+        .collection('member_inactive_reasons')
+        .snapshots()
+        .listen((querySnapshot) {
+      bool hasUpdates = false;
 
-    for (var i = 0; i < _allMembersList.length; i++) {
-      final String mNo = _allMembersList[i]['membershipNo'];
-      if (mNo != '-') {
-        try {
-          final doc = await FirebaseFirestore.instance
-              .collection('member_inactive_reasons')
-              .doc(mNo)
-              .get();
-          if (doc.exists && doc.data() != null) {
-            final data = doc.data()!;
-            final String status = data['status']?.toString().toUpperCase() ?? '';
-            _allMembersList[i]['profile_status'] = status == 'ACTIVE' ? 'active member' : 'inactive member';
-            
-            final issues = data['issues'];
-            if (issues is List) {
-              _allMembersList[i]['inactive_reasons'] = issues.map((e) => (e['reason'] ?? '').toString()).toList();
-            } else {
-              _allMembersList[i]['inactive_reasons'] = [];
-            }
-            
-            hasUpdates = true;
+      for (var doc in querySnapshot.docs) {
+        final mNo = doc.id;
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Find member in memory
+        final index = _allMembersList.indexWhere((m) => m['membershipNo'] == mNo);
+        if (index != -1) {
+          final String status = data['status']?.toString().toUpperCase() ?? '';
+          _allMembersList[index]['profile_status'] = status == 'ACTIVE' ? 'active member' : 'inactive member';
+          
+          final issues = data['issues'];
+          if (issues is List) {
+            _allMembersList[index]['inactive_reasons'] = issues.map((e) => (e['reason'] ?? '').toString()).toList();
+          } else {
+            _allMembersList[index]['inactive_reasons'] = [];
           }
-        } catch (e) {
-          debugPrint('Error fetching inactive reasons for $mNo: $e');
+          hasUpdates = true;
         }
       }
-    }
 
-    if (hasUpdates) {
-      notifyListeners();
-    }
+      if (hasUpdates) {
+        notifyListeners();
+      }
+    });
   }
 
   @override
   void dispose() {
     _memberSubscription?.cancel();
+    _inactiveReasonsSubscription?.cancel();
     super.dispose();
   }
 }
