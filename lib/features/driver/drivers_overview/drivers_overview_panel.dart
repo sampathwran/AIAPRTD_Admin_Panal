@@ -14,6 +14,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_pan
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/ongoing_trips_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/online_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/today_complete_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/upcoming_bookings_panel.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
