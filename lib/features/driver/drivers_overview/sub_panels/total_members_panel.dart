@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/driver_profile_dialog.dart';
 
 class TotalMembersPanel extends StatefulWidget {
   final VoidCallback onBack;
@@ -440,9 +441,9 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                       constraints:
                                                           const BoxConstraints(),
                                                       onPressed: () {
-                                                        _showDriverDetailsDialog(
-                                                          context,
-                                                          driver,
+                                                        showDialog(
+                                                          context: context,
+                                                          builder: (context) => DriverProfileDialog(driver: driver),
                                                         );
                                                       },
                                                     ),
@@ -465,101 +466,6 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showDriverDetailsDialog(
-    BuildContext context,
-    Map<String, dynamic> driver,
-  ) {
-    showDialog(
-      context: context,
-      builder: (context) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          width: 460,
-          padding: const EdgeInsets.all(20),
-          child: SingleChildScrollView(
-            child: SelectionArea(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.person_outline_rounded,
-                        color: Color(0xFF1E3A8A),
-                        size: 22,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          driver['fullName'] ?? 'Driver Profile',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close_rounded,
-                          color: Colors.grey,
-                          size: 20,
-                        ),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 20),
-                  _detailRow('Membership No:', driver['membershipNo']),
-                  _detailRow('NIC Number:', driver['nic']),
-                  _detailRow('Mobile:', driver['mobile']),
-                  _detailRow('Email:', driver['user_email']),
-                  _detailRow('Gender:', driver['gender']),
-                  _detailRow('DOB:', driver['dob']),
-                  _detailRow('Religion:', driver['religion']),
-                  _detailRow('Address:', driver['address']),
-                  const Divider(height: 20),
-                  _detailRow('Vehicle Model:', driver['vehicleType']),
-                  _detailRow('Vehicle Number:', driver['vehicleNumber']),
-                  _detailRow('Primary Category:', driver['primaryVehicle']),
-                  _detailRow('Rating:', '⭐ ${driver['rating'] ?? 5}'),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _detailRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5.0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 130,
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black54,
-                fontSize: 12,
-              ),
-            ),
-          ),
-          Expanded(
-            child: SelectableText(
-              value?.toString() ?? '-',
-              style: const TextStyle(color: Colors.black87, fontSize: 12),
-            ),
-          ),
-        ],
       ),
     );
   }
