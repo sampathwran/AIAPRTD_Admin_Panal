@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
+import 'package:aiaprtd_admin_dashboard/core/providers/profile_image_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class TotalMembersPanel extends StatefulWidget {
@@ -22,6 +23,10 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<ProfileImageProvider>(
+        context,
+        listen: false,
+      ).startListeningToProfileImages();
       Provider.of<MemberProvider>(
         context,
         listen: false,
@@ -39,6 +44,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
   @override
   Widget build(BuildContext context) {
     final memberProvider = Provider.of<MemberProvider>(context);
+    final profileImageProvider = Provider.of<ProfileImageProvider>(context);
     final allMembers = memberProvider.allMembersList;
 
     final filteredMembers = allMembers.where((driver) {
@@ -188,7 +194,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                             controller: _horizontalController,
                             scrollDirection: Axis.horizontal,
                             child: SizedBox(
-                              width: 680,
+                              width: 700,
                               child: Column(
                                 children: [
                                   // Header Row
@@ -330,14 +336,19 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                       CircleAvatar(
                                                         radius: 12,
                                                         backgroundColor: Colors.blue.shade50,
-                                                        child: Text(
-                                                          ((driver['firstName'] ?? '').toString().trim().isNotEmpty ? (driver['firstName'] ?? '').toString().trim().substring(0, 1) : ((driver['fullName'] ?? '').toString().trim().isNotEmpty ? (driver['fullName'] ?? '').toString().trim().substring(0, 1) : 'D')).toUpperCase(),
-                                                          style: TextStyle(
-                                                            color: Colors.blue.shade800,
-                                                            fontSize: 10,
-                                                            fontWeight: FontWeight.bold,
-                                                          ),
-                                                        ),
+                                                        backgroundImage: profileImageProvider.profileImages[driver['membershipNo']] != null
+                                                            ? NetworkImage(profileImageProvider.profileImages[driver['membershipNo']]!)
+                                                            : null,
+                                                        child: profileImageProvider.profileImages[driver['membershipNo']] == null
+                                                            ? Text(
+                                                                ((driver['firstName'] ?? '').toString().trim().isNotEmpty ? (driver['firstName'] ?? '').toString().trim().substring(0, 1) : ((driver['fullName'] ?? '').toString().trim().isNotEmpty ? (driver['fullName'] ?? '').toString().trim().substring(0, 1) : 'D')).toUpperCase(),
+                                                                style: TextStyle(
+                                                                  color: Colors.blue.shade800,
+                                                                  fontSize: 10,
+                                                                  fontWeight: FontWeight.bold,
+                                                                ),
+                                                              )
+                                                            : null,
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
