@@ -198,6 +198,7 @@ class DriverProfileDialog extends StatelessWidget {
           _buildSectionTitle('Basic Information'),
           const SizedBox(height: 16),
           _buildInfoGrid([
+            _InfoItem('Join Date', driver['joinDate']),
             _InfoItem('NIC Number', driver['nic']),
             _InfoItem('Mobile', driver['mobile']),
             _InfoItem('Email', driver['user_email']),
@@ -206,25 +207,147 @@ class DriverProfileDialog extends StatelessWidget {
             _InfoItem('Religion', driver['religion']),
             _InfoItem('Address', driver['address']),
           ]),
+          const SizedBox(height: 24),
+          _buildSectionTitle('Account & App Details'),
+          const SizedBox(height: 16),
+          _buildInfoGrid([
+            _InfoItem('Profile Status', driver['profile_status']),
+            _InfoItem('Online Status', driver['onlineStatus']),
+            _InfoItem('Total Accepted', driver['totalAcceptedCount']),
+            _InfoItem('Rating', '${driver['rating'] ?? 0} (${driver['ratingCount'] ?? 0} reviews)'),
+            _InfoItem('KYC Approval', driver['kycApprovalStatus']),
+            _InfoItem('Face KYC Status', driver['faceKycStatus']),
+            _InfoItem('Bank Update', driver['bankUpdateStatus']),
+            _InfoItem('Auth UID', driver['auth_uid']),
+          ]),
         ],
       ),
     );
   }
 
   Widget _buildVehicleDetailsTab() {
+    final currentVehicle = driver['currentVehicle'] as Map<String, dynamic>?;
+    final vehicleHistory = driver['vehicleHistory'] as List<dynamic>? ?? [];
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildSectionTitle('Vehicle Information'),
+          _buildSectionTitle('Current Vehicle'),
           const SizedBox(height: 16),
+          if (currentVehicle != null)
+            _buildVehicleSection(currentVehicle, isCurrent: true)
+          else
+            const Text('No current vehicle details available.', style: TextStyle(color: Colors.grey)),
+          
+          if (vehicleHistory.isNotEmpty) ...[
+            const SizedBox(height: 32),
+            const Divider(height: 1, color: Color(0xFFE2E8F0)),
+            const SizedBox(height: 24),
+            _buildSectionTitle('Vehicle History (${vehicleHistory.length})'),
+            const SizedBox(height: 16),
+            ...vehicleHistory.map((v) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 24.0),
+                child: _buildVehicleSection(v as Map<String, dynamic>),
+              );
+            }).toList(),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVehicleSection(Map<String, dynamic> v, {bool isCurrent = false}) {
+    final details = v['details'] as Map<String, dynamic>? ?? {};
+    final docs = v['documents'] as List<dynamic>? ?? [];
+    final photos = v['vehiclePhotos'] as Map<String, dynamic>? ?? {};
+    
+    // License info is usually doc 3, but let's search just in case
+    Map<String, dynamic>? licenseData;
+    for (var d in docs) {
+      if (d is Map<String, dynamic> && d['reviewData'] != null) {
+        final review = d['reviewData'] as Map<String, dynamic>;
+        if (review.containsKey('License Number')) {
+          licenseData = review;
+          break;
+        }
+      }
+    }
+
+    // Vehicle basic details
+    final brand = details['brand'] ?? '-';
+    final model = details['model'] ?? '-';
+    final year = details['year'] ?? '-';
+    final category = v['selectedCategory'] ?? '-';
+    final status = v['status'] ?? '-';
+    
+    String? approvedAtStr;
+    if (v['approvedAt'] != null) {
+      // It's likely a Timestamp, so we convert it simply by toString
+      approvedAtStr = v['approvedAt'].toString();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isCurrent ? Colors.blue.shade50.withValues(alpha: 0.3) : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isCurrent ? Colors.blue.shade200 : Colors.grey.shade200),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           _buildInfoGrid([
-            _InfoItem('Vehicle Model', driver['vehicleType']),
-            _InfoItem('Vehicle Number', driver['vehicleNumber']),
-            _InfoItem('Primary Category', driver['primaryVehicle']),
-            _InfoItem('Rating', '⭐ ${driver['rating'] ?? 5}'),
+            _InfoItem('Brand / Model', '$brand $model'),
+            _InfoItem('Manufacture Year', year),
+            _InfoItem('Category', category),
+            _InfoItem('Approval Status', status.toString().toUpperCase()),
+            if (approvedAtStr != null) _InfoItem('Approved At', approvedAtStr),
+            if (licenseData != null) _InfoItem('Driving License', licenseData['License Number']),
+            if (licenseData != null) _InfoItem('License Expiry', licenseData['Expiry Date']),
+            if (licenseData != null && licenseData['LicenseTypes'] != null) 
+               _InfoItem('License Types', (licenseData['LicenseTypes'] as List).join(', ')),
           ]),
+          if (photos.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'Vehicle Photos',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 16,
+              runSpacing: 16,
+              children: photos.entries.map((e) {
+                final photoData = e.value as Map<String, dynamic>? ?? {};
+                final url = photoData['url']?.toString() ?? '';
+                if (url.isEmpty) return const SizedBox.shrink();
+                return Column(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        url,
+                        width: 120,
+                        height: 90,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          width: 120,
+                          height: 90,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(e.key, style: const TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+                  ],
+                );
+              }).toList(),
+            ),
+          ]
         ],
       ),
     );
