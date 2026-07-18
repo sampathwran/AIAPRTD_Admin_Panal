@@ -519,12 +519,12 @@ class DriverProfileDialog extends StatelessWidget {
     }
 
     return FutureBuilder<QuerySnapshot>(
-      // We will query the centralized 'driver_transactions' collection where driverId matches
+      // The member app already saves financial logs to 'finance_transactions'
       future: FirebaseFirestore.instance
-          .collection('driver_transactions')
+          .collection('finance_transactions')
           .where('driverId', isEqualTo: driverId.toString())
           .orderBy('timestamp', descending: true)
-          .limit(100) // limit to recent 100 for performance
+          .limit(100)
           .get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -575,10 +575,10 @@ class DriverProfileDialog extends StatelessWidget {
                     columns: const [
                       DataColumn(label: Text('Date & Time', style: TextStyle(fontWeight: FontWeight.bold))),
                       DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Booking Ref', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Description', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Amount', style: TextStyle(fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Trip Ref', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Union Charge', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Total Commission', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Driver Earned', style: TextStyle(fontWeight: FontWeight.bold))),
                     ],
                     rows: docs.map((doc) {
                       final data = doc.data() as Map<String, dynamic>;
@@ -594,19 +594,16 @@ class DriverProfileDialog extends StatelessWidget {
                       }
 
                       final type = (data['type'] ?? 'Unknown').toString();
-                      final bookingId = (data['bookingId'] ?? '-').toString();
-                      final description = (data['description'] ?? '-').toString();
-                      final amount = double.tryParse(data['amount'].toString()) ?? 0.0;
-                      final status = (data['status'] ?? 'completed').toString().toLowerCase();
+                      final tripId = (data['tripId'] ?? '-').toString();
+                      
+                      // Parse amounts based on finance_transactions schema
+                      final totalFare = double.tryParse(data['totalFare']?.toString() ?? '0') ?? 0.0;
+                      final driverCommission = double.tryParse(data['driverCommission']?.toString() ?? '0') ?? 0.0;
+                      final unionUsageCharge = double.tryParse(data['unionUsageCharge']?.toString() ?? '0') ?? 0.0;
+                      final amount = double.tryParse(data['amount']?.toString() ?? '0') ?? 0.0; // for auto_settlement
 
-                      // Styling
-                      Color statusColor = Colors.grey;
-                      if (status == 'completed' || status == 'approved') statusColor = Colors.green;
-                      else if (status == 'pending') statusColor = Colors.orange;
-                      else if (status == 'failed' || status == 'rejected') statusColor = Colors.red;
-
-                      Color amountColor = amount < 0 ? Colors.red : Colors.green;
-                      String amountPrefix = amount > 0 ? '+' : '';
+                      double displayCommission = driverCommission > 0 ? driverCommission : amount;
+                      double driverEarned = totalFare > 0 ? totalFare - displayCommission : 0.0;
 
                       return DataRow(
                         cells: [
@@ -624,23 +621,10 @@ class DriverProfileDialog extends StatelessWidget {
                               ),
                             ),
                           ),
-                          DataCell(Text(bookingId, style: const TextStyle(fontSize: 12, color: Colors.grey))),
-                          DataCell(Text(description, style: const TextStyle(fontSize: 12))),
-                          DataCell(Text('$amountPrefix Rs. ${amount.abs().toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: amountColor))),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: statusColor.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: statusColor.withValues(alpha: 0.5)),
-                              ),
-                              child: Text(
-                                status.toUpperCase(),
-                                style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ),
+                          DataCell(Text(tripId, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+                          DataCell(Text(unionUsageCharge > 0 ? 'Rs. ${unionUsageCharge.toStringAsFixed(2)}' : '-', style: const TextStyle(color: Colors.red))),
+                          DataCell(Text(displayCommission > 0 ? 'Rs. ${displayCommission.toStringAsFixed(2)}' : '-', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+                          DataCell(Text(driverEarned > 0 ? 'Rs. ${driverEarned.toStringAsFixed(2)}' : '-', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green))),
                         ],
                       );
                     }).toList(),
