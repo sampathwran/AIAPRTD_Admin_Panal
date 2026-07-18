@@ -513,26 +513,144 @@ class DriverProfileDialog extends StatelessWidget {
   }
 
   Widget _buildTransactionHistoryTab() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          SizedBox(height: 48),
-          Icon(Icons.history_rounded, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'Transaction History',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+    final driverId = driver['membershipNo'] ?? driver['uid'] ?? '';
+    if (driverId.toString().isEmpty) {
+      return const Center(child: Text('No Driver ID found.'));
+    }
+
+    return FutureBuilder<QuerySnapshot>(
+      // We will query the centralized 'driver_transactions' collection where driverId matches
+      future: FirebaseFirestore.instance
+          .collection('driver_transactions')
+          .where('driverId', isEqualTo: driverId.toString())
+          .orderBy('timestamp', descending: true)
+          .limit(100) // limit to recent 100 for performance
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading transactions: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.receipt_long, size: 64, color: Colors.grey),
+                const SizedBox(height: 16),
+                const Text('No Transaction History found.', style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 8),
+                const Text(
+                  'Once data is saved to the "driver_transactions" collection,\nit will appear here.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                ),
+              ],
+            ),
+          );
+        }
+
+        final docs = snapshot.data!.docs;
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Recent Transactions (${docs.length})'),
+              const SizedBox(height: 16),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade200),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: DataTable(
+                    headingRowColor: WidgetStateProperty.all(Colors.blue.shade50),
+                    dataRowMinHeight: 45,
+                    dataRowMaxHeight: 65,
+                    columns: const [
+                      DataColumn(label: Text('Date & Time', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Booking Ref', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Description', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Amount', style: TextStyle(fontWeight: FontWeight.bold))),
+                      DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+                    ],
+                    rows: docs.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      
+                      // Safely parse timestamp
+                      String dateTimeStr = '-';
+                      if (data['timestamp'] != null) {
+                        if (data['timestamp'] is Timestamp) {
+                          dateTimeStr = DateFormat('yyyy-MMM-dd hh:mm a').format((data['timestamp'] as Timestamp).toDate());
+                        } else {
+                          dateTimeStr = data['timestamp'].toString();
+                        }
+                      }
+
+                      final type = (data['type'] ?? 'Unknown').toString();
+                      final bookingId = (data['bookingId'] ?? '-').toString();
+                      final description = (data['description'] ?? '-').toString();
+                      final amount = double.tryParse(data['amount'].toString()) ?? 0.0;
+                      final status = (data['status'] ?? 'completed').toString().toLowerCase();
+
+                      // Styling
+                      Color statusColor = Colors.grey;
+                      if (status == 'completed' || status == 'approved') statusColor = Colors.green;
+                      else if (status == 'pending') statusColor = Colors.orange;
+                      else if (status == 'failed' || status == 'rejected') statusColor = Colors.red;
+
+                      Color amountColor = amount < 0 ? Colors.red : Colors.green;
+                      String amountPrefix = amount > 0 ? '+' : '';
+
+                      return DataRow(
+                        cells: [
+                          DataCell(Text(dateTimeStr, style: const TextStyle(fontSize: 12))),
+                          DataCell(
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                type.replaceAll('_', ' ').toUpperCase(),
+                                style: const TextStyle(color: Colors.blue, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                          DataCell(Text(bookingId, style: const TextStyle(fontSize: 12, color: Colors.grey))),
+                          DataCell(Text(description, style: const TextStyle(fontSize: 12))),
+                          DataCell(Text('$amountPrefix Rs. ${amount.abs().toStringAsFixed(2)}', style: TextStyle(fontWeight: FontWeight.bold, color: amountColor))),
+                          DataCell(
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: statusColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                              ),
+                              child: Text(
+                                status.toUpperCase(),
+                                style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
-          SizedBox(height: 8),
-          Text(
-            'Please specify what columns should be displayed in this history list.',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
