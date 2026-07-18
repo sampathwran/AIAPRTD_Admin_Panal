@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
-import 'package:aiaprtd_admin_dashboard/core/providers/profile_image_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/total_members/member_profile_cards.dart';
@@ -26,7 +25,6 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ProfileImageProvider>().startListeningToProfileImages();
       final memberProvider = context.read<MemberProvider>();
       if (memberProvider.allMembersList.isEmpty) {
         memberProvider.startListeningToMembers();
