@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class DriverProfileDialog extends StatelessWidget {
   final Map<String, dynamic> driver;
@@ -107,10 +110,11 @@ class DriverProfileDialog extends StatelessWidget {
                 ),
                 child: ClipOval(
                   child: hasImage
-                      ? Image.network(
-                          driver['profileImageUrl'].toString(),
+                      ? CachedNetworkImage(
+                          imageUrl: driver['profileImageUrl'].toString(),
                           fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _buildFallbackInitial(initials),
+                          placeholder: (context, url) => const CircularProgressIndicator(),
+                          errorWidget: (context, url, error) => _buildFallbackInitial(initials),
                         )
                       : _buildFallbackInitial(initials),
                 ),
@@ -328,12 +332,18 @@ class DriverProfileDialog extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.network(
-                        url,
+                      child: CachedNetworkImage(
+                        imageUrl: url,
                         width: 120,
                         height: 90,
                         fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
+                        placeholder: (context, url) => Container(
+                          width: 120,
+                          height: 90,
+                          color: Colors.grey.shade100,
+                          child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))),
+                        ),
+                        errorWidget: (context, url, error) => Container(
                           width: 120,
                           height: 90,
                           color: Colors.grey.shade200,
@@ -354,25 +364,150 @@ class DriverProfileDialog extends StatelessWidget {
   }
 
   Widget _buildMembershipFeeTab() {
+    final membershipNo = driver['membershipNo'];
+    if (membershipNo == null || membershipNo.toString().isEmpty) {
+      return const Center(child: Text('No Membership Number found for this driver.'));
+    }
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('app_membership_fee').doc(membershipNo).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        if (snapshot.hasError) {
+          return Center(child: Text('Error loading fee details: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.payment, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('No Membership Fee records found.', style: TextStyle(color: Colors.grey)),
+              ],
+            ),
+          );
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        final paymentHistory = data['payment_history'] as List<dynamic>? ?? [];
+        final pendingPayments = data['pending_payments'] as List<dynamic>? ?? [];
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Pending Payments (${pendingPayments.length})'),
+              const SizedBox(height: 16),
+              if (pendingPayments.isEmpty)
+                const Text('No pending payments.', style: TextStyle(color: Colors.grey))
+              else
+                _buildPaymentTable(pendingPayments),
+
+              const SizedBox(height: 32),
+              const Divider(height: 1, color: Color(0xFFE2E8F0)),
+              const SizedBox(height: 32),
+
+              _buildSectionTitle('Payment History (${paymentHistory.length})'),
+              const SizedBox(height: 16),
+              if (paymentHistory.isEmpty)
+                const Text('No payment history available.', style: TextStyle(color: Colors.grey))
+              else
+                _buildPaymentTable(paymentHistory),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPaymentTable(List<dynamic> payments) {
+    // Sort payments by date descending if possible
+    final sortedPayments = List<Map<String, dynamic>>.from(payments.whereType<Map<String, dynamic>>());
+    sortedPayments.sort((a, b) {
+      final dateA = a['date'] ?? '';
+      final dateB = b['date'] ?? '';
+      return dateB.compareTo(dateA);
+    });
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: const [
-          SizedBox(height: 48),
-          Icon(Icons.payments_rounded, size: 64, color: Colors.grey),
-          SizedBox(height: 16),
-          Text(
-            'Membership Fee Details',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-          ),
-          SizedBox(height: 8),
-          Text(
-            'Please specify what data should be displayed here.',
-            style: TextStyle(color: Colors.grey),
-          ),
-        ],
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(Colors.blue.shade50),
+          dataRowMinHeight: 45,
+          dataRowMaxHeight: 65,
+          columns: const [
+            DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Month/Year', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Amount', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Reason', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold))),
+            DataColumn(label: Text('Slip', style: TextStyle(fontWeight: FontWeight.bold))),
+          ],
+          rows: sortedPayments.map((p) {
+            final month = p['month'] ?? '-';
+            final year = p['year'] ?? '';
+            final amount = p['amount'] ?? '0';
+            final status = (p['status'] ?? '-').toString().toLowerCase();
+            final slipUrl = p['slipUrl']?.toString() ?? '';
+
+            Color statusColor = Colors.grey;
+            if (status == 'approved') statusColor = Colors.green;
+            else if (status == 'pending') statusColor = Colors.orange;
+            else if (status == 'rejected') statusColor = Colors.red;
+
+            return DataRow(
+              cells: [
+                DataCell(Text(p['date'] ?? '-')),
+                DataCell(Text('$month $year'.trim())),
+                DataCell(Text('Rs. $amount', style: const TextStyle(fontWeight: FontWeight.bold))),
+                DataCell(Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p['type'] ?? '-', style: const TextStyle(fontSize: 12)),
+                    Text(p['source'] ?? '-', style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                  ],
+                )),
+                DataCell(Text(p['reason'] ?? '-', style: const TextStyle(fontSize: 12))),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: statusColor.withValues(alpha: 0.5)),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+                DataCell(
+                  slipUrl.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.image, color: Colors.blue),
+                          onPressed: () {
+                            // Can show dialog with image if needed
+                          },
+                          tooltip: 'View Slip',
+                        )
+                      : const Text('-', style: TextStyle(color: Colors.grey)),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
       ),
     );
   }
