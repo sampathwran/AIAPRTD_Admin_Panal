@@ -284,7 +284,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                         controller: _verticalController,
                                         itemCount: filteredMembers.length,
                                         physics: const BouncingScrollPhysics(),
-                                        itemExtent: 52,
+                                        itemExtent: 65,
                                         itemBuilder: (context, index) {
                                           final driver = filteredMembers[index];
                                           final statusResult = calculateMemberStatus(driver);
@@ -328,7 +328,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                     crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
                                                       CircleAvatar(
-                                                        radius: 12,
+                                                        radius: 18,
                                                         backgroundColor: Colors.blue.shade50,
                                                         backgroundImage: driver['profileImageUrl'] != null && driver['profileImageUrl'].toString().isNotEmpty
                                                             ? NetworkImage(driver['profileImageUrl'].toString())
