@@ -188,7 +188,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                             controller: _horizontalController,
                             scrollDirection: Axis.horizontal,
                             child: SizedBox(
-                              width: 1010,
+                              width: 680,
                               child: Column(
                                 children: [
                                   // Header Row
@@ -201,9 +201,9 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                     child: const Row(
                                       children: [
                                         SizedBox(
-                                          width: 110,
+                                          width: 50,
                                           child: Text(
-                                            'Membership No',
+                                            'Sr No',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
@@ -212,7 +212,18 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                           ),
                                         ),
                                         SizedBox(
-                                          width: 180,
+                                          width: 100,
+                                          child: Text(
+                                            'Member Info',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                              color: Color(0xFF1E3A8A),
+                                            ),
+                                          ),
+                                        ),
+                                        SizedBox(
+                                          width: 200,
                                           child: Text(
                                             'Full Name',
                                             style: TextStyle(
@@ -223,42 +234,9 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                           ),
                                         ),
                                         SizedBox(
-                                          width: 110,
-                                          child: Text(
-                                            'NIC No',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11,
-                                              color: Color(0xFF1E3A8A),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: 110,
+                                          width: 120,
                                           child: Text(
                                             'Mobile',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11,
-                                              color: Color(0xFF1E3A8A),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: 120,
-                                          child: Text(
-                                            'Vehicle No',
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11,
-                                              color: Color(0xFF1E3A8A),
-                                            ),
-                                          ),
-                                        ),
-                                        SizedBox(
-                                          width: 120,
-                                          child: Text(
-                                            'Vehicle Type',
                                             style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 11,
@@ -306,7 +284,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                         controller: _verticalController,
                                         itemCount: filteredMembers.length,
                                         physics: const BouncingScrollPhysics(),
-                                        itemExtent: 36,
+                                        itemExtent: 52,
                                         itemBuilder: (context, index) {
                                           final driver = filteredMembers[index];
                                           final statusResult = calculateMemberStatus(driver);
@@ -332,119 +310,62 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                             child: Row(
                                               children: [
                                                 SizedBox(
-                                                  width: 110,
+                                                  width: 50,
                                                   child: Text(
-                                                    driver['membershipNo'] ??
-                                                        '-',
+                                                    '${index + 1}'.padLeft(2, '0'),
                                                     style: const TextStyle(
                                                       fontWeight:
                                                           FontWeight.w600,
                                                       fontSize: 11,
+                                                      color: Colors.grey,
                                                     ),
                                                   ),
                                                 ),
                                                 SizedBox(
-                                                  width: 180,
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
+                                                  width: 100,
+                                                  child: Column(
+                                                    mainAxisAlignment: MainAxisAlignment.center,
+                                                    crossAxisAlignment: CrossAxisAlignment.start,
                                                     children: [
                                                       CircleAvatar(
-                                                        radius: 11,
-                                                        backgroundColor:
-                                                            Colors.blue.shade50,
+                                                        radius: 12,
+                                                        backgroundColor: Colors.blue.shade50,
                                                         child: Text(
-                                                          ((driver['firstName'] ?? '').toString().trim().isNotEmpty ? (driver['firstName'] ?? '').toString().trim().substring(0, 1) : ((driver['fullName'] ?? '').toString().trim().isNotEmpty ? (driver['fullName'] ?? '').toString().trim().substring(0, 1) : 'D'))
-                                                              .toUpperCase(),
+                                                          ((driver['firstName'] ?? '').toString().trim().isNotEmpty ? (driver['firstName'] ?? '').toString().trim().substring(0, 1) : ((driver['fullName'] ?? '').toString().trim().isNotEmpty ? (driver['fullName'] ?? '').toString().trim().substring(0, 1) : 'D')).toUpperCase(),
                                                           style: TextStyle(
-                                                            color: Colors
-                                                                .blue
-                                                                .shade800,
-                                                            fontSize: 9,
-                                                            fontWeight:
-                                                                FontWeight.bold,
+                                                            color: Colors.blue.shade800,
+                                                            fontSize: 10,
+                                                            fontWeight: FontWeight.bold,
                                                           ),
                                                         ),
                                                       ),
-                                                      const SizedBox(width: 6),
-                                                      Expanded(
-                                                        child: Text(
-                                                          driver['fullName'] ??
-                                                              'Unknown',
-                                                          maxLines: 1,
-                                                          overflow: TextOverflow
-                                                              .ellipsis,
-                                                          style:
-                                                              const TextStyle(
-                                                                fontSize: 11,
-                                                              ),
+                                                      const SizedBox(height: 4),
+                                                      Text(
+                                                        driver['membershipNo'] ?? '-',
+                                                        style: const TextStyle(
+                                                          fontWeight: FontWeight.w600,
+                                                          fontSize: 9,
+                                                          color: Colors.grey,
                                                         ),
                                                       ),
                                                     ],
                                                   ),
                                                 ),
                                                 SizedBox(
-                                                  width: 110,
+                                                  width: 200,
                                                   child: Text(
-                                                    driver['nic'] ?? '-',
+                                                    driver['fullName'] ?? 'Unknown',
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis,
                                                     style: const TextStyle(
                                                       fontSize: 11,
                                                     ),
                                                   ),
                                                 ),
                                                 SizedBox(
-                                                  width: 110,
+                                                  width: 120,
                                                   child: Text(
                                                     driver['mobile'] ?? '-',
-                                                    style: const TextStyle(
-                                                      fontSize: 11,
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  width: 120,
-                                                  child: Align(
-                                                    alignment:
-                                                        Alignment.centerLeft,
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            horizontal: 6,
-                                                            vertical: 2,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: Colors
-                                                            .grey
-                                                            .shade100,
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              4,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: Colors
-                                                              .grey
-                                                              .shade200,
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        driver['vehicleNumber'] ??
-                                                            '-',
-                                                        style: const TextStyle(
-                                                          fontFamily:
-                                                              'monospace',
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 10,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                SizedBox(
-                                                  width: 120,
-                                                  child: Text(
-                                                    driver['vehicleType'] ??
-                                                        '-',
                                                     style: const TextStyle(
                                                       fontSize: 11,
                                                     ),
