@@ -521,7 +521,7 @@ class DriverProfileDialog extends StatelessWidget {
     return FutureBuilder<QuerySnapshot>(
       // The member app already saves financial logs to 'finance_transactions'
       future: FirebaseFirestore.instance
-          .collection('finance_transactions')
+          .collectionGroup('transactions')
           .where('driverId', isEqualTo: driverId.toString())
           .orderBy('timestamp', descending: true)
           .limit(100)
