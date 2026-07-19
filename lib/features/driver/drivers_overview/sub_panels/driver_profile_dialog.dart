@@ -144,18 +144,20 @@ class DriverProfileDialog extends StatelessWidget {
                     const SizedBox(height: 12),
                     Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusBg,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            statusText,
-                            style: TextStyle(
-                              color: statusColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              statusText,
+                              style: TextStyle(
+                                color: statusColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
@@ -190,6 +192,37 @@ class DriverProfileDialog extends StatelessWidget {
           fontWeight: FontWeight.bold,
         ),
       ),
+    );
+  }
+
+  Widget _buildFinancialSummaryCards() {
+    final driverId = driver['membershipNo'] ?? driver['uid'] ?? '';
+    if (driverId.toString().isEmpty) return const SizedBox();
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('members').doc(driverId.toString()).snapshots(),
+      builder: (context, snapshot) {
+        double appUsageCharge = 0.0;
+        double savingsBalance = 0.0;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          appUsageCharge = double.tryParse(data['appUsageChargeBalance']?.toString() ?? '0') ?? 0.0;
+          savingsBalance = double.tryParse(data['savingsBalance']?.toString() ?? '0') ?? 0.0;
+        } else {
+          // Fallback to static data if stream hasn't loaded yet
+          appUsageCharge = double.tryParse(driver['appUsageChargeBalance']?.toString() ?? '0') ?? 0.0;
+          savingsBalance = double.tryParse(driver['savingsBalance']?.toString() ?? '0') ?? 0.0;
+        }
+
+        return Row(
+          children: [
+            Expanded(child: _buildSummaryCard('App Usage Charge', 'Rs. ${appUsageCharge.toStringAsFixed(2)}', Icons.account_balance_wallet, Colors.orange)),
+            const SizedBox(width: 16),
+            Expanded(child: _buildSummaryCard('Savings Balance', 'Rs. ${savingsBalance.toStringAsFixed(2)}', Icons.savings, Colors.green)),
+          ],
+        );
+      },
     );
   }
 
@@ -369,8 +402,11 @@ class DriverProfileDialog extends StatelessWidget {
       return const Center(child: Text('No Membership Number found for this driver.'));
     }
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('app_membership_fee').doc(membershipNo).get(),
+    return FutureBuilder<List<DocumentSnapshot>>(
+      future: Future.wait([
+        FirebaseFirestore.instance.collection('app_membership_fee').doc(membershipNo).get(),
+        FirebaseFirestore.instance.collection('web_sync_membership_fee').doc(membershipNo).get(),
+      ]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -378,7 +414,11 @@ class DriverProfileDialog extends StatelessWidget {
         if (snapshot.hasError) {
           return Center(child: Text('Error loading fee details: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
         }
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+
+        final appDoc = snapshot.data![0];
+        final webDoc = snapshot.data![1];
+
+        if (!appDoc.exists && !webDoc.exists) {
           return const Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -391,32 +431,191 @@ class DriverProfileDialog extends StatelessWidget {
           );
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>;
-        final paymentHistory = data['payment_history'] as List<dynamic>? ?? [];
-        final pendingPayments = data['pending_payments'] as List<dynamic>? ?? [];
+        final appData = appDoc.exists ? (appDoc.data() as Map<String, dynamic>? ?? {}) : {};
+        final webData = webDoc.exists ? (webDoc.data() as Map<String, dynamic>? ?? {}) : {};
+
+        final appHistory = appData['payment_history'] as List<dynamic>? ?? [];
+        final appPending = appData['pending_payments'] as List<dynamic>? ?? [];
+
+        final webHistoryRaw = webData['payment_history'] as List<dynamic>? ?? [];
+        
+        final webPending = webHistoryRaw.where((p) {
+          if (p is Map<String, dynamic>) {
+            return (p['status'] ?? '').toString().toLowerCase() == 'pending';
+          }
+          return false;
+        }).toList();
+        
+        final webApproved = webHistoryRaw.where((p) {
+          if (p is Map<String, dynamic>) {
+            return (p['status'] ?? '').toString().toLowerCase() != 'pending';
+          }
+          return true; // fallback to include if unknown
+        }).toList();
+
+        final allPendingRaw = [...appPending, ...webPending];
+        final allHistoryRaw = [...appHistory, ...webApproved];
+
+        List<Map<String, dynamic>> _deduplicatePayments(List<dynamic> records) {
+          final sorted = List<Map<String, dynamic>>.from(records.whereType<Map<String, dynamic>>());
+          // Sort by date descending so we keep the newest record if there are duplicates
+          sorted.sort((a, b) {
+            final dateA = (a['date'] ?? '').toString();
+            final dateB = (b['date'] ?? '').toString();
+            return dateB.compareTo(dateA);
+          });
+
+          final Set<String> seen = {};
+          final List<Map<String, dynamic>> result = [];
+
+          for (var p in sorted) {
+            final rMonth = (p['month'] ?? '').toString().trim().toLowerCase();
+            String rYear = (p['year'] ?? '').toString().trim();
+            if (rYear.isEmpty) {
+              final dateStr = (p['date'] ?? '').toString().trim();
+              if (dateStr.length >= 4) {
+                rYear = dateStr.substring(0, 4);
+              }
+            }
+
+            final key = '${rMonth}_$rYear';
+            if (rMonth.isNotEmpty) {
+              if (!seen.contains(key)) {
+                seen.add(key);
+                result.add(p);
+              }
+            } else {
+              result.add(p); // Fallback for invalid records
+            }
+          }
+          return result;
+        }
+
+        final allPending = _deduplicatePayments(allPendingRaw);
+        final allHistory = _deduplicatePayments(allHistoryRaw);
+
+        // --- CALC UNPAID MONTHS ---
+        final joinDateStr = driver['joinDate']?.toString() ?? '';
+        DateTime? joinDate;
+        try {
+          if (joinDateStr.isNotEmpty) joinDate = DateTime.parse(joinDateStr);
+        } catch (_) {}
+
+        int totalMonths = 0;
+        int paidMonths = 0;
+        int arrearsMonths = 0;
+        final List<Map<String, String>> unpaidMonthsList = [];
+
+        if (joinDate != null) {
+          DateTime now = DateTime.now();
+          int currentYear = now.year;
+          int currentMonth = now.month;
+          
+          // Grace period: Until the 5th of the month, the current month is not considered in arrears
+          if (now.day <= 5) {
+            currentMonth -= 1;
+            if (currentMonth == 0) {
+              currentMonth = 12;
+              currentYear -= 1;
+            }
+          }
+
+          DateTime currentDate = DateTime(joinDate.year, joinDate.month);
+          final end = DateTime(currentYear, currentMonth);
+          final DateFormat monthFormat = DateFormat('MMMM');
+
+          // Collect all approved paid months into a set for fast lookup
+          final Set<String> paidMonthYearSet = {};
+          for (var record in allHistory) {
+            if (record is Map<String, dynamic>) {
+              final rMonth = (record['month'] ?? '').toString().trim().toLowerCase();
+              String rYear = (record['year'] ?? '').toString().trim();
+              
+              if (rYear.isEmpty) {
+                final dateStr = (record['date'] ?? '').toString().trim();
+                if (dateStr.length >= 4) {
+                  rYear = dateStr.substring(0, 4);
+                }
+              }
+
+              if (rMonth.isNotEmpty && rYear.isNotEmpty) {
+                paidMonthYearSet.add('${rMonth}_$rYear');
+              }
+            }
+          }
+
+          paidMonths = paidMonthYearSet.length;
+
+          while (!currentDate.isAfter(end)) {
+            totalMonths++;
+            final String mName = monthFormat.format(currentDate);
+            final String yName = currentDate.year.toString();
+            final String key = '${mName.toLowerCase()}_$yName';
+
+            if (!paidMonthYearSet.contains(key)) {
+              unpaidMonthsList.add({'month': mName, 'year': yName});
+            }
+
+            currentDate = DateTime(currentDate.year, currentDate.month + 1);
+          }
+          
+          arrearsMonths = unpaidMonthsList.length;
+        }
 
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('Pending Payments (${pendingPayments.length})'),
+              _buildSectionTitle('Membership Fee Summary'),
               const SizedBox(height: 16),
-              if (pendingPayments.isEmpty)
+              if (joinDate == null)
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.orange.shade200),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                      SizedBox(width: 12),
+                      Expanded(child: Text('Cannot calculate arrears because Join Date is missing. Please update the member profile.', style: TextStyle(color: Colors.orange))),
+                    ],
+                  ),
+                )
+              else
+                _buildFeeSummaryCards(totalMonths, paidMonths, arrearsMonths),
+
+              const SizedBox(height: 32),
+
+              if (unpaidMonthsList.isNotEmpty) ...[
+                _buildSectionTitle('Unpaid Months List (${unpaidMonthsList.length})'),
+                const SizedBox(height: 16),
+                _buildUnpaidMonthsTable(unpaidMonthsList.reversed.toList()), // Z-A order (newest first)
+                const SizedBox(height: 32),
+                const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                const SizedBox(height: 32),
+              ],
+
+              _buildSectionTitle('Pending Payments (${allPending.length})'),
+              const SizedBox(height: 16),
+              if (allPending.isEmpty)
                 const Text('No pending payments.', style: TextStyle(color: Colors.grey))
               else
-                _buildPaymentTable(pendingPayments),
+                _buildPaymentTable(allPending),
 
               const SizedBox(height: 32),
               const Divider(height: 1, color: Color(0xFFE2E8F0)),
               const SizedBox(height: 32),
 
-              _buildSectionTitle('Payment History (${paymentHistory.length})'),
+              _buildSectionTitle('Payment History (${allHistory.length})'),
               const SizedBox(height: 16),
-              if (paymentHistory.isEmpty)
+              if (allHistory.isEmpty)
                 const Text('No payment history available.', style: TextStyle(color: Colors.grey))
               else
-                _buildPaymentTable(paymentHistory),
+                _buildPaymentTable(allHistory),
             ],
           ),
         );
@@ -424,13 +623,130 @@ class DriverProfileDialog extends StatelessWidget {
     );
   }
 
+  Widget _buildFeeSummaryCards(int totalMonths, int paidMonths, int arrearsMonths) {
+    return Row(
+      children: [
+        Expanded(child: _buildSummaryCard('Total Months', totalMonths.toString(), Icons.calendar_month, Colors.blue)),
+        const SizedBox(width: 16),
+        Expanded(child: _buildSummaryCard('Paid Months', paidMonths.toString(), Icons.check_circle, Colors.green)),
+        const SizedBox(width: 16),
+        Expanded(child: _buildSummaryCard('Arrears Months', arrearsMonths.toString(), Icons.error_outline, Colors.red)),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(String title, String value, IconData icon, MaterialColor color) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.shade200),
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color.shade600, size: 24),
+              const SizedBox(width: 8),
+              Text(title, style: TextStyle(color: Colors.grey.shade700, fontSize: 14, fontWeight: FontWeight.w600)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(value, style: TextStyle(color: color.shade800, fontSize: 32, fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnpaidMonthsTable(List<Map<String, String>> unpaidMonths) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.red.shade200),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: DataTable(
+          headingRowColor: WidgetStateProperty.all(Colors.red.shade50),
+          dataRowMinHeight: 40,
+          dataRowMaxHeight: 50,
+          columns: const [
+            DataColumn(label: Text('Month/Year', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+            DataColumn(label: Text('Status', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red))),
+          ],
+          rows: unpaidMonths.map((m) {
+            return DataRow(
+              cells: [
+                DataCell(Text('${m['month']} ${m['year']}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                DataCell(
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                    ),
+                    child: const Text('UNPAID / PENDING', style: TextStyle(color: Colors.red, fontSize: 10, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  int _monthToInt(String month) {
+    switch (month.toLowerCase().trim()) {
+      case 'january': return 1;
+      case 'february': return 2;
+      case 'march': return 3;
+      case 'april': return 4;
+      case 'may': return 5;
+      case 'june': return 6;
+      case 'july': return 7;
+      case 'august': return 8;
+      case 'september': return 9;
+      case 'october': return 10;
+      case 'november': return 11;
+      case 'december': return 12;
+      default: return 0;
+    }
+  }
+
   Widget _buildPaymentTable(List<dynamic> payments) {
-    // Sort payments by date descending if possible
+    // Sort payments by target month/year descending (newest month first)
     final sortedPayments = List<Map<String, dynamic>>.from(payments.whereType<Map<String, dynamic>>());
     sortedPayments.sort((a, b) {
-      final dateA = a['date'] ?? '';
-      final dateB = b['date'] ?? '';
-      return dateB.compareTo(dateA);
+      String yearA = (a['year'] ?? '').toString().trim();
+      if (yearA.isEmpty) {
+        final d = (a['date'] ?? '').toString().trim();
+        if (d.length >= 4) yearA = d.substring(0, 4);
+      }
+
+      String yearB = (b['year'] ?? '').toString().trim();
+      if (yearB.isEmpty) {
+        final d = (b['date'] ?? '').toString().trim();
+        if (d.length >= 4) yearB = d.substring(0, 4);
+      }
+
+      int yA = int.tryParse(yearA) ?? 0;
+      int yB = int.tryParse(yearB) ?? 0;
+
+      if (yA != yB) {
+        return yB.compareTo(yA);
+      }
+
+      int mA = _monthToInt((a['month'] ?? '').toString());
+      int mB = _monthToInt((b['month'] ?? '').toString());
+
+      return mB.compareTo(mA);
     });
 
     return SingleChildScrollView(
@@ -518,8 +834,16 @@ class DriverProfileDialog extends StatelessWidget {
       return const Center(child: Text('No Driver ID found.'));
     }
 
-    return FutureBuilder<QuerySnapshot>(
-      // The member app already saves financial logs to 'finance_transactions'
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+          child: _buildFinancialSummaryCards(),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: FutureBuilder<QuerySnapshot>(
       future: FirebaseFirestore.instance
           .collectionGroup('transactions')
           .where('driverId', isEqualTo: driverId.toString())
@@ -543,7 +867,7 @@ class DriverProfileDialog extends StatelessWidget {
                 const Text('No Transaction History found.', style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
                 const Text(
-                  'Once data is saved to the "driver_transactions" collection,\nit will appear here.',
+                  'Once data is saved, it will appear here.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.grey, fontSize: 12),
                 ),
@@ -555,7 +879,7 @@ class DriverProfileDialog extends StatelessWidget {
         final docs = snapshot.data!.docs;
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -635,6 +959,9 @@ class DriverProfileDialog extends StatelessWidget {
           ),
         );
       },
+    ),
+        ),
+      ],
     );
   }
 
