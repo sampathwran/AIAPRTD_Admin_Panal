@@ -75,23 +75,25 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                   constraints: const BoxConstraints(),
                 ),
                 const SizedBox(width: 8),
-                const Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Registered Members',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Total Registered Members',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                    SizedBox(height: 1),
-                    Text(
-                      'Manage and monitor all registered driver profiles',
-                      style: TextStyle(color: Colors.grey, fontSize: 10),
-                    ),
-                  ],
+                      const SizedBox(height: 1),
+                      const Text(
+                        'Manage and monitor all registered driver profiles',
+                        style: TextStyle(color: Colors.grey, fontSize: 10),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
