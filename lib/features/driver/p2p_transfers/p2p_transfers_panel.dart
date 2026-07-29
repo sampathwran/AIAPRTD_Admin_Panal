@@ -100,8 +100,19 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SelectionArea(
-              child: DataTable(
-                columns: const [
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dataTableTheme: const DataTableThemeData(
+                    headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13),
+                    dataTextStyle: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                child: DataTable(
+                  columnSpacing: 16,
+                  horizontalMargin: 12,
+                  dataRowMaxHeight: double.infinity,
+                  dataRowMinHeight: 56,
+                  columns: const [
                   DataColumn(label: Text('Uploaded At')),
                   DataColumn(label: Text('Debtor (Paid)')),
                   DataColumn(label: Text('Creditor (Owed)')),
@@ -179,8 +190,19 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SelectionArea(
-              child: DataTable(
-                columns: const [
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dataTableTheme: const DataTableThemeData(
+                    headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13),
+                    dataTextStyle: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                child: DataTable(
+                  columnSpacing: 16,
+                  horizontalMargin: 12,
+                  dataRowMaxHeight: double.infinity,
+                  dataRowMinHeight: 56,
+                  columns: const [
                   DataColumn(label: Text('Date')),
                   DataColumn(label: Text('Debtor')),
                   DataColumn(label: Text('Creditor')),

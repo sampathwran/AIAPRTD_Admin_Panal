@@ -98,8 +98,19 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SelectionArea(
-              child: DataTable(
-                columns: const [
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dataTableTheme: const DataTableThemeData(
+                    headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13),
+                    dataTextStyle: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                child: DataTable(
+                  columnSpacing: 16,
+                  horizontalMargin: 12,
+                  dataRowMaxHeight: double.infinity,
+                  dataRowMinHeight: 56,
+                  columns: const [
                   DataColumn(label: Text('Date & Time')),
                   DataColumn(label: Text('Member ID')),
                   DataColumn(label: Text('Amount')),
@@ -131,7 +142,20 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
                           }
                         )
                       ),
-                      DataCell(Text(bankStr)),
+                      DataCell(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('${bank['bankName'] ?? 'N/A'} (${bank['branch'] ?? 'N/A'})', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('${bank['accountName'] ?? 'N/A'}'),
+                              Text('${bank['accountNumber'] ?? 'N/A'}', style: const TextStyle(color: Colors.blue)),
+                            ],
+                          ),
+                        ),
+                      ),
                       DataCell(
                         Row(
                           mainAxisSize: MainAxisSize.min,
@@ -191,8 +215,19 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: SelectionArea(
-              child: DataTable(
-                columns: const [
+              child: Theme(
+                data: Theme.of(context).copyWith(
+                  dataTableTheme: const DataTableThemeData(
+                    headingTextStyle: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13),
+                    dataTextStyle: TextStyle(fontSize: 13, color: Colors.black87),
+                  ),
+                ),
+                child: DataTable(
+                  columnSpacing: 16,
+                  horizontalMargin: 12,
+                  dataRowMaxHeight: double.infinity,
+                  dataRowMinHeight: 56,
+                  columns: const [
                   DataColumn(label: Text('Date & Time')),
                   DataColumn(label: Text('Member ID')),
                   DataColumn(label: Text('Amount')),
@@ -216,7 +251,20 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
                       DataCell(Text(dateStr)),
                       DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
                       DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                      DataCell(Text(bankStr)),
+                      DataCell(
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text('${bank['bankName'] ?? 'N/A'} (${bank['branch'] ?? 'N/A'})', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('${bank['accountName'] ?? 'N/A'}'),
+                              Text('${bank['accountNumber'] ?? 'N/A'}', style: const TextStyle(color: Colors.blue)),
+                            ],
+                          ),
+                        ),
+                      ),
                       DataCell(
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
