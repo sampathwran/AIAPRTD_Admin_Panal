@@ -76,6 +76,151 @@ class _MarketplaceCategoriesTabState extends State<MarketplaceCategoriesTab> {
     );
   }
 
+  void _editCategory(
+    BuildContext context,
+    String catId,
+    Map<String, dynamic> data,
+  ) {
+    final TextEditingController editNameCtrl = TextEditingController(
+      text: data['name'] ?? '',
+    );
+    dynamic editImageFile;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickNewImage() async {
+              final picked = await ImagePicker().pickImage(
+                source: ImageSource.gallery,
+              );
+              if (picked != null) {
+                setDialogState(() => editImageFile = picked);
+              }
+            }
+
+            Future<void> saveChanges() async {
+              final newName = editNameCtrl.text.trim();
+              if (newName.isEmpty) return;
+
+              setDialogState(() => isSaving = true);
+              try {
+                String? newImageUrl;
+
+                // 1. Upload new image if selected
+                if (editImageFile != null) {
+                  final ref = FirebaseStorage.instance
+                      .ref()
+                      .child('marketplace_categories')
+                      .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+                  await ref.putData(await editImageFile!.readAsBytes());
+                  newImageUrl = await ref.getDownloadURL();
+                }
+
+                final oldName = data['name'] as String?;
+
+                // 2. Update category doc
+                await FirebaseFirestore.instance
+                    .collection('marketplace_categories')
+                    .doc(catId)
+                    .update({
+                      'name': newName,
+                      if (newImageUrl != null) 'imageUrl': newImageUrl,
+                    });
+
+                // 3. Update all ads that used the old category name
+                if (oldName != null && oldName != newName) {
+                  final adsQuery = await FirebaseFirestore.instance
+                      .collection('marketplace_ads')
+                      .where('category', isEqualTo: oldName)
+                      .get();
+
+                  if (adsQuery.docs.isNotEmpty) {
+                    final batch = FirebaseFirestore.instance.batch();
+                    for (var adDoc in adsQuery.docs) {
+                      batch.update(adDoc.reference, {'category': newName});
+                    }
+                    await batch.commit();
+                  }
+                }
+
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                debugPrint("Error editing category: $e");
+              } finally {
+                if (ctx.mounted) {
+                  setDialogState(() => isSaving = false);
+                }
+              }
+            }
+
+            return AlertDialog(
+              title: const Text("Edit Category"),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: pickNewImage,
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        color: Colors.grey.shade200,
+                        child: editImageFile != null
+                            ? (kIsWeb
+                                  ? Image.network(
+                                      editImageFile!.path,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.file(
+                                      File(editImageFile!.path),
+                                      fit: BoxFit.cover,
+                                    ))
+                            : Image.network(
+                                data['imageUrl'] ?? '',
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.add_photo_alternate),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: editNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Category Name",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving ? null : saveChanges,
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -195,6 +340,15 @@ class _MarketplaceCategoriesTabState extends State<MarketplaceCategoriesTab> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             IconButton(
+                              icon: const Icon(
+                                Icons.edit,
+                                color: Colors.blueGrey,
+                              ),
+                              onPressed: () =>
+                                  _editCategory(context, docs[index].id, data),
+                              tooltip: "Edit Main Category",
+                            ),
+                            IconButton(
                               icon: const Icon(Icons.list, color: Colors.blue),
                               onPressed: () => _manageSubcategories(
                                 context,
@@ -295,6 +449,158 @@ class _SubcategoriesManagerDialogState
     });
   }
 
+  void _editSubcategory(BuildContext context, dynamic oldItem, int index) {
+    String oldName = oldItem is String ? oldItem : oldItem['name'] ?? '';
+    String oldIconUrl = oldItem is String ? '' : oldItem['iconUrl'] ?? '';
+
+    final TextEditingController editNameCtrl = TextEditingController(
+      text: oldName,
+    );
+    dynamic editIconFile;
+    bool isSaving = false;
+
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Future<void> pickNewIcon() async {
+              final picked = await ImagePicker().pickImage(
+                source: ImageSource.gallery,
+              );
+              if (picked != null) {
+                setDialogState(() => editIconFile = picked);
+              }
+            }
+
+            Future<void> saveChanges() async {
+              final newName = editNameCtrl.text.trim();
+              if (newName.isEmpty) return;
+
+              setDialogState(() => isSaving = true);
+              try {
+                String? newIconUrl;
+
+                if (editIconFile != null) {
+                  final ref = FirebaseStorage.instance
+                      .ref()
+                      .child('marketplace_subcategories')
+                      .child('${DateTime.now().millisecondsSinceEpoch}.jpg');
+                  await ref.putData(await editIconFile!.readAsBytes());
+                  newIconUrl = await ref.getDownloadURL();
+                }
+
+                final updatedSub = {
+                  'name': newName,
+                  'iconUrl': newIconUrl ?? oldIconUrl,
+                };
+
+                final batch = FirebaseFirestore.instance.batch();
+                final docRef = FirebaseFirestore.instance
+                    .collection('marketplace_categories')
+                    .doc(widget.catId);
+
+                // Need to remove the exact old item and add the new one
+                batch.update(docRef, {
+                  'subcategories': FieldValue.arrayRemove([oldItem]),
+                });
+                batch.update(docRef, {
+                  'subcategories': FieldValue.arrayUnion([updatedSub]),
+                });
+
+                // Update ads if subcategory name changed
+                if (oldName != newName) {
+                  final adsQuery = await FirebaseFirestore.instance
+                      .collection('marketplace_ads')
+                      .where('subcategory', isEqualTo: oldName)
+                      .get();
+
+                  if (adsQuery.docs.isNotEmpty) {
+                    for (var adDoc in adsQuery.docs) {
+                      batch.update(adDoc.reference, {'subcategory': newName});
+                    }
+                  }
+                }
+
+                await batch.commit();
+
+                setState(() {
+                  widget.subcategories[index] = updatedSub;
+                });
+
+                if (ctx.mounted) Navigator.pop(ctx);
+              } catch (e) {
+                debugPrint("Error editing subcategory: $e");
+              } finally {
+                if (ctx.mounted) setDialogState(() => isSaving = false);
+              }
+            }
+
+            return AlertDialog(
+              title: const Text("Edit Subcategory"),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap: pickNewIcon,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        color: Colors.grey.shade200,
+                        child: editIconFile != null
+                            ? (kIsWeb
+                                  ? Image.network(
+                                      editIconFile!.path,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : Image.file(
+                                      File(editIconFile!.path),
+                                      fit: BoxFit.cover,
+                                    ))
+                            : Image.network(
+                                oldIconUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) =>
+                                    const Icon(Icons.add_photo_alternate),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: editNameCtrl,
+                      decoration: const InputDecoration(
+                        labelText: "Subcategory Name",
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isSaving ? null : () => Navigator.pop(ctx),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: isSaving ? null : saveChanges,
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text("Save"),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
@@ -369,9 +675,36 @@ class _SubcategoriesManagerDialogState
                           )
                         : const Icon(Icons.category),
                     title: Text(name),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete, color: Colors.red),
-                      onPressed: () => _removeSub(item),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit, color: Colors.blueGrey),
+                          onPressed: () =>
+                              _editSubcategory(context, item, index),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete, color: Colors.red),
+                          onPressed: () {
+                            if (item is Map<String, dynamic>) {
+                              _removeSub(item);
+                            } else if (item is String) {
+                              // For backward compatibility with strings
+                              FirebaseFirestore.instance
+                                  .collection('marketplace_categories')
+                                  .doc(widget.catId)
+                                  .update({
+                                    'subcategories': FieldValue.arrayRemove([
+                                      item,
+                                    ]),
+                                  });
+                              setState(() {
+                                widget.subcategories.remove(item);
+                              });
+                            }
+                          },
+                        ),
+                      ],
                     ),
                   );
                 },
