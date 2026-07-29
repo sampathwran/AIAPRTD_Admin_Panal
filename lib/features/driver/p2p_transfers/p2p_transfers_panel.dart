@@ -154,6 +154,7 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
                     ],
                   );
                 }).toList(),
+                ),
               ),
             ),
           ),
@@ -249,6 +250,7 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
                     ],
                   );
                 }).toList(),
+                ),
               ),
             ),
           ),
@@ -490,3 +492,4 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
     }
   }
 }
+

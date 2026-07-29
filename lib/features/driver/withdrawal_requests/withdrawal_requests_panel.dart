@@ -124,10 +124,7 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
                   final amount = (req['amount'] ?? 0.0).toDouble();
                   final memberId = req['memberId'] ?? 'Unknown';
                   final bank = req['bankDetails'] ?? {};
-                  
-                  final bankStr = "${bank['bankName'] ?? 'N/A'}\n${bank['accountName'] ?? 'N/A'}\n${bank['accountNumber'] ?? 'N/A'}\n${bank['branch'] ?? 'N/A'}";
-
-                  return DataRow(
+return DataRow(
                     cells: [
                       DataCell(Text(dateStr)),
                       DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -179,6 +176,7 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
                     ],
                   );
                 }).toList(),
+                ),
               ),
             ),
           ),
@@ -243,10 +241,7 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
                   final status = req['status'] ?? 'unknown';
                   final reason = req['rejectReason'] ?? '-';
                   final bank = req['bankDetails'] ?? {};
-                  
-                  final bankStr = "${bank['bankName'] ?? 'N/A'}\n${bank['accountName'] ?? 'N/A'}\n${bank['accountNumber'] ?? 'N/A'}\n${bank['branch'] ?? 'N/A'}";
-
-                  return DataRow(
+return DataRow(
                     cells: [
                       DataCell(Text(dateStr)),
                       DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -286,6 +281,7 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
                     ],
                   );
                 }).toList(),
+                ),
               ),
             ),
           ),
@@ -393,3 +389,4 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
     }
   }
 }
+
