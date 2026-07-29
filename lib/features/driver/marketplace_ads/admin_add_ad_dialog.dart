@@ -22,7 +22,10 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
   final TextEditingController _addressCtrl = TextEditingController();
 
   String? _selectedCategory;
+  String? _selectedSubcategory;
   List<String> _categories = [];
+  Map<String, List<String>> _categoryToSubcategories = {};
+  List<String> _currentSubcategories = [];
   bool _isLoadingCategories = true;
 
   List<XFile> _selectedImages = [];
@@ -44,11 +47,30 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
           .collection('marketplace_categories')
           .get();
       setState(() {
-        _categories = snap.docs
-            .map((doc) => doc.data()['name'] as String? ?? 'Unknown')
-            .toList();
+        _categories = [];
+        _categoryToSubcategories = {};
+        for (var doc in snap.docs) {
+          final data = doc.data();
+          final catName = data['name'] as String? ?? 'Unknown';
+          _categories.add(catName);
+
+          final subsRaw = data['subcategories'] as List<dynamic>? ?? [];
+          final List<String> subs = subsRaw.map((sub) {
+            if (sub is String) return sub;
+            if (sub is Map) return sub['name'] as String? ?? 'Unknown';
+            return 'Unknown';
+          }).toList();
+
+          _categoryToSubcategories[catName] = subs;
+        }
+
         if (_categories.isNotEmpty) {
           _selectedCategory = _categories.first;
+          _currentSubcategories =
+              _categoryToSubcategories[_selectedCategory!] ?? [];
+          if (_currentSubcategories.isNotEmpty) {
+            _selectedSubcategory = _currentSubcategories.first;
+          }
         }
         _isLoadingCategories = false;
       });
@@ -128,6 +150,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
         'description': _descCtrl.text.trim(),
         'address': _addressCtrl.text.trim(),
         'category': _selectedCategory,
+        'subcategory': _selectedSubcategory,
         'imageUrls': imageUrls,
         'lat': _selectedLocation!.latitude,
         'lng': _selectedLocation!.longitude,
@@ -213,10 +236,39 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                                     ),
                                   )
                                   .toList(),
-                              onChanged: (val) =>
-                                  setState(() => _selectedCategory = val),
+                              onChanged: (val) {
+                                setState(() {
+                                  _selectedCategory = val;
+                                  _currentSubcategories =
+                                      _categoryToSubcategories[val] ?? [];
+                                  _selectedSubcategory =
+                                      _currentSubcategories.isNotEmpty
+                                      ? _currentSubcategories.first
+                                      : null;
+                                });
+                              },
                             ),
                             const SizedBox(height: 16),
+                            if (_currentSubcategories.isNotEmpty) ...[
+                              DropdownButtonFormField<String>(
+                                value: _selectedSubcategory,
+                                decoration: const InputDecoration(
+                                  labelText: 'Subcategory',
+                                  border: OutlineInputBorder(),
+                                ),
+                                items: _currentSubcategories
+                                    .map(
+                                      (sub) => DropdownMenuItem(
+                                        value: sub,
+                                        child: Text(sub),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) =>
+                                    setState(() => _selectedSubcategory = val),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
                             TextFormField(
                               controller: _descCtrl,
                               maxLines: 4,
