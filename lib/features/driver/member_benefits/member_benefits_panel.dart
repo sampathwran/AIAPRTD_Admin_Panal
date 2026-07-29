@@ -17,9 +17,7 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AddEditBenefitDialog(
-        benefitDoc: doc,
-      ),
+      builder: (context) => AddEditBenefitDialog(benefitDoc: doc),
     );
   }
 
@@ -28,7 +26,9 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Benefit'),
-        content: const Text('Are you sure you want to delete this member benefit?'),
+        content: const Text(
+          'Are you sure you want to delete this member benefit?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -53,9 +53,9 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error deleting benefit: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error deleting benefit: $e')));
         }
       }
     }
@@ -75,9 +75,9 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
               Text(
                 'Member Benefits Management',
                 style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      color: AdminColors.ink,
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: AdminColors.ink,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               ElevatedButton.icon(
                 onPressed: () => _showAddEditDialog(),
@@ -86,7 +86,10 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AdminColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 16,
+                  ),
                 ),
               ),
             ],
@@ -110,7 +113,12 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
                   }
 
                   if (snapshot.hasError) {
-                    return Center(child: Text('Error: ${snapshot.error}', style: const TextStyle(color: Colors.red)));
+                    return Center(
+                      child: Text(
+                        'Error: ${snapshot.error}',
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    );
                   }
 
                   final docs = snapshot.data?.docs ?? [];
@@ -127,7 +135,8 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: docs.length,
-                    separatorBuilder: (context, index) => const Divider(color: AdminColors.line),
+                    separatorBuilder: (context, index) =>
+                        const Divider(color: AdminColors.line),
                     itemBuilder: (context, index) {
                       final doc = docs[index];
                       final data = doc.data() as Map<String, dynamic>;
@@ -144,32 +153,52 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
                             color: AdminColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Icon(Icons.card_giftcard_rounded, color: AdminColors.primary),
+                          child: const Icon(
+                            Icons.card_giftcard_rounded,
+                            color: AdminColors.primary,
+                          ),
                         ),
                         title: Text(
                           title,
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: AdminColors.ink),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AdminColors.ink,
+                          ),
                         ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 4),
-                            Text(desc, style: const TextStyle(color: AdminColors.muted)),
+                            Text(
+                              desc,
+                              style: const TextStyle(color: AdminColors.muted),
+                            ),
                             const SizedBox(height: 4),
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isGlobal ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                                    color: isGlobal
+                                        ? Colors.green.withValues(alpha: 0.1)
+                                        : Colors.orange.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(color: isGlobal ? Colors.green : Colors.orange),
+                                    border: Border.all(
+                                      color: isGlobal
+                                          ? Colors.green
+                                          : Colors.orange,
+                                    ),
                                   ),
                                   child: Text(
                                     isGlobal ? 'Global' : 'Targeted',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: isGlobal ? Colors.green : Colors.orange,
+                                      color: isGlobal
+                                          ? Colors.green
+                                          : Colors.orange,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -177,7 +206,10 @@ class _MemberBenefitsPanelState extends State<MemberBenefitsPanel> {
                                 const SizedBox(width: 8),
                                 Text(
                                   'Icon: $iconName',
-                                  style: const TextStyle(fontSize: 12, color: AdminColors.muted),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    color: AdminColors.muted,
+                                  ),
                                 ),
                               ],
                             ),

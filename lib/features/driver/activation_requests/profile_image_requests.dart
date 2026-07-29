@@ -170,7 +170,11 @@ class ProfileImageRequests extends StatelessWidget {
     }
   }
 
-  Future<void> _rejectRequest(BuildContext context, String docId, String membershipNo) async {
+  Future<void> _rejectRequest(
+    BuildContext context,
+    String docId,
+    String membershipNo,
+  ) async {
     final TextEditingController reasonController = TextEditingController();
     bool confirmed = false;
 
@@ -354,8 +358,11 @@ class ProfileImageRequests extends StatelessWidget {
                                   Icons.close_rounded,
                                   color: Colors.red,
                                 ),
-                                onPressed: () =>
-                                    _rejectRequest(context, doc.id, membershipNo),
+                                onPressed: () => _rejectRequest(
+                                  context,
+                                  doc.id,
+                                  membershipNo,
+                                ),
                                 tooltip: "Reject",
                               ),
                               IconButton(

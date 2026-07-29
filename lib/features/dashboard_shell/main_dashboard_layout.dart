@@ -195,103 +195,108 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     return SelectionArea(
       child: Scaffold(
         backgroundColor: AdminColors.canvas,
-      body: Row(
-        children: [
-          StreamBuilder<List<QuerySnapshot>>(
-            stream: combinedStream,
-            builder: (context, snapshot) {
-              int pendingPaymentCount = 0;
-              int activationCount = 0;
-              int p2pCount = 0;
-              int withdrawalCount = 0;
-              
-              if (snapshot.hasData && snapshot.data != null && snapshot.data!.length == 8) {
-                pendingPaymentCount = snapshot.data![0].docs.length;
-                activationCount = snapshot.data![1].docs.length +
-                    snapshot.data![2].docs.length +
-                    snapshot.data![3].docs.length +
-                    snapshot.data![4].docs.length +
-                    snapshot.data![5].docs.length;
-                p2pCount = snapshot.data![6].docs.length;
-                withdrawalCount = snapshot.data![7].docs.length;
-              }
-              
-              final badges = <String, int>{};
-              if (pendingPaymentCount > 0) {
-                badges['Payment Approvals'] = pendingPaymentCount;
-              }
-              if (activationCount > 0) {
-                badges['Activation Requests'] = activationCount;
-              }
-              if (p2pCount > 0) {
-                badges['P2P Transfers'] = p2pCount;
-              }
-              if (withdrawalCount > 0) {
-                badges['Withdrawal Requests'] = withdrawalCount;
-              }
-              
-              return AdminSidebar(
-                selectedIndex: _selectedIndex,
-                menuTitles: currentMenuTitles,
-                menuIcons: currentMenuIcons,
-                isDriverMode: _isDriverMode,
-                isCollapsed: _isSidebarCollapsed,
-                menuBadges: badges,
-                onToggleCollapse: () {
-                  setState(() {
-                    _isSidebarCollapsed = !_isSidebarCollapsed;
-                  });
-                },
-                onToggleMode: () {
-                  setState(() {
-                    _isDriverMode = !_isDriverMode;
-                    _selectedIndex = 0;
-                    _currentSubPage = null;
-                  });
-                },
-                onMenuSelected: (index) {
-                  setState(() {
-                    _selectedIndex = index;
-                    _currentSubPage = null;
-                  });
-                },
-              );
-            },
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _DashboardTopBar(
-                  title: selectedTitle,
+        body: Row(
+          children: [
+            StreamBuilder<List<QuerySnapshot>>(
+              stream: combinedStream,
+              builder: (context, snapshot) {
+                int pendingPaymentCount = 0;
+                int activationCount = 0;
+                int p2pCount = 0;
+                int withdrawalCount = 0;
+
+                if (snapshot.hasData &&
+                    snapshot.data != null &&
+                    snapshot.data!.length == 8) {
+                  pendingPaymentCount = snapshot.data![0].docs.length;
+                  activationCount =
+                      snapshot.data![1].docs.length +
+                      snapshot.data![2].docs.length +
+                      snapshot.data![3].docs.length +
+                      snapshot.data![4].docs.length +
+                      snapshot.data![5].docs.length;
+                  p2pCount = snapshot.data![6].docs.length;
+                  withdrawalCount = snapshot.data![7].docs.length;
+                }
+
+                final badges = <String, int>{};
+                if (pendingPaymentCount > 0) {
+                  badges['Payment Approvals'] = pendingPaymentCount;
+                }
+                if (activationCount > 0) {
+                  badges['Activation Requests'] = activationCount;
+                }
+                if (p2pCount > 0) {
+                  badges['P2P Transfers'] = p2pCount;
+                }
+                if (withdrawalCount > 0) {
+                  badges['Withdrawal Requests'] = withdrawalCount;
+                }
+
+                return AdminSidebar(
+                  selectedIndex: _selectedIndex,
+                  menuTitles: currentMenuTitles,
+                  menuIcons: currentMenuIcons,
                   isDriverMode: _isDriverMode,
-                  isSubPage: _currentSubPage != null,
-                  onBack: _currentSubPage == null
-                      ? null
-                      : () => setState(() => _currentSubPage = null),
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: _isDriverMode
-                        ? (_selectedIndex == 0
-                              ? (_currentSubPage != null
-                                    ? _getSubPageWidget(_currentSubPage!)
-                                    : OverviewPanel(
-                                        onSubPageSelected: (title) => setState(
-                                          () => _currentSubPage = title,
-                                        ),
-                                      ))
-                              : _getDriverPanel(_selectedIndex))
-                        : _PassengerComingSoon(title: selectedTitle),
-                  ),
-                ),
-              ],
+                  isCollapsed: _isSidebarCollapsed,
+                  menuBadges: badges,
+                  onToggleCollapse: () {
+                    setState(() {
+                      _isSidebarCollapsed = !_isSidebarCollapsed;
+                    });
+                  },
+                  onToggleMode: () {
+                    setState(() {
+                      _isDriverMode = !_isDriverMode;
+                      _selectedIndex = 0;
+                      _currentSubPage = null;
+                    });
+                  },
+                  onMenuSelected: (index) {
+                    setState(() {
+                      _selectedIndex = index;
+                      _currentSubPage = null;
+                    });
+                  },
+                );
+              },
             ),
-          ),
-        ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _DashboardTopBar(
+                    title: selectedTitle,
+                    isDriverMode: _isDriverMode,
+                    isSubPage: _currentSubPage != null,
+                    onBack: _currentSubPage == null
+                        ? null
+                        : () => setState(() => _currentSubPage = null),
+                  ),
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 180),
+                      child: _isDriverMode
+                          ? (_selectedIndex == 0
+                                ? (_currentSubPage != null
+                                      ? _getSubPageWidget(_currentSubPage!)
+                                      : OverviewPanel(
+                                          onSubPageSelected: (title) =>
+                                              setState(
+                                                () => _currentSubPage = title,
+                                              ),
+                                        ))
+                                : _getDriverPanel(_selectedIndex))
+                          : _PassengerComingSoon(title: selectedTitle),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
-    ));
+    );
   }
 }
 
@@ -396,7 +401,10 @@ class _DashboardTopBar extends StatelessWidget {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 360),
                   child: TextField(
-                    style: const TextStyle(color: AdminColors.ink, fontSize: 13),
+                    style: const TextStyle(
+                      color: AdminColors.ink,
+                      fontSize: 13,
+                    ),
                     decoration: InputDecoration(
                       isDense: true,
                       hintText: 'Search members, bookings, tickets',
@@ -440,7 +448,9 @@ class _DashboardTopBar extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: AdminColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AdminColors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(
+                    color: AdminColors.primary.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: const Icon(
                   Icons.admin_panel_settings_rounded,

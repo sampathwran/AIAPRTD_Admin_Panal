@@ -4,44 +4,48 @@
 /// Logic engine to verify if the membership fee for the current month is paid before the 5th.
 Map<String, dynamic> checkMembershipFeeStatus(Map<String, dynamic>? data) {
   if (data == null || data.isEmpty) {
-    return {
-      'isFeePaidValid': true,
-      'reason': '',
-    };
+    return {'isFeePaidValid': true, 'reason': ''};
   }
 
   if (!data.containsKey('payment_history') || data['payment_history'] == null) {
-    return {
-      'isFeePaidValid': true,
-      'reason': '',
-    };
+    return {'isFeePaidValid': true, 'reason': ''};
   }
 
   final DateTime now = DateTime.now();
   final int currentDay = now.day;
 
   final List<String> monthNames = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
   final String currentMonthName = monthNames[now.month - 1];
   final String currentYearStr = now.year.toString();
-  
+
   // Calculate target month for fee validation
   // If today is < 5th, we check if the PREVIOUS month was paid (Grace Period).
   // If today is >= 5th, we check if the CURRENT month is paid.
   String targetMonthName = currentMonthName;
   String targetYearStr = currentYearStr;
-  
+
   if (currentDay < 5) {
-     int prevMonthIndex = now.month - 2;
-     int prevYear = now.year;
-     if (prevMonthIndex < 0) {
-        prevMonthIndex = 11;
-        prevYear -= 1;
-     }
-     targetMonthName = monthNames[prevMonthIndex];
-     targetYearStr = prevYear.toString();
+    int prevMonthIndex = now.month - 2;
+    int prevYear = now.year;
+    if (prevMonthIndex < 0) {
+      prevMonthIndex = 11;
+      prevYear -= 1;
+    }
+    targetMonthName = monthNames[prevMonthIndex];
+    targetYearStr = prevYear.toString();
   }
 
   final List<dynamic> paymentHistory = data['payment_history'] ?? [];
@@ -52,12 +56,17 @@ Map<String, dynamic> checkMembershipFeeStatus(Map<String, dynamic>? data) {
 
   for (var payment in allPaymentsToCheck) {
     if (payment is Map) {
-      final String pStatus = (payment['status'] ?? '').toString().trim().toLowerCase();
+      final String pStatus = (payment['status'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       if (pStatus == 'pending' || pStatus == 'rejected') continue;
-      
+
       List<String> monthsToCheck = [];
       if (payment.containsKey('months') && payment['months'] is List) {
-        monthsToCheck = (payment['months'] as List).map((m) => m.toString().trim().toLowerCase()).toList();
+        monthsToCheck = (payment['months'] as List)
+            .map((m) => m.toString().trim().toLowerCase())
+            .toList();
       } else {
         String mStr = (payment['month'] ?? '').toString().trim().toLowerCase();
         monthsToCheck = [mStr];
@@ -70,42 +79,39 @@ Map<String, dynamic> checkMembershipFeeStatus(Map<String, dynamic>? data) {
       }
 
       final String pYear = (payment['year'] ?? '').toString().trim();
-      final String pReason = (payment['reason'] ?? payment['type'] ?? '').toString().trim().toLowerCase();
+      final String pReason = (payment['reason'] ?? payment['type'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
 
-      bool isMembershipPayment = pReason.isEmpty || 
-                                 pReason.contains('membership') || 
-                                 pReason.contains('fee') || 
-                                 pReason.contains('monthly');
+      bool isMembershipPayment =
+          pReason.isEmpty ||
+          pReason.contains('membership') ||
+          pReason.contains('fee') ||
+          pReason.contains('monthly');
 
       if (isMembershipPayment) {
-        if (monthsToCheck.contains(currentMonthName.toLowerCase()) && (pYear == currentYearStr || pYear.isEmpty)) {
+        if (monthsToCheck.contains(currentMonthName.toLowerCase()) &&
+            (pYear == currentYearStr || pYear.isEmpty)) {
           hasPaidForCurrentMonth = true;
         }
-        if (monthsToCheck.contains(targetMonthName.toLowerCase()) && (pYear == targetYearStr || pYear.isEmpty)) {
+        if (monthsToCheck.contains(targetMonthName.toLowerCase()) &&
+            (pYear == targetYearStr || pYear.isEmpty)) {
           hasPaidForTargetMonth = true;
         }
       }
     }
   }
-  
+
   if (hasPaidForCurrentMonth) {
-    return {
-      'isFeePaidValid': true,
-      'reason': '',
-    };
+    return {'isFeePaidValid': true, 'reason': ''};
   }
 
   if (!hasPaidForTargetMonth) {
-    return {
-      'isFeePaidValid': false,
-      'reason': 'Pending Membership Fee 💰',
-    };
+    return {'isFeePaidValid': false, 'reason': 'Pending Membership Fee 💰'};
   }
 
-  return {
-    'isFeePaidValid': true,
-    'reason': '',
-  };
+  return {'isFeePaidValid': true, 'reason': ''};
 }
 
 class PersonalKYCChecker {
@@ -123,7 +129,7 @@ class PersonalKYCChecker {
 
     final bool isDetailsSubmitted =
         memberData['isDetailsSubmitted'] == true ||
-            memberData['kycApprovalStatus']?.toString().toLowerCase() == 'pending';
+        memberData['kycApprovalStatus']?.toString().toLowerCase() == 'pending';
 
     final String kycApproval =
         memberData['kycApprovalStatus']?.toString().toLowerCase() ?? 'none';
@@ -135,7 +141,9 @@ class PersonalKYCChecker {
         memberData['faceKycStatus']?.toString().toLowerCase() ?? 'none';
 
     final bool isAdminApproved =
-        kycApproval == 'approved' || mainStatus == 'active' || mainStatus == 'active member';
+        kycApproval == 'approved' ||
+        mainStatus == 'active' ||
+        mainStatus == 'active member';
 
     final bool isFaceApproved = faceStatus == 'approved';
     final bool isAdminRejected = kycApproval == 'rejected';
@@ -146,10 +154,10 @@ class PersonalKYCChecker {
 
     final bool showPendingScreen =
         isDetailsSubmitted ||
-            kycApproval == 'pending' ||
-            faceStatus == 'pending' ||
-            isRejected ||
-            isFullyVerified;
+        kycApproval == 'pending' ||
+        faceStatus == 'pending' ||
+        isRejected ||
+        isFullyVerified;
 
     String reason;
 
@@ -157,18 +165,22 @@ class PersonalKYCChecker {
       if (isAdminRejected && isFaceRejected) {
         reason = "Personal details and face verification rejected ❌";
       } else if (isAdminRejected) {
-        reason = memberData['kycRejectReason']?.toString() ??
+        reason =
+            memberData['kycRejectReason']?.toString() ??
             "Personal details rejected by admin ❌";
       } else {
-        reason = memberData['faceRejectReason']?.toString() ??
+        reason =
+            memberData['faceRejectReason']?.toString() ??
             "Face verification failed. Please scan again ❌";
       }
     } else if (isFullyVerified) {
       reason = "Profile fully verified ✅";
     } else if (!isDetailsSubmitted && kycApproval == 'none') {
-      reason = "Please complete your one-time registration and face verification 📋";
+      reason =
+          "Please complete your one-time registration and face verification 📋";
     } else if (!isAdminApproved && !isFaceApproved) {
-      reason = "Personal details pending admin approval and face scan pending ⏳";
+      reason =
+          "Personal details pending admin approval and face scan pending ⏳";
     } else if (!isAdminApproved) {
       reason = "Personal details pending admin approval ⏳";
     } else if (!isFaceApproved) {
@@ -200,45 +212,35 @@ const List<String> requiredComplianceDocs = [
 
 Map<String, dynamic> checkMemberSystemStatus(Map<String, dynamic>? memberData) {
   if (memberData == null || memberData.isEmpty) {
-    return {
-      'isActive': false,
-      'reason': 'Vehicle documents not found',
-    };
+    return {'isActive': false, 'reason': 'Vehicle documents not found'};
   }
 
   final dynamic rawDocuments =
       memberData['documents'] ??
       memberData['complianceDocuments'] ??
-      (memberData['currentVehicle'] is Map ? memberData['currentVehicle']['documents'] : null);
+      (memberData['currentVehicle'] is Map
+          ? memberData['currentVehicle']['documents']
+          : null);
 
   if (rawDocuments is List) {
     for (int i = 0; i < requiredComplianceDocs.length; i++) {
       final String requiredDoc = requiredComplianceDocs[i];
 
       if (i >= rawDocuments.length) {
-        return {
-          'isActive': false,
-          'reason': '$requiredDoc not uploaded',
-        };
+        return {'isActive': false, 'reason': '$requiredDoc not uploaded'};
       }
 
       final item = rawDocuments[i];
 
       if (item == null || item is! Map) {
-        return {
-          'isActive': false,
-          'reason': '$requiredDoc not uploaded',
-        };
+        return {'isActive': false, 'reason': '$requiredDoc not uploaded'};
       }
 
       final String status =
           item['status']?.toString().trim().toLowerCase() ?? 'empty';
 
       if (status == 'empty') {
-        return {
-          'isActive': false,
-          'reason': '$requiredDoc not uploaded',
-        };
+        return {'isActive': false, 'reason': '$requiredDoc not uploaded'};
       }
 
       if (status == 'pending') {
@@ -249,31 +251,19 @@ Map<String, dynamic> checkMemberSystemStatus(Map<String, dynamic>? memberData) {
       }
 
       if (status == 'rejected') {
-        return {
-          'isActive': false,
-          'reason': '$requiredDoc rejected',
-        };
+        return {'isActive': false, 'reason': '$requiredDoc rejected'};
       }
 
       if (status != 'approved') {
-        return {
-          'isActive': false,
-          'reason': '$requiredDoc not approved',
-        };
+        return {'isActive': false, 'reason': '$requiredDoc not approved'};
       }
 
       if (_isDocumentExpired(item)) {
-        return {
-          'isActive': false,
-          'reason': '$requiredDoc is expired',
-        };
+        return {'isActive': false, 'reason': '$requiredDoc is expired'};
       }
     }
 
-    return {
-      'isActive': true,
-      'reason': 'Success',
-    };
+    return {'isActive': true, 'reason': 'Success'};
   }
 
   if (rawDocuments is Map) {
@@ -281,54 +271,33 @@ Map<String, dynamic> checkMemberSystemStatus(Map<String, dynamic>? memberData) {
       final dynamic item = rawDocuments[title];
 
       if (item is! Map) {
-        return {
-          'isActive': false,
-          'reason': '$title not uploaded',
-        };
+        return {'isActive': false, 'reason': '$title not uploaded'};
       }
 
       final String status =
           item['status']?.toString().trim().toLowerCase() ?? 'empty';
 
       if (status == 'pending') {
-        return {
-          'isActive': false,
-          'reason': '$title pending admin approval',
-        };
+        return {'isActive': false, 'reason': '$title pending admin approval'};
       }
 
       if (status == 'rejected') {
-        return {
-          'isActive': false,
-          'reason': '$title rejected',
-        };
+        return {'isActive': false, 'reason': '$title rejected'};
       }
 
       if (status != 'approved') {
-        return {
-          'isActive': false,
-          'reason': '$title not approved',
-        };
+        return {'isActive': false, 'reason': '$title not approved'};
       }
 
       if (_isDocumentExpired(item)) {
-        return {
-          'isActive': false,
-          'reason': '$title is expired',
-        };
+        return {'isActive': false, 'reason': '$title is expired'};
       }
     }
 
-    return {
-      'isActive': true,
-      'reason': 'Success',
-    };
+    return {'isActive': true, 'reason': 'Success'};
   }
 
-  return {
-    'isActive': false,
-    'reason': 'Vehicle documents not found',
-  };
+  return {'isActive': false, 'reason': 'Vehicle documents not found'};
 }
 
 bool _isDocumentExpired(Map<dynamic, dynamic> document) {
@@ -338,13 +307,14 @@ bool _isDocumentExpired(Map<dynamic, dynamic> document) {
       ? Map<String, dynamic>.from(rawReviewData)
       : <String, dynamic>{};
 
-  final String? expiryDate = (reviewData['Expiry Date'] ??
-          reviewData['expiryDate'] ??
-          reviewData['expiry_date'] ??
-          document['Expiry Date'] ??
-          document['expiryDate'] ??
-          document['expiry_date'])
-      ?.toString();
+  final String? expiryDate =
+      (reviewData['Expiry Date'] ??
+              reviewData['expiryDate'] ??
+              reviewData['expiry_date'] ??
+              document['Expiry Date'] ??
+              document['expiryDate'] ??
+              document['expiry_date'])
+          ?.toString();
 
   if (expiryDate == null || expiryDate.trim().isEmpty) {
     return false;
@@ -356,8 +326,8 @@ bool _isDocumentExpired(Map<dynamic, dynamic> document) {
     final List<String> parts = date.contains('.')
         ? date.split('.')
         : date.contains('/')
-            ? date.split('/')
-            : date.split('-');
+        ? date.split('/')
+        : date.split('-');
 
     if (parts.length != 3) {
       return false;
@@ -398,10 +368,13 @@ Map<String, dynamic> calculateMemberStatus(Map<String, dynamic> activeData) {
     reasons.add(feeCheck['reason'] ?? 'Membership fee verification required.');
   }
 
-  final Map<String, dynamic> kycCheck = PersonalKYCChecker.checkKYCStatus(activeData);
+  final Map<String, dynamic> kycCheck = PersonalKYCChecker.checkKYCStatus(
+    activeData,
+  );
   if (kycCheck['isVerified'] == false) {
     isActive = false;
-    if (kycCheck['reason'] != null && kycCheck['reason'] != "Verification pending ⏳") {
+    if (kycCheck['reason'] != null &&
+        kycCheck['reason'] != "Verification pending ⏳") {
       reasons.add(kycCheck['reason']);
     } else {
       reasons.add("Personal profile or face verification pending.");
@@ -409,7 +382,10 @@ Map<String, dynamic> calculateMemberStatus(Map<String, dynamic> activeData) {
   }
 
   // Profile image check
-  final String profileImageUrl = activeData['profileImageUrl']?.toString() ?? activeData['imageUrl']?.toString() ?? '';
+  final String profileImageUrl =
+      activeData['profileImageUrl']?.toString() ??
+      activeData['imageUrl']?.toString() ??
+      '';
   if (profileImageUrl.isEmpty) {
     isActive = false;
     reasons.add("Profile image is not uploaded.");
@@ -422,11 +398,18 @@ Map<String, dynamic> calculateMemberStatus(Map<String, dynamic> activeData) {
   }
 
   // Check admin explicitly blocked
-  final String adminApproval = activeData['adminApproval']?.toString().toLowerCase() ?? '';
+  final String adminApproval =
+      activeData['adminApproval']?.toString().toLowerCase() ?? '';
   final String status = activeData['status']?.toString().toLowerCase() ?? '';
-  if (adminApproval == 'rejected' || status == 'blocked' || status == 'rejected') {
+  if (adminApproval == 'rejected' ||
+      status == 'blocked' ||
+      status == 'rejected') {
     isActive = false;
-    reasons.add(activeData['inactiveReason']?.toString() ?? activeData['rejectionReason']?.toString() ?? "Account has been restricted by Admin.");
+    reasons.add(
+      activeData['inactiveReason']?.toString() ??
+          activeData['rejectionReason']?.toString() ??
+          "Account has been restricted by Admin.",
+    );
   }
 
   return {

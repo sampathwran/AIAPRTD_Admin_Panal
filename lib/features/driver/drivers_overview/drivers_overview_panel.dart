@@ -80,7 +80,9 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
     }).length;
     final onlineMembers = allDrivers.where(_isOnline).length;
     final offlineMembers = totalMembers - onlineMembers;
-    final newMembersCount = allDrivers.where((d) => d['adminViewedAt'] == null).length;
+    final newMembersCount = allDrivers
+        .where((d) => d['adminViewedAt'] == null)
+        .length;
 
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
@@ -919,7 +921,8 @@ class _DailyTripSummarySection extends StatefulWidget {
   const _DailyTripSummarySection();
 
   @override
-  State<_DailyTripSummarySection> createState() => _DailyTripSummarySectionState();
+  State<_DailyTripSummarySection> createState() =>
+      _DailyTripSummarySectionState();
 }
 
 class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
@@ -938,7 +941,10 @@ class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
   void initState() {
     super.initState();
     _fetchDailySummary();
-    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) => _fetchDailySummary());
+    _refreshTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) => _fetchDailySummary(),
+    );
   }
 
   @override
@@ -950,7 +956,8 @@ class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
   Future<void> _fetchDailySummary() async {
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
-    final dateStr = "${startOfToday.year}.${startOfToday.month.toString().padLeft(2, '0')}.${startOfToday.day.toString().padLeft(2, '0')}";
+    final dateStr =
+        "${startOfToday.year}.${startOfToday.month.toString().padLeft(2, '0')}.${startOfToday.day.toString().padLeft(2, '0')}";
 
     int bookings = 0;
     int roadPickups = 0;
@@ -963,31 +970,63 @@ class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
     try {
       final bookingsSnap = await FirebaseFirestore.instance
           .collection('all_bookings')
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday),
+          )
           .get();
       bookings += bookingsSnap.docs.length;
       for (var doc in bookingsSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        money += double.tryParse(data['totalFare']?.toString() ?? data['estimateFare']?.toString() ?? '0') ?? 0;
-        unionMoney += double.tryParse(data['unionFee']?.toString() ?? data['commission']?.toString() ?? '0') ?? 0;
+        money +=
+            double.tryParse(
+              data['totalFare']?.toString() ??
+                  data['estimateFare']?.toString() ??
+                  '0',
+            ) ??
+            0;
+        unionMoney +=
+            double.tryParse(
+              data['unionFee']?.toString() ??
+                  data['commission']?.toString() ??
+                  '0',
+            ) ??
+            0;
       }
 
       final dailyTripsSnap = await FirebaseFirestore.instance
           .collection('dayly_trips')
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday),
+          )
           .get();
       bookings += dailyTripsSnap.docs.length;
       for (var doc in dailyTripsSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        money += double.tryParse(data['totalFare']?.toString() ?? data['fare']?.toString() ?? '0') ?? 0;
-        unionMoney += double.tryParse(data['unionFee']?.toString() ?? data['commission']?.toString() ?? '0') ?? 0;
+        money +=
+            double.tryParse(
+              data['totalFare']?.toString() ?? data['fare']?.toString() ?? '0',
+            ) ??
+            0;
+        unionMoney +=
+            double.tryParse(
+              data['unionFee']?.toString() ??
+                  data['commission']?.toString() ??
+                  '0',
+            ) ??
+            0;
       }
 
-      final memberSnap = await FirebaseFirestore.instance.collection('member').get();
+      final memberSnap = await FirebaseFirestore.instance
+          .collection('member')
+          .get();
       final allMembershipNumbers = memberSnap.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         final String originalMemNo = data['membershipNo']?.toString() ?? '';
-        return originalMemNo.isNotEmpty && originalMemNo != '-' ? originalMemNo : doc.id;
+        return originalMemNo.isNotEmpty && originalMemNo != '-'
+            ? originalMemNo
+            : doc.id;
       }).toList();
 
       List<Future<void>> pickupFutures = [];
@@ -1003,37 +1042,60 @@ class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
                 roadPickups += snap.docs.length;
                 for (var doc in snap.docs) {
                   final data = doc.data() as Map<String, dynamic>;
-                  money += double.tryParse(data['totalFare']?.toString() ?? data['fare']?.toString() ?? '0') ?? 0;
-                  unionMoney += double.tryParse(data['unionFee']?.toString() ?? data['commission']?.toString() ?? '0') ?? 0;
+                  money +=
+                      double.tryParse(
+                        data['totalFare']?.toString() ??
+                            data['fare']?.toString() ??
+                            '0',
+                      ) ??
+                      0;
+                  unionMoney +=
+                      double.tryParse(
+                        data['unionFee']?.toString() ??
+                            data['commission']?.toString() ??
+                            '0',
+                      ) ??
+                      0;
                 }
-              }).catchError((e) {})
+              })
+              .catchError((e) {}),
         );
       }
       await Future.wait(pickupFutures);
 
-      final tripsSnap = await FirebaseFirestore.instance.collection('trips').get();
+      final tripsSnap = await FirebaseFirestore.instance
+          .collection('trips')
+          .get();
       for (var doc in tripsSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final status = data['status']?.toString().toLowerCase() ?? '';
         if (status == 'ongoing') ongoing++;
-        if (status == 'canceled' || status == 'cancelled' || status == 'rejected') cancelled++;
+        if (status == 'canceled' ||
+            status == 'cancelled' ||
+            status == 'rejected')
+          cancelled++;
       }
 
       final financeSnap = await FirebaseFirestore.instance
           .collection('finance_transactions')
-          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+          .where(
+            'timestamp',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday),
+          )
           .get();
       for (var doc in financeSnap.docs) {
         final data = doc.data() as Map<String, dynamic>;
         final type = data['type']?.toString().toLowerCase() ?? '';
         final status = data['status']?.toString().toLowerCase() ?? '';
-        
+
         if (type.contains('app_usage') || type.contains('membership')) {
-           unionMoney += double.tryParse(data['amount']?.toString() ?? '0') ?? 0;
+          unionMoney += double.tryParse(data['amount']?.toString() ?? '0') ?? 0;
         }
-        
-        if (type.contains('withdrawal') || status == 'pending' || type.contains('request')) {
-           txnRequests++;
+
+        if (type.contains('withdrawal') ||
+            status == 'pending' ||
+            type.contains('request')) {
+          txnRequests++;
         }
       }
 
@@ -1062,22 +1124,55 @@ class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
     if (_isLoading) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 30.0),
-        child: Center(
-          child: CircularProgressIndicator(strokeWidth: 2.5),
-        ),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)),
       );
     }
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: [
-        _DailyMetricCard('Total Bookings', _totalBookings.toString(), Icons.book_online_rounded, const Color(0xFF2563EB)),
-        _DailyMetricCard('Road Pickups', _totalRoadPickups.toString(), Icons.hail_rounded, const Color(0xFF059669)),
-        _DailyMetricCard('Ongoing Trips', _ongoingTrips.toString(), Icons.local_taxi_rounded, const Color(0xFF7C3AED)),
-        _DailyMetricCard('Canceled Trips', _cancelTrips.toString(), Icons.cancel_rounded, const Color(0xFFDC2626)),
-        _DailyMetricCard('Total Transactions', 'Rs ${_totalTransactions.toStringAsFixed(0)}', Icons.payments_rounded, const Color(0xFFD97706)),
-        _DailyMetricCard('Union Incomes', 'Rs ${_unionIncomes.toStringAsFixed(0)}', Icons.account_balance_rounded, const Color(0xFF4F46E5)),
-        _DailyMetricCard('Txn Requests', _transactionRequests.toString(), Icons.request_quote_rounded, const Color(0xFFE11D48)),
+        _DailyMetricCard(
+          'Total Bookings',
+          _totalBookings.toString(),
+          Icons.book_online_rounded,
+          const Color(0xFF2563EB),
+        ),
+        _DailyMetricCard(
+          'Road Pickups',
+          _totalRoadPickups.toString(),
+          Icons.hail_rounded,
+          const Color(0xFF059669),
+        ),
+        _DailyMetricCard(
+          'Ongoing Trips',
+          _ongoingTrips.toString(),
+          Icons.local_taxi_rounded,
+          const Color(0xFF7C3AED),
+        ),
+        _DailyMetricCard(
+          'Canceled Trips',
+          _cancelTrips.toString(),
+          Icons.cancel_rounded,
+          const Color(0xFFDC2626),
+        ),
+        _DailyMetricCard(
+          'Total Transactions',
+          'Rs ${_totalTransactions.toStringAsFixed(0)}',
+          Icons.payments_rounded,
+          const Color(0xFFD97706),
+        ),
+        _DailyMetricCard(
+          'Union Incomes',
+          'Rs ${_unionIncomes.toStringAsFixed(0)}',
+          Icons.account_balance_rounded,
+          const Color(0xFF4F46E5),
+        ),
+        _DailyMetricCard(
+          'Txn Requests',
+          _transactionRequests.toString(),
+          Icons.request_quote_rounded,
+          const Color(0xFFE11D48),
+        ),
       ],
     );
   }

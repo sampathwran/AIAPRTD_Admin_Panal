@@ -84,7 +84,10 @@ class BookingDetailDialog extends StatelessWidget {
     final String cancelledBy = data['cancelledBy'] ?? 'Unknown';
     final String passengerName = data['memberName'] ?? data['memberId'] ?? '';
     final String baseDriverName = data['driverName'] ?? driverMemberId ?? '';
-    final String driverName = (driverMemberId != null && driverMemberId.isNotEmpty && baseDriverName != driverMemberId)
+    final String driverName =
+        (driverMemberId != null &&
+            driverMemberId.isNotEmpty &&
+            baseDriverName != driverMemberId)
         ? '$baseDriverName - $driverMemberId'
         : baseDriverName;
 
@@ -102,9 +105,13 @@ class BookingDetailDialog extends StatelessWidget {
       if (val is String) return DateTime.tryParse(val);
       return null;
     }
-    
-    final startedAt = parseDate(data['startedAt'] ?? data['tripStartTime'] ?? data['createdAt']);
-    final endedAt = parseDate(data['completedAt'] ?? data['tripEndTime'] ?? data['endTime']);
+
+    final startedAt = parseDate(
+      data['startedAt'] ?? data['tripStartTime'] ?? data['createdAt'],
+    );
+    final endedAt = parseDate(
+      data['completedAt'] ?? data['tripEndTime'] ?? data['endTime'],
+    );
     final timeFormat = DateFormat('hh:mm a');
 
     return Dialog(
@@ -126,81 +133,122 @@ class BookingDetailDialog extends StatelessWidget {
 
               // ── Trip Details Banner (All Trips) ─────────────────────
               Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    border: Border(bottom: BorderSide(color: Colors.blue.shade100)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade50,
+                  border: Border(
+                    bottom: BorderSide(color: Colors.blue.shade100),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(Icons.my_location, size: 16, color: Colors.green),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    data['pickupAddress'] ?? data['startAddress'] ?? 'Unknown Pickup',
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              children: [
-                                const Icon(Icons.location_on, size: 16, color: Colors.red),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    data['dropAddress'] ?? data['endAddress'] ?? data['destAddress'] ?? 'Unknown Drop',
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Container(width: 1, height: 40, color: Colors.blue.shade200),
-                      const SizedBox(width: 16),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          if (isRoadPickup) ...[
-                            Text(
-                              'Started: ${startedAt != null ? timeFormat.format(startedAt.toLocal()) : 'N/A'}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              'Ended: ${endedAt != null ? timeFormat.format(endedAt.toLocal()) : 'N/A'}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ] else ...[
-                            Text(
-                              'Est: Rs ${data['estimateFare'] ?? '0.00'}',
-                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-                            ),
-                          ],
-                          const SizedBox(height: 4),
-                          Text(
-                            'Actual: Rs ${data['totalFare'] ?? data['finalFare'] ?? data['fare'] ?? 'N/A'}',
-                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue.shade800),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.my_location,
+                                size: 16,
+                                color: Colors.green,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  data['pickupAddress'] ??
+                                      data['startAddress'] ??
+                                      'Unknown Pickup',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on,
+                                size: 16,
+                                color: Colors.red,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  data['dropAddress'] ??
+                                      data['endAddress'] ??
+                                      data['destAddress'] ??
+                                      'Unknown Drop',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 16),
+                    Container(
+                      width: 1,
+                      height: 40,
+                      color: Colors.blue.shade200,
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        if (isRoadPickup) ...[
+                          Text(
+                            'Started: ${startedAt != null ? timeFormat.format(startedAt.toLocal()) : 'N/A'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'Ended: ${endedAt != null ? timeFormat.format(endedAt.toLocal()) : 'N/A'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ] else ...[
+                          Text(
+                            'Est: Rs ${data['estimateFare'] ?? '0.00'}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey.shade700,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Actual: Rs ${data['totalFare'] ?? data['finalFare'] ?? data['fare'] ?? 'N/A'}',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blue.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
+              ),
 
               // ── Info banners ─────────────────────────────────────────────
               if (status == 'cancelled')

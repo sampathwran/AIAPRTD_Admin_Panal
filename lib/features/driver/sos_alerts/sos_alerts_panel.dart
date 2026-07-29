@@ -49,14 +49,18 @@ class SosAlertsPanel extends StatelessWidget {
 
                   if (docs.isEmpty) {
                     return const Center(
-                      child: Text('No SOS alerts found.', style: TextStyle(color: AdminColors.muted)),
+                      child: Text(
+                        'No SOS alerts found.',
+                        style: TextStyle(color: AdminColors.muted),
+                      ),
                     );
                   }
 
                   return ListView.separated(
                     padding: const EdgeInsets.all(16),
                     itemCount: docs.length,
-                    separatorBuilder: (context, index) => const Divider(height: 32, color: AdminColors.line),
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 32, color: AdminColors.line),
                     itemBuilder: (context, index) {
                       final data = docs[index].data() as Map<String, dynamic>;
                       final isActive = data['status'] == 'active';
@@ -64,24 +68,31 @@ class SosAlertsPanel extends StatelessWidget {
                       String dateString = 'N/A';
                       if (data['createdAt'] != null) {
                         final timestamp = data['createdAt'] as Timestamp;
-                        dateString = DateFormat('MMM dd, yyyy - hh:mm a').format(timestamp.toDate());
+                        dateString = DateFormat(
+                          'MMM dd, yyyy - hh:mm a',
+                        ).format(timestamp.toDate());
                       }
 
                       return InkWell(
                         onTap: () {
                           showDialog(
                             context: context,
-                            builder: (context) => SosAlertDetailsDialog(alertData: data),
+                            builder: (context) =>
+                                SosAlertDetailsDialog(alertData: data),
                           );
                         },
                         borderRadius: BorderRadius.circular(8),
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: isActive ? AdminColors.danger.withValues(alpha: 0.05) : Colors.transparent,
+                            color: isActive
+                                ? AdminColors.danger.withValues(alpha: 0.05)
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: isActive ? AdminColors.danger.withValues(alpha: 0.3) : Colors.transparent,
+                              color: isActive
+                                  ? AdminColors.danger.withValues(alpha: 0.3)
+                                  : Colors.transparent,
                             ),
                           ),
                           child: Row(
@@ -90,14 +101,18 @@ class SosAlertsPanel extends StatelessWidget {
                                 width: 48,
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: isActive 
-                                      ? AdminColors.danger.withValues(alpha: 0.1) 
+                                  color: isActive
+                                      ? AdminColors.danger.withValues(
+                                          alpha: 0.1,
+                                        )
                                       : AdminColors.surfaceAlt,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
                                   Icons.emergency_share_rounded,
-                                  color: isActive ? AdminColors.danger : AdminColors.muted,
+                                  color: isActive
+                                      ? AdminColors.danger
+                                      : AdminColors.muted,
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -108,7 +123,8 @@ class SosAlertsPanel extends StatelessWidget {
                                     Row(
                                       children: [
                                         Text(
-                                          data['memberName'] ?? 'Unknown Member',
+                                          data['memberName'] ??
+                                              'Unknown Member',
                                           style: const TextStyle(
                                             fontWeight: FontWeight.bold,
                                             fontSize: 16,
@@ -117,15 +133,22 @@ class SosAlertsPanel extends StatelessWidget {
                                         ),
                                         const SizedBox(width: 8),
                                         AdminStatusPill(
-                                          label: isActive ? 'ACTIVE SOS' : 'RESOLVED',
-                                          color: isActive ? AdminColors.danger : AdminColors.success,
+                                          label: isActive
+                                              ? 'ACTIVE SOS'
+                                              : 'RESOLVED',
+                                          color: isActive
+                                              ? AdminColors.danger
+                                              : AdminColors.success,
                                         ),
                                       ],
                                     ),
                                     const SizedBox(height: 4),
                                     Text(
                                       'Member ID: ${data['memberId']} • Phone: ${data['memberPhone']}',
-                                      style: const TextStyle(color: AdminColors.faint, fontSize: 13),
+                                      style: const TextStyle(
+                                        color: AdminColors.faint,
+                                        fontSize: 13,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -135,17 +158,26 @@ class SosAlertsPanel extends StatelessWidget {
                                 children: [
                                   Text(
                                     dateString,
-                                    style: const TextStyle(fontWeight: FontWeight.w600, color: AdminColors.inkSoft),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AdminColors.inkSoft,
+                                    ),
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
                                     'Responders: ${(data['responders'] as List?)?.length ?? 0}',
-                                    style: const TextStyle(color: AdminColors.primary, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      color: AdminColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ],
                               ),
                               const SizedBox(width: 16),
-                              const Icon(Icons.chevron_right_rounded, color: AdminColors.muted),
+                              const Icon(
+                                Icons.chevron_right_rounded,
+                                color: AdminColors.muted,
+                              ),
                             ],
                           ),
                         ),

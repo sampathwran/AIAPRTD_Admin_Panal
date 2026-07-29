@@ -133,13 +133,17 @@ class ActivationRequestsPanel extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.history_rounded, color: AdminColors.primary),
+                      icon: const Icon(
+                        Icons.history_rounded,
+                        color: AdminColors.primary,
+                      ),
                       tooltip: "View History",
                       onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => const ActivationHistoryScreen(),
+                            builder: (context) =>
+                                const ActivationHistoryScreen(),
                           ),
                         );
                       },

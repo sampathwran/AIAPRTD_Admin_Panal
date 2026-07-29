@@ -133,41 +133,42 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
     return SelectionArea(
       child: Scaffold(
         backgroundColor: const Color(0xFFF4F7FB),
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final wide = constraints.maxWidth >= 920;
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final wide = constraints.maxWidth >= 920;
 
-          return Row(
-            children: [
-              if (wide) const Expanded(child: _LoginBrandPanel()),
-              Expanded(
-                child: Center(
-                  child: SingleChildScrollView(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: wide ? 56 : 24,
-                      vertical: 32,
-                    ),
-                    child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 430),
-                      child: _LoginFormCard(
-                        emailController: _emailController,
-                        passwordController: _passwordController,
-                        isPasswordVisible: _isPasswordVisible,
-                        isLoading: _isLoading,
-                        onTogglePassword: () => setState(
-                          () => _isPasswordVisible = !_isPasswordVisible,
+            return Row(
+              children: [
+                if (wide) const Expanded(child: _LoginBrandPanel()),
+                Expanded(
+                  child: Center(
+                    child: SingleChildScrollView(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: wide ? 56 : 24,
+                        vertical: 32,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 430),
+                        child: _LoginFormCard(
+                          emailController: _emailController,
+                          passwordController: _passwordController,
+                          isPasswordVisible: _isPasswordVisible,
+                          isLoading: _isLoading,
+                          onTogglePassword: () => setState(
+                            () => _isPasswordVisible = !_isPasswordVisible,
+                          ),
+                          onLogin: _loginAdmin,
                         ),
-                        onLogin: _loginAdmin,
                       ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          );
-        },
+              ],
+            );
+          },
+        ),
       ),
-    ));
+    );
   }
 }
 

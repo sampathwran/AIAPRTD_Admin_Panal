@@ -81,9 +81,9 @@ class ActivationHistoryScreen extends StatelessWidget {
 
               String formattedDate = "N/A";
               if (ts != null) {
-                formattedDate = DateFormat('yyyy-MM-dd HH:mm').format(
-                  ts.toDate(),
-                );
+                formattedDate = DateFormat(
+                  'yyyy-MM-dd HH:mm',
+                ).format(ts.toDate());
               }
 
               IconData iconData = Icons.info_outline;

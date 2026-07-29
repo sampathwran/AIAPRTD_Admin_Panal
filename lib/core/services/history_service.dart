@@ -19,7 +19,9 @@ class HistoryService {
         'remarks': remarks ?? '',
         'timestamp': FieldValue.serverTimestamp(),
       });
-      debugPrint("✅ History saved successfully for $membershipNo ($type - $status)");
+      debugPrint(
+        "✅ History saved successfully for $membershipNo ($type - $status)",
+      );
     } catch (e) {
       debugPrint("❌ Failed to save history: $e");
     }

@@ -67,7 +67,8 @@ class DefaultFirebaseOptions {
     projectId: 'aiaprtd-member',
     databaseURL: 'https://aiaprtd-member-default-rtdb.firebaseio.com',
     storageBucket: 'aiaprtd-member.firebasestorage.app',
-    iosClientId: '1012060339384-5fvebu52t08jprb81ou27hleufkqda1h.apps.googleusercontent.com',
+    iosClientId:
+        '1012060339384-5fvebu52t08jprb81ou27hleufkqda1h.apps.googleusercontent.com',
     iosBundleId: 'com.example.aiaprtdAdminDashboard',
   );
 
@@ -78,7 +79,8 @@ class DefaultFirebaseOptions {
     projectId: 'aiaprtd-member',
     databaseURL: 'https://aiaprtd-member-default-rtdb.firebaseio.com',
     storageBucket: 'aiaprtd-member.firebasestorage.app',
-    iosClientId: '1012060339384-5fvebu52t08jprb81ou27hleufkqda1h.apps.googleusercontent.com',
+    iosClientId:
+        '1012060339384-5fvebu52t08jprb81ou27hleufkqda1h.apps.googleusercontent.com',
     iosBundleId: 'com.example.aiaprtdAdminDashboard',
   );
 

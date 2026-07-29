@@ -227,19 +227,29 @@ class AdminSidebar extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (menuBadges.containsKey(title) && menuBadges[title]! > 0)
+                              if (menuBadges.containsKey(title) &&
+                                  menuBadges[title]! > 0)
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.redAccent,
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
                                     menuBadges[title]!.toString(),
-                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
-                              if (isSelected && !(menuBadges.containsKey(title) && menuBadges[title]! > 0))
+                              if (isSelected &&
+                                  !(menuBadges.containsKey(title) &&
+                                      menuBadges[title]! > 0))
                                 Icon(
                                   Icons.chevron_right_rounded,
                                   color: accentColor,

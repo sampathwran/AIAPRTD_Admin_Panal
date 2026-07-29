@@ -4,10 +4,16 @@ import 'package:flutter/foundation.dart';
 class PaymentApprovalService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> approvePayment(String paymentId, String driverId, double amount) async {
+  Future<void> approvePayment(
+    String paymentId,
+    String driverId,
+    double amount,
+  ) async {
     try {
       await _firestore.runTransaction((transaction) async {
-        final paymentRef = _firestore.collection('app_usage_payments').doc(paymentId);
+        final paymentRef = _firestore
+            .collection('app_usage_payments')
+            .doc(paymentId);
         final memberRef = _firestore.collection('member').doc(driverId);
 
         final memberSnapshot = await transaction.get(memberRef);
@@ -30,11 +36,14 @@ class PaymentApprovalService {
 
         // Deduct from outstanding balance if member exists
         if (memberSnapshot.exists) {
-          final currentBalance = (memberSnapshot.data()?['appUsageChargeBalance'] ?? 0.0).toDouble();
-          final newBalance = (currentBalance - amount).clamp(0.0, double.infinity);
-          transaction.update(memberRef, {
-            'appUsageChargeBalance': newBalance,
-          });
+          final currentBalance =
+              (memberSnapshot.data()?['appUsageChargeBalance'] ?? 0.0)
+                  .toDouble();
+          final newBalance = (currentBalance - amount).clamp(
+            0.0,
+            double.infinity,
+          );
+          transaction.update(memberRef, {'appUsageChargeBalance': newBalance});
         }
       });
     } catch (e) {
@@ -43,10 +52,17 @@ class PaymentApprovalService {
     }
   }
 
-  Future<void> updateApprovedPayment(String paymentId, String driverId, double oldAmount, double newAmount) async {
+  Future<void> updateApprovedPayment(
+    String paymentId,
+    String driverId,
+    double oldAmount,
+    double newAmount,
+  ) async {
     try {
       await _firestore.runTransaction((transaction) async {
-        final paymentRef = _firestore.collection('app_usage_payments').doc(paymentId);
+        final paymentRef = _firestore
+            .collection('app_usage_payments')
+            .doc(paymentId);
         final memberRef = _firestore.collection('member').doc(driverId);
 
         final memberSnapshot = await transaction.get(memberRef);
@@ -69,15 +85,18 @@ class PaymentApprovalService {
 
         // Adjust driver's outstanding balance
         if (memberSnapshot.exists) {
-          final currentBalance = (memberSnapshot.data()?['appUsageChargeBalance'] ?? 0.0).toDouble();
-          
+          final currentBalance =
+              (memberSnapshot.data()?['appUsageChargeBalance'] ?? 0.0)
+                  .toDouble();
+
           // Reverse the old amount (add it back), then deduct the new amount.
           // Example: balance=4000, old=1000, new=800 -> 4000 + 1000 - 800 = 4200.
-          final newBalance = (currentBalance + oldAmount - newAmount).clamp(0.0, double.infinity);
-          
-          transaction.update(memberRef, {
-            'appUsageChargeBalance': newBalance,
-          });
+          final newBalance = (currentBalance + oldAmount - newAmount).clamp(
+            0.0,
+            double.infinity,
+          );
+
+          transaction.update(memberRef, {'appUsageChargeBalance': newBalance});
         }
       });
     } catch (e) {

@@ -54,10 +54,10 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
   Widget build(BuildContext context) {
     final data = widget.alertData;
     final bool isActive = data['status'] == 'active';
-    
+
     GeoPoint? startLoc = data['startLocation'];
     GeoPoint? currLoc = data['currentLocation'];
-    
+
     LatLng? initialPos;
     if (currLoc != null) {
       initialPos = LatLng(currLoc.latitude, currLoc.longitude);
@@ -72,8 +72,11 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
           markerId: const MarkerId('driver_location'),
           position: initialPos,
           icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
-          infoWindow: InfoWindow(title: '${data['memberName']}', snippet: 'Driver Location'),
-        )
+          infoWindow: InfoWindow(
+            title: '${data['memberName']}',
+            snippet: 'Driver Location',
+          ),
+        ),
       );
     }
 
@@ -94,23 +97,33 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.emergency_share_rounded, color: AdminColors.danger, size: 32),
+                    const Icon(
+                      Icons.emergency_share_rounded,
+                      color: AdminColors.danger,
+                      size: 32,
+                    ),
                     const SizedBox(width: 16),
                     Text(
                       'SOS Emergency Details',
-                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AdminColors.ink),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: AdminColors.ink,
+                      ),
                     ),
                     const SizedBox(width: 16),
                     AdminStatusPill(
                       label: isActive ? 'ACTIVE' : 'RESOLVED',
-                      color: isActive ? AdminColors.danger : AdminColors.success,
+                      color: isActive
+                          ? AdminColors.danger
+                          : AdminColors.success,
                     ),
                   ],
                 ),
                 IconButton(
                   icon: const Icon(Icons.close_rounded),
                   onPressed: () => Navigator.pop(context),
-                )
+                ),
               ],
             ),
             const Divider(height: 32, color: AdminColors.line),
@@ -124,37 +137,80 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Driver Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const Text(
+                          'Driver Information',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                         const SizedBox(height: 8),
-                        _buildInfoRow(Icons.person, 'Name', data['memberName'] ?? 'N/A'),
-                        _buildInfoRow(Icons.badge, 'Member ID', data['memberId'] ?? 'N/A'),
-                        _buildInfoRow(Icons.phone, 'Phone', data['memberPhone'] ?? 'N/A'),
-                        
+                        _buildInfoRow(
+                          Icons.person,
+                          'Name',
+                          data['memberName'] ?? 'N/A',
+                        ),
+                        _buildInfoRow(
+                          Icons.badge,
+                          'Member ID',
+                          data['memberId'] ?? 'N/A',
+                        ),
+                        _buildInfoRow(
+                          Icons.phone,
+                          'Phone',
+                          data['memberPhone'] ?? 'N/A',
+                        ),
+
                         const SizedBox(height: 24),
-                        const Text('Responders (Udauwata Giyapu Members)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const Text(
+                          'Responders (Udauwata Giyapu Members)',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         Expanded(
-                          child: responders.isEmpty 
-                              ? const Text('No responders yet.', style: TextStyle(color: AdminColors.muted))
+                          child: responders.isEmpty
+                              ? const Text(
+                                  'No responders yet.',
+                                  style: TextStyle(color: AdminColors.muted),
+                                )
                               : ListView.builder(
                                   itemCount: responders.length,
                                   itemBuilder: (context, index) {
                                     final responder = responders[index];
                                     return ListTile(
                                       contentPadding: EdgeInsets.zero,
-                                      leading: const Icon(Icons.check_circle_outline, color: AdminColors.success),
-                                      title: Text(responder['helperName'] ?? 'Unknown'),
-                                      subtitle: Text(responder['helperPhone'] ?? ''),
+                                      leading: const Icon(
+                                        Icons.check_circle_outline,
+                                        color: AdminColors.success,
+                                      ),
+                                      title: Text(
+                                        responder['helperName'] ?? 'Unknown',
+                                      ),
+                                      subtitle: Text(
+                                        responder['helperPhone'] ?? '',
+                                      ),
                                     );
                                   },
                                 ),
                         ),
-                        
+
                         const SizedBox(height: 16),
-                        const Text('Voice Recordings', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        const Text(
+                          'Voice Recordings',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
                         const SizedBox(height: 8),
                         if (audioUrls.isEmpty)
-                          const Text('No audio recorded.', style: TextStyle(color: AdminColors.muted))
+                          const Text(
+                            'No audio recorded.',
+                            style: TextStyle(color: AdminColors.muted),
+                          )
                         else
                           SizedBox(
                             height: 120,
@@ -165,14 +221,22 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
                                 return ListTile(
                                   contentPadding: EdgeInsets.zero,
                                   leading: Icon(
-                                    _isPlaying && _currentlyPlayingUrl == url ? Icons.volume_up : Icons.mic,
+                                    _isPlaying && _currentlyPlayingUrl == url
+                                        ? Icons.volume_up
+                                        : Icons.mic,
                                     color: AdminColors.primary,
                                   ),
                                   title: Text('Recording Chunk ${index + 1}'),
                                   trailing: IconButton(
                                     icon: Icon(
-                                      _isPlaying && _currentlyPlayingUrl == url ? Icons.stop_circle : Icons.play_circle_fill,
-                                      color: _isPlaying && _currentlyPlayingUrl == url ? AdminColors.danger : AdminColors.primary,
+                                      _isPlaying && _currentlyPlayingUrl == url
+                                          ? Icons.stop_circle
+                                          : Icons.play_circle_fill,
+                                      color:
+                                          _isPlaying &&
+                                              _currentlyPlayingUrl == url
+                                          ? AdminColors.danger
+                                          : AdminColors.primary,
                                     ),
                                     onPressed: () => _playAudio(url),
                                   ),
@@ -194,16 +258,22 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: initialPos == null 
-                            ? const Center(child: Text("Location not available"))
+                        child: initialPos == null
+                            ? const Center(
+                                child: Text("Location not available"),
+                              )
                             : GoogleMap(
-                                initialCameraPosition: CameraPosition(target: initialPos, zoom: 15),
+                                initialCameraPosition: CameraPosition(
+                                  target: initialPos,
+                                  zoom: 15,
+                                ),
                                 markers: markers,
-                                onMapCreated: (controller) => _mapController = controller,
+                                onMapCreated: (controller) =>
+                                    _mapController = controller,
                               ),
                       ),
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
@@ -221,7 +291,13 @@ class _SosAlertDetailsDialogState extends State<SosAlertDetailsDialog> {
           Icon(icon, size: 16, color: AdminColors.muted),
           const SizedBox(width: 8),
           Text('$label: ', style: const TextStyle(color: AdminColors.muted)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.bold, color: AdminColors.ink)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AdminColors.ink,
+            ),
+          ),
         ],
       ),
     );

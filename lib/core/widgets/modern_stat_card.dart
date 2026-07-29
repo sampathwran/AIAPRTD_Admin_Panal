@@ -46,13 +46,19 @@ class ModernStatCard extends StatelessWidget {
                 ),
                 Text(
                   title,
-                  style: AdminText.body.copyWith(fontWeight: FontWeight.w600, fontSize: 10),
+                  style: AdminText.body.copyWith(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 if (bottomWidget != null) ...[
                   DefaultTextStyle(
-                    style: AdminText.body.copyWith(fontSize: 9, color: AdminColors.muted),
+                    style: AdminText.body.copyWith(
+                      fontSize: 9,
+                      color: AdminColors.muted,
+                    ),
                     child: bottomWidget!,
                   ),
                 ],

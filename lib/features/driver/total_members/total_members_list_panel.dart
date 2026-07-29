@@ -99,7 +99,9 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
               await memberProvider.syncAllMembersStatus();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Member statuses synced with database')),
+                  const SnackBar(
+                    content: Text('Member statuses synced with database'),
+                  ),
                 );
               }
             },
@@ -275,7 +277,11 @@ class _DirectoryToolbar extends StatelessWidget {
                     : Tooltip(
                         message: 'Sync Member Status',
                         child: IconButton(
-                          icon: const Icon(Icons.sync_rounded, color: AdminColors.primary, size: 22),
+                          icon: const Icon(
+                            Icons.sync_rounded,
+                            color: AdminColors.primary,
+                            size: 22,
+                          ),
                           onPressed: onRefresh,
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -347,8 +353,10 @@ class _MembersTable extends StatelessWidget {
                           controller: verticalController,
                           physics: const BouncingScrollPhysics(),
                           itemCount: members.length,
-                          separatorBuilder: (context, index) =>
-                              const Divider(height: 1, color: AdminColors.lineSoft),
+                          separatorBuilder: (context, index) => const Divider(
+                            height: 1,
+                            color: AdminColors.lineSoft,
+                          ),
                           itemBuilder: (context, index) {
                             final member = members[index];
                             return _MemberRow(
@@ -414,15 +422,19 @@ class _MemberRow extends StatelessWidget {
     final statusResult = calculateMemberStatus(member);
     final bool isActive = statusResult['isActive'] == true;
     final String inactiveReason = statusResult['reason'] ?? '';
-    final String statusText = isActive 
-        ? 'ACTIVE MEMBER' 
-        : (inactiveReason.isNotEmpty ? 'INACTIVE: $inactiveReason' : 'INACTIVE MEMBER');
+    final String statusText = isActive
+        ? 'ACTIVE MEMBER'
+        : (inactiveReason.isNotEmpty
+              ? 'INACTIVE: $inactiveReason'
+              : 'INACTIVE MEMBER');
 
     final bool isOnline =
         member['isOnline'] == true || member['onlineStatus'] == 'online';
 
     Color statusColor = isActive ? AdminColors.success : AdminColors.warning;
-    IconData statusIcon = isActive ? Icons.verified_rounded : Icons.pending_rounded;
+    IconData statusIcon = isActive
+        ? Icons.verified_rounded
+        : Icons.pending_rounded;
 
     return SizedBox(
       height: 52,
@@ -468,11 +480,11 @@ class _MemberRow extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: Tooltip(
-                      message: isActive 
+                      message: isActive
                           ? 'Active Member'
-                          : inactiveReason.isNotEmpty 
-                              ? inactiveReason 
-                              : 'Inactive Member',
+                          : inactiveReason.isNotEmpty
+                          ? inactiveReason
+                          : 'Inactive Member',
                       child: AdminStatusPill(
                         label: statusText,
                         icon: statusIcon,
@@ -490,7 +502,9 @@ class _MemberRow extends StatelessWidget {
                       icon: isOnline
                           ? Icons.sensors_rounded
                           : Icons.cloud_off_rounded,
-                      color: isOnline ? AdminColors.passenger : AdminColors.muted,
+                      color: isOnline
+                          ? AdminColors.passenger
+                          : AdminColors.muted,
                     ),
                   ),
                 ),

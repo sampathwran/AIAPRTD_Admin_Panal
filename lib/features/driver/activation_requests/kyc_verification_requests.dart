@@ -232,11 +232,14 @@ class KYCVerificationRequests extends StatelessWidget {
             itemBuilder: (context, index) {
               final item = docs[index].data() as Map<String, dynamic>;
               final String docId = docs[index].id;
-              final String name = item['fullName']?.toString() ?? 'Anonymous Member';
+              final String name =
+                  item['fullName']?.toString() ?? 'Anonymous Member';
               final String mobile = item['mobile']?.toString() ?? 'N/A';
               final String nic = item['nic']?.toString() ?? 'N/A';
-              final String faceUrl = item['faceVerificationUrl']?.toString() ?? '';
-              final String idFrontUrl = item['idCardFrontUrl']?.toString() ?? '';
+              final String faceUrl =
+                  item['faceVerificationUrl']?.toString() ?? '';
+              final String idFrontUrl =
+                  item['idCardFrontUrl']?.toString() ?? '';
 
               return Container(
                 decoration: BoxDecoration(
@@ -477,10 +480,18 @@ class KYCVerificationRequests extends StatelessWidget {
     String membershipNo,
     Map<String, dynamic> item,
   ) {
-    final nameController = TextEditingController(text: item['fullName']?.toString() ?? '');
-    final mobileController = TextEditingController(text: item['mobile']?.toString() ?? '');
-    final nicController = TextEditingController(text: item['nic']?.toString() ?? '');
-    final dobController = TextEditingController(text: item['dob']?.toString() ?? '');
+    final nameController = TextEditingController(
+      text: item['fullName']?.toString() ?? '',
+    );
+    final mobileController = TextEditingController(
+      text: item['mobile']?.toString() ?? '',
+    );
+    final nicController = TextEditingController(
+      text: item['nic']?.toString() ?? '',
+    );
+    final dobController = TextEditingController(
+      text: item['dob']?.toString() ?? '',
+    );
     final religionController = TextEditingController(
       text: item['religion']?.toString() ?? '',
     );

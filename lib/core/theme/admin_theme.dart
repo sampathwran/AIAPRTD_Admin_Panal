@@ -2,27 +2,27 @@ import 'package:flutter/material.dart';
 
 class AdminColors {
   // Main Theme Colors matching modern light dashboard
-  static const ink = Color(0xFF111827);         // Dark text
-  static const inkSoft = Color(0xFF374151);     // Slightly muted text
-  static const muted = Color(0xFF6B7280);       // Muted/Subtitles
+  static const ink = Color(0xFF111827); // Dark text
+  static const inkSoft = Color(0xFF374151); // Slightly muted text
+  static const muted = Color(0xFF6B7280); // Muted/Subtitles
   static const faint = Color(0xFF9CA3AF);
-  static const line = Color(0xFFE5E7EB);        // Card borders
-  static const lineSoft = Color(0xFFF1F5F9);    
-  static const canvas = Color(0xFFF4F7FB);      // App background (Light Gray)
-  static const surface = Colors.white;          // Card background
-  static const surfaceAlt = Color(0xFFF8FAFC);  
-  static const sidebar = Color(0xFF0F172A);     // Sidebar background
-  static const sidebarSoft = Color(0xFF1E293B); 
-  static const sidebarLine = Color(0xFF263244); 
-  
+  static const line = Color(0xFFE5E7EB); // Card borders
+  static const lineSoft = Color(0xFFF1F5F9);
+  static const canvas = Color(0xFFF4F7FB); // App background (Light Gray)
+  static const surface = Colors.white; // Card background
+  static const surfaceAlt = Color(0xFFF8FAFC);
+  static const sidebar = Color(0xFF0F172A); // Sidebar background
+  static const sidebarSoft = Color(0xFF1E293B);
+  static const sidebarLine = Color(0xFF263244);
+
   // Accents
-  static const primary = Color(0xFF7367F0);     // Modern Purple/Blue accent
-  static const driver = Color(0xFFF59E0B);      // Orange
-  static const passenger = Color(0xFF00E396);   // Bright Teal
-  static const success = Color(0xFF00E396);     // Green/Teal
-  static const danger = Color(0xFFFF4560);      // Bright Red
-  static const warning = Color(0xFFFEB019);     // Yellow
-  static const purple = Color(0xFF775DD0);      
+  static const primary = Color(0xFF7367F0); // Modern Purple/Blue accent
+  static const driver = Color(0xFFF59E0B); // Orange
+  static const passenger = Color(0xFF00E396); // Bright Teal
+  static const success = Color(0xFF00E396); // Green/Teal
+  static const danger = Color(0xFFFF4560); // Bright Red
+  static const warning = Color(0xFFFEB019); // Yellow
+  static const purple = Color(0xFF775DD0);
 }
 
 class AdminShadows {
@@ -118,10 +118,7 @@ class AdminPageScaffold extends StatelessWidget {
               padding: padding,
               child: child,
             )
-          : Padding(
-              padding: padding,
-              child: child,
-            ),
+          : Padding(padding: padding, child: child),
     );
   }
 }

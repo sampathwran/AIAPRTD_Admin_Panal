@@ -5,6 +5,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/mar
 import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_active_tab.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_sold_tab.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_sponsor_tab.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/admin_add_ad_dialog.dart';
 
 class AdsManagementPanel extends StatefulWidget {
   const AdsManagementPanel({super.key});
@@ -41,61 +42,74 @@ class _AdsManagementPanelState extends State<AdsManagementPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 5,
-      child: Column(
-        children: [
-          Container(
-            color: Colors.white,
-            child: TabBar(
-              isScrollable: true,
-              labelColor: Colors.blue,
-              unselectedLabelColor: Colors.grey,
-              indicatorColor: Colors.blue,
-              tabs: [
-                _buildCountTab(
-                  Icons.category,
-                  "Categories",
-                  FirebaseFirestore.instance
-                      .collection('marketplace_categories')
-                      .snapshots(),
-                ),
-                _buildCountTab(
-                  Icons.pending_actions,
-                  "Pending Approvals",
-                  FirebaseFirestore.instance
-                      .collection('marketplace_ads')
-                      .where('status', isEqualTo: 'pending')
-                      .snapshots(),
-                ),
-                _buildCountTab(
-                  Icons.check_circle_outline,
-                  "Active Ads",
-                  FirebaseFirestore.instance
-                      .collection('marketplace_ads')
-                      .where('status', isEqualTo: 'approved')
-                      .snapshots(),
-                ),
-                const Tab(icon: Icon(Icons.history), text: "Sold / History"),
-                const Tab(
-                  icon: Icon(Icons.monetization_on),
-                  text: "Sponsor Ads",
-                ),
-              ],
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const AdminAddAdDialog(),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text("Post Ad"),
+      ),
+      body: DefaultTabController(
+        length: 5,
+        child: Column(
+          children: [
+            Container(
+              color: Colors.white,
+              child: TabBar(
+                isScrollable: true,
+                labelColor: Colors.blue,
+                unselectedLabelColor: Colors.grey,
+                indicatorColor: Colors.blue,
+                tabs: [
+                  _buildCountTab(
+                    Icons.category,
+                    "Categories",
+                    FirebaseFirestore.instance
+                        .collection('marketplace_categories')
+                        .snapshots(),
+                  ),
+                  _buildCountTab(
+                    Icons.pending_actions,
+                    "Pending Approvals",
+                    FirebaseFirestore.instance
+                        .collection('marketplace_ads')
+                        .where('status', isEqualTo: 'pending')
+                        .snapshots(),
+                  ),
+                  _buildCountTab(
+                    Icons.check_circle_outline,
+                    "Active Ads",
+                    FirebaseFirestore.instance
+                        .collection('marketplace_ads')
+                        .where('status', isEqualTo: 'approved')
+                        .snapshots(),
+                  ),
+                  const Tab(icon: Icon(Icons.history), text: "Sold / History"),
+                  const Tab(
+                    icon: Icon(Icons.monetization_on),
+                    text: "Sponsor Ads",
+                  ),
+                ],
+              ),
             ),
-          ),
-          const Expanded(
-            child: TabBarView(
-              children: [
-                MarketplaceCategoriesTab(),
-                MarketplacePendingTab(),
-                MarketplaceActiveTab(),
-                MarketplaceSoldTab(),
-                MarketplaceSponsorTab(),
-              ],
+            const Expanded(
+              child: TabBarView(
+                children: [
+                  MarketplaceCategoriesTab(),
+                  MarketplacePendingTab(),
+                  MarketplaceActiveTab(),
+                  MarketplaceSoldTab(),
+                  MarketplaceSponsorTab(),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

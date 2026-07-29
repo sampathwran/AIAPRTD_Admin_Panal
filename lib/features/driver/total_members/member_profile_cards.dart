@@ -25,8 +25,10 @@ class ProfileHeaderCard extends StatelessWidget {
     String imageUrl = imageProvider.getImageUrl(membershipNo);
 
     if (imageUrl.isEmpty) {
-      imageUrl = memberData['profileImageUrl']?.toString() ?? 
-                 memberData['profileImage']?.toString() ?? '';
+      imageUrl =
+          memberData['profileImageUrl']?.toString() ??
+          memberData['profileImage']?.toString() ??
+          '';
     }
 
     return Container(
@@ -90,16 +92,15 @@ class ProfileHeaderCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  memberData['email'] ?? memberData['user_email'] ?? 'No email provided',
+                  memberData['email'] ??
+                      memberData['user_email'] ??
+                      'No email provided',
                   style: const TextStyle(color: Colors.grey, fontSize: 12),
                 ),
                 const SizedBox(height: 8),
                 Row(
                   children: [
-                    _statusBadge(
-                      displayStatus,
-                      _getStatusColor(displayStatus),
-                    ),
+                    _statusBadge(displayStatus, _getStatusColor(displayStatus)),
                     if (!isActive && inactiveReason.isNotEmpty) ...[
                       const SizedBox(width: 8),
                       Expanded(
@@ -130,7 +131,9 @@ class ProfileHeaderCard extends StatelessWidget {
       return Colors.green;
     } else if (status == 'INACTIVE' || status == 'INACTIVE MEMBER') {
       return Colors.amber;
-    } else if (status == 'REJECTED' || status == 'BANNED' || status == 'SUSPENDED') {
+    } else if (status == 'REJECTED' ||
+        status == 'BANNED' ||
+        status == 'SUSPENDED') {
       return Colors.red;
     } else {
       return Colors.grey;

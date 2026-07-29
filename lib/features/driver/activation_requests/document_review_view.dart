@@ -706,9 +706,7 @@ class DocumentReviewView extends StatelessWidget {
             horizontal: 10,
             vertical: 12,
           ),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         ),
       );
     } else if (title == "Driving License (Back)") {
@@ -751,7 +749,9 @@ class DocumentReviewView extends StatelessWidget {
                   (t) => FilterChip(
                     label: Text(t, style: const TextStyle(fontSize: 11)),
                     selected: selectedLicenses.contains(t),
-                    selectedColor: const Color(0xff1B2735).withValues(alpha: 0.15),
+                    selectedColor: const Color(
+                      0xff1B2735,
+                    ).withValues(alpha: 0.15),
                     checkmarkColor: const Color(0xff1B2735),
                     padding: EdgeInsets.zero,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

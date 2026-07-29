@@ -290,9 +290,16 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                         itemExtent: 65,
                                         itemBuilder: (context, index) {
                                           final driver = filteredMembers[index];
-                                          final String profileStatusStr = (driver['profile_status'] ?? '').toString().toUpperCase();
-                                          final bool isActive = profileStatusStr == 'ACTIVE MEMBER';
-                                          final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
+                                          final String profileStatusStr =
+                                              (driver['profile_status'] ?? '')
+                                                  .toString()
+                                                  .toUpperCase();
+                                          final bool isActive =
+                                              profileStatusStr ==
+                                              'ACTIVE MEMBER';
+                                          final String statusText = isActive
+                                              ? 'ACTIVE MEMBER'
+                                              : 'INACTIVE MEMBER';
 
                                           // 💡 FIXED: මෙතන තිබුණු Bracket issues සියල්ලම ක්ලීන් කරලා සම්පූර්ණ Row එක පිළිවෙලට හැදුවා මචං
                                           return Container(
@@ -312,7 +319,10 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                 SizedBox(
                                                   width: 50,
                                                   child: Text(
-                                                    '${index + 1}'.padLeft(2, '0'),
+                                                    '${index + 1}'.padLeft(
+                                                      2,
+                                                      '0',
+                                                    ),
                                                     style: const TextStyle(
                                                       fontWeight:
                                                           FontWeight.w600,
@@ -324,31 +334,82 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                 SizedBox(
                                                   width: 100,
                                                   child: Column(
-                                                    mainAxisAlignment: MainAxisAlignment.center,
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                                    mainAxisAlignment:
+                                                        MainAxisAlignment
+                                                            .center,
+                                                    crossAxisAlignment:
+                                                        CrossAxisAlignment
+                                                            .start,
                                                     children: [
                                                       CircleAvatar(
                                                         radius: 18,
-                                                        backgroundColor: Colors.blue.shade50,
-                                                        backgroundImage: driver['profileImageUrl'] != null && driver['profileImageUrl'].toString().isNotEmpty
-                                                            ? NetworkImage(driver['profileImageUrl'].toString())
+                                                        backgroundColor:
+                                                            Colors.blue.shade50,
+                                                        backgroundImage:
+                                                            driver['profileImageUrl'] !=
+                                                                    null &&
+                                                                driver['profileImageUrl']
+                                                                    .toString()
+                                                                    .isNotEmpty
+                                                            ? NetworkImage(
+                                                                driver['profileImageUrl']
+                                                                    .toString(),
+                                                              )
                                                             : null,
-                                                        child: (driver['profileImageUrl'] == null || driver['profileImageUrl'].toString().isEmpty)
+                                                        child:
+                                                            (driver['profileImageUrl'] ==
+                                                                    null ||
+                                                                driver['profileImageUrl']
+                                                                    .toString()
+                                                                    .isEmpty)
                                                             ? Text(
-                                                                ((driver['firstName'] ?? '').toString().trim().isNotEmpty ? (driver['firstName'] ?? '').toString().trim().substring(0, 1) : ((driver['fullName'] ?? '').toString().trim().isNotEmpty ? (driver['fullName'] ?? '').toString().trim().substring(0, 1) : 'D')).toUpperCase(),
+                                                                ((driver['firstName'] ??
+                                                                                '')
+                                                                            .toString()
+                                                                            .trim()
+                                                                            .isNotEmpty
+                                                                        ? (driver['firstName'] ??
+                                                                                  '')
+                                                                              .toString()
+                                                                              .trim()
+                                                                              .substring(
+                                                                                0,
+                                                                                1,
+                                                                              )
+                                                                        : ((driver['fullName'] ??
+                                                                                      '')
+                                                                                  .toString()
+                                                                                  .trim()
+                                                                                  .isNotEmpty
+                                                                              ? (driver['fullName'] ??
+                                                                                        '')
+                                                                                    .toString()
+                                                                                    .trim()
+                                                                                    .substring(
+                                                                                      0,
+                                                                                      1,
+                                                                                    )
+                                                                              : 'D'))
+                                                                    .toUpperCase(),
                                                                 style: TextStyle(
-                                                                  color: Colors.blue.shade800,
+                                                                  color: Colors
+                                                                      .blue
+                                                                      .shade800,
                                                                   fontSize: 10,
-                                                                  fontWeight: FontWeight.bold,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
                                                                 ),
                                                               )
                                                             : null,
                                                       ),
                                                       const SizedBox(height: 4),
                                                       Text(
-                                                        driver['membershipNo'] ?? '-',
+                                                        driver['membershipNo'] ??
+                                                            '-',
                                                         style: const TextStyle(
-                                                          fontWeight: FontWeight.w600,
+                                                          fontWeight:
+                                                              FontWeight.w600,
                                                           fontSize: 9,
                                                           color: Colors.grey,
                                                         ),
@@ -359,9 +420,11 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                 SizedBox(
                                                   width: 200,
                                                   child: Text(
-                                                    driver['fullName'] ?? 'Unknown',
+                                                    driver['fullName'] ??
+                                                        'Unknown',
                                                     maxLines: 1,
-                                                    overflow: TextOverflow.ellipsis,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: const TextStyle(
                                                       fontSize: 11,
                                                     ),
@@ -382,7 +445,9 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                     alignment:
                                                         Alignment.centerLeft,
                                                     child: Tooltip(
-                                                      message: isActive ? 'Active Member' : 'Inactive Member',
+                                                      message: isActive
+                                                          ? 'Active Member'
+                                                          : 'Inactive Member',
                                                       child: Container(
                                                         padding:
                                                             const EdgeInsets.symmetric(
@@ -405,13 +470,19 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                         child: Text(
                                                           statusText,
                                                           maxLines: 1,
-                                                          overflow: TextOverflow.ellipsis,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
                                                           style: TextStyle(
                                                             color: isActive
-                                                                ? Colors.green.shade700
-                                                                : Colors.red.shade700,
+                                                                ? Colors
+                                                                      .green
+                                                                      .shade700
+                                                                : Colors
+                                                                      .red
+                                                                      .shade700,
                                                             fontSize: 8,
-                                                            fontWeight: FontWeight.bold,
+                                                            fontWeight:
+                                                                FontWeight.bold,
                                                           ),
                                                         ),
                                                       ),
@@ -438,7 +509,10 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                       onPressed: () {
                                                         showDialog(
                                                           context: context,
-                                                          builder: (context) => DriverProfileDialog(driver: driver),
+                                                          builder: (context) =>
+                                                              DriverProfileDialog(
+                                                                driver: driver,
+                                                              ),
                                                         );
                                                       },
                                                     ),

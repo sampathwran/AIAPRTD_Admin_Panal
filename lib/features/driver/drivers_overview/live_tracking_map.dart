@@ -11,7 +11,7 @@ class VehicleTracker {
   final String id;
   LatLng currentPosition;
   double currentHeading;
-  
+
   // Metadata cache
   String categoryKey;
   String memberNo;
@@ -60,17 +60,22 @@ class LiveTrackingMap extends StatefulWidget {
   final String? selectedCategory;
   final Function(Map<String, int>)? onCountsUpdated;
 
-  const LiveTrackingMap({super.key, this.selectedCategory, this.onCountsUpdated});
+  const LiveTrackingMap({
+    super.key,
+    this.selectedCategory,
+    this.onCountsUpdated,
+  });
 
   @override
   State<LiveTrackingMap> createState() => _LiveTrackingMapState();
 }
 
-class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderStateMixin {
+class _LiveTrackingMapState extends State<LiveTrackingMap>
+    with TickerProviderStateMixin {
   final Map<String, Map<int, BitmapDescriptor>> _cachedVehicleIcons = {};
   final Map<String, BitmapDescriptor> _badgeCache = {};
   final Set<String> _generatingBadges = {};
-  
+
   bool _isEngineReady = false;
 
   StreamSubscription<QuerySnapshot>? _memberSubscription;
@@ -112,30 +117,40 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
       targetWidth: width,
     );
     ui.FrameInfo fi = await codec.getNextFrame();
-    return (await fi.image.toByteData(format: ui.ImageByteFormat.png))!
-        .buffer
-        .asUint8List();
+    return (await fi.image.toByteData(
+      format: ui.ImageByteFormat.png,
+    ))!.buffer.asUint8List();
   }
 
-  Future<BitmapDescriptor> _createRotatedIcon(ui.Image image, double angle) async {
+  Future<BitmapDescriptor> _createRotatedIcon(
+    ui.Image image,
+    double angle,
+  ) async {
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    
-    final double size = math.sqrt(image.width * image.width + image.height * image.height);
+
+    final double size = math.sqrt(
+      image.width * image.width + image.height * image.height,
+    );
     final double halfSize = size / 2;
-    
+
     canvas.translate(halfSize, halfSize);
     canvas.rotate(angle * math.pi / 180.0);
     canvas.translate(-image.width / 2, -image.height / 2);
-    
+
     // Draw with high quality
     final paint = Paint()
       ..isAntiAlias = true
       ..filterQuality = FilterQuality.high;
     canvas.drawImage(image, Offset.zero, paint);
-    
-    final ui.Image rotatedImage = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
-    final ByteData? byteData = await rotatedImage.toByteData(format: ui.ImageByteFormat.png);
+
+    final ui.Image rotatedImage = await pictureRecorder.endRecording().toImage(
+      size.toInt(),
+      size.toInt(),
+    );
+    final ByteData? byteData = await rotatedImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
     return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
   }
 
@@ -151,14 +166,17 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
     try {
       for (var entry in iconPaths.entries) {
-        final Uint8List markerIconBytes = await _getBytesFromAsset(entry.value, 45); // Smaller icon
+        final Uint8List markerIconBytes = await _getBytesFromAsset(
+          entry.value,
+          45,
+        ); // Smaller icon
         ui.Codec codec = await ui.instantiateImageCodec(markerIconBytes);
         ui.FrameInfo frameInfo = await codec.getNextFrame();
         ui.Image image = frameInfo.image;
-        
+
         Map<int, BitmapDescriptor> angles = {};
         for (int i = 0; i < 360; i += 10) {
-           angles[i] = await _createRotatedIcon(image, i.toDouble());
+          angles[i] = await _createRotatedIcon(image, i.toDouble());
         }
         _cachedVehicleIcons[entry.key] = angles;
       }
@@ -175,7 +193,8 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
   }
 
   double _calculateHeading(LatLng start, LatLng end) {
-    if (start.latitude == end.latitude && start.longitude == end.longitude) return 0.0;
+    if (start.latitude == end.latitude && start.longitude == end.longitude)
+      return 0.0;
     final double lat1 = start.latitude * math.pi / 180.0;
     final double lng1 = start.longitude * math.pi / 180.0;
     final double lat2 = end.latitude * math.pi / 180.0;
@@ -183,7 +202,8 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
     final double dLng = lng2 - lng1;
     final double y = math.sin(dLng) * math.cos(lat2);
-    final double x = math.cos(lat1) * math.sin(lat2) -
+    final double x =
+        math.cos(lat1) * math.sin(lat2) -
         math.sin(lat1) * math.cos(lat2) * math.cos(dLng);
 
     final double brng = math.atan2(y, x);
@@ -196,113 +216,150 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
         .where('isOnline', isEqualTo: true)
         .snapshots()
         .listen((snapshot) {
-      for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final String id = doc.id;
+          for (var doc in snapshot.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final String id = doc.id;
 
-        if (data['latitude'] != null && data['longitude'] != null) {
-          final double lat = double.tryParse(data['latitude'].toString()) ?? 0.0;
-          final double lng = double.tryParse(data['longitude'].toString()) ?? 0.0;
-          double heading = double.tryParse(data['bearing'].toString()) ??
-              double.tryParse(data['heading'].toString()) ?? 0.0;
-          final String name = data['fullName'] ?? 'Unknown Driver';
-          final String memberNo = data['membershipNo']?.toString() ?? '';
-          final bool isAvailable = data['isAvailable'] ?? true;
+            if (data['latitude'] != null && data['longitude'] != null) {
+              final double lat =
+                  double.tryParse(data['latitude'].toString()) ?? 0.0;
+              final double lng =
+                  double.tryParse(data['longitude'].toString()) ?? 0.0;
+              double heading =
+                  double.tryParse(data['bearing'].toString()) ??
+                  double.tryParse(data['heading'].toString()) ??
+                  0.0;
+              final String name = data['fullName'] ?? 'Unknown Driver';
+              final String memberNo = data['membershipNo']?.toString() ?? '';
+              final bool isAvailable = data['isAvailable'] ?? true;
 
-          final newPos = LatLng(lat, lng);
+              final newPos = LatLng(lat, lng);
 
-          if (_trackers.containsKey(id)) {
-            final tracker = _trackers[id]!;
-            tracker.name = name;
-            tracker.memberNo = memberNo;
-            tracker.isAvailable = isAvailable;
+              if (_trackers.containsKey(id)) {
+                final tracker = _trackers[id]!;
+                tracker.name = name;
+                tracker.memberNo = memberNo;
+                tracker.isAvailable = isAvailable;
 
-            bool positionChanged = tracker.currentPosition.latitude != newPos.latitude || tracker.currentPosition.longitude != newPos.longitude;
-            
-            // If DB doesn't provide heading, calculate from movement. Otherwise trust the member app's compass.
-            if (heading == 0.0 && positionChanged) {
-               heading = _calculateHeading(tracker.currentPosition, newPos);
-            }
-            if (heading == 0.0) {
-               heading = tracker.currentHeading;
-            }
+                bool positionChanged =
+                    tracker.currentPosition.latitude != newPos.latitude ||
+                    tracker.currentPosition.longitude != newPos.longitude;
 
-            bool headingChanged = (heading - tracker.currentHeading).abs() > 0.1;
+                // If DB doesn't provide heading, calculate from movement. Otherwise trust the member app's compass.
+                if (heading == 0.0 && positionChanged) {
+                  heading = _calculateHeading(tracker.currentPosition, newPos);
+                }
+                if (heading == 0.0) {
+                  heading = tracker.currentHeading;
+                }
 
-            if (positionChanged || headingChanged) {
-              if (positionChanged) {
-                tracker.latAnimation = Tween<double>(begin: tracker.currentPosition.latitude, end: newPos.latitude).animate(tracker.controller);
-                tracker.lngAnimation = Tween<double>(begin: tracker.currentPosition.longitude, end: newPos.longitude).animate(tracker.controller);
-                tracker.currentPosition = newPos;
+                bool headingChanged =
+                    (heading - tracker.currentHeading).abs() > 0.1;
+
+                if (positionChanged || headingChanged) {
+                  if (positionChanged) {
+                    tracker.latAnimation = Tween<double>(
+                      begin: tracker.currentPosition.latitude,
+                      end: newPos.latitude,
+                    ).animate(tracker.controller);
+                    tracker.lngAnimation = Tween<double>(
+                      begin: tracker.currentPosition.longitude,
+                      end: newPos.longitude,
+                    ).animate(tracker.controller);
+                    tracker.currentPosition = newPos;
+                  } else {
+                    tracker.latAnimation = AlwaysStoppedAnimation(
+                      tracker.currentPosition.latitude,
+                    );
+                    tracker.lngAnimation = AlwaysStoppedAnimation(
+                      tracker.currentPosition.longitude,
+                    );
+                  }
+
+                  if (headingChanged) {
+                    double startHeading = tracker.currentHeading;
+                    double endHeading = heading;
+                    double diff = endHeading - startHeading;
+                    if (diff > 180) endHeading -= 360;
+                    if (diff < -180) endHeading += 360;
+
+                    tracker.headingAnimation = Tween<double>(
+                      begin: startHeading,
+                      end: endHeading,
+                    ).animate(tracker.controller);
+                    tracker.currentHeading = heading;
+                  } else {
+                    tracker.headingAnimation = AlwaysStoppedAnimation(
+                      tracker.currentHeading,
+                    );
+                  }
+
+                  tracker.controller.forward(from: 0.0);
+                }
               } else {
-                tracker.latAnimation = AlwaysStoppedAnimation(tracker.currentPosition.latitude);
-                tracker.lngAnimation = AlwaysStoppedAnimation(tracker.currentPosition.longitude);
-              }
+                final controller = AnimationController(
+                  vsync: this,
+                  duration: const Duration(milliseconds: 1500),
+                );
+                controller.addListener(_updateMarkers);
 
-              if (headingChanged) {
-                double startHeading = tracker.currentHeading;
-                double endHeading = heading;
-                double diff = endHeading - startHeading;
-                if (diff > 180) endHeading -= 360;
-                if (diff < -180) endHeading += 360;
+                final tracker = VehicleTracker(
+                  id: id,
+                  currentPosition: newPos,
+                  currentHeading: heading,
+                  controller: controller,
+                  name: name,
+                  memberNo: memberNo,
+                  isAvailable: isAvailable,
+                );
 
-                tracker.headingAnimation = Tween<double>(begin: startHeading, end: endHeading).animate(tracker.controller);
-                tracker.currentHeading = heading;
-              } else {
-                tracker.headingAnimation = AlwaysStoppedAnimation(tracker.currentHeading);
+                _trackers[id] = tracker;
+                _fetchVehicleMetadata(tracker);
+                _updateMarkers();
               }
-              
-              tracker.controller.forward(from: 0.0);
             }
-          } else {
-            final controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1500));
-            controller.addListener(_updateMarkers);
-
-            final tracker = VehicleTracker(
-              id: id,
-              currentPosition: newPos,
-              currentHeading: heading,
-              controller: controller,
-              name: name,
-              memberNo: memberNo,
-              isAvailable: isAvailable,
-            );
-            
-            _trackers[id] = tracker;
-            _fetchVehicleMetadata(tracker);
-            _updateMarkers();
           }
-        }
-      }
-      
-      final onlineIds = snapshot.docs.map((d) => d.id).toSet();
-      _trackers.removeWhere((id, tracker) {
-        if (!onlineIds.contains(id)) {
-          tracker.controller.dispose();
-          return true;
-        }
-        return false;
-      });
-      _updateMarkers();
-    });
+
+          final onlineIds = snapshot.docs.map((d) => d.id).toSet();
+          _trackers.removeWhere((id, tracker) {
+            if (!onlineIds.contains(id)) {
+              tracker.controller.dispose();
+              return true;
+            }
+            return false;
+          });
+          _updateMarkers();
+        });
   }
 
   Future<void> _fetchVehicleMetadata(VehicleTracker tracker) async {
     try {
-      final doc = await FirebaseFirestore.instance.collection('vehicles').doc(tracker.id).get();
+      final doc = await FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(tracker.id)
+          .get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         if (data['selectedCategory'] != null) {
-          String raw = data['selectedCategory'].toString().toLowerCase().trim().replaceAll(RegExp(r'\s+'), ' ');
+          String raw = data['selectedCategory']
+              .toString()
+              .toLowerCase()
+              .trim()
+              .replaceAll(RegExp(r'\s+'), ' ');
           tracker.categoryKey = raw.replaceAll(' ', '_');
         }
-        if (data['documents'] != null && data['documents'] is List && (data['documents'] as List).length > 2) {
+        if (data['documents'] != null &&
+            data['documents'] is List &&
+            (data['documents'] as List).length > 2) {
           var reg = data['documents'][2];
-          if (reg['reviewData'] != null && reg['reviewData']['Plate Number'] != null) {
+          if (reg['reviewData'] != null &&
+              reg['reviewData']['Plate Number'] != null) {
             tracker.plateNumber = reg['reviewData']['Plate Number'].toString();
           }
         }
-        if (tracker.plateNumber == '-' && data['details'] != null && data['details']['plateNumber'] != null) {
+        if (tracker.plateNumber == '-' &&
+            data['details'] != null &&
+            data['details']['plateNumber'] != null) {
           tracker.plateNumber = data['details']['plateNumber'].toString();
         }
         if (data['details'] != null && data['details']['model'] != null) {
@@ -317,16 +374,18 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
   }
 
   BitmapDescriptor _getBadgeMarkerSync(String memberNoText) {
-    final String last4 = memberNoText.length >= 4 ? memberNoText.substring(memberNoText.length - 4) : (memberNoText.isEmpty ? 'N/A' : memberNoText);
+    final String last4 = memberNoText.length >= 4
+        ? memberNoText.substring(memberNoText.length - 4)
+        : (memberNoText.isEmpty ? 'N/A' : memberNoText);
     final String cacheKey = last4;
-    
+
     if (_badgeCache.containsKey(cacheKey)) {
       return _badgeCache[cacheKey]!;
     }
-    
+
     _generateAndCacheBadge(last4, cacheKey);
     // Return transparent empty marker temporarily so it doesn't draw wrong things
-    return BitmapDescriptor.defaultMarker; 
+    return BitmapDescriptor.defaultMarker;
   }
 
   Future<void> _generateAndCacheBadge(String last4, String cacheKey) async {
@@ -335,12 +394,14 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
-    
+
     // Smaller dimensions so it scales well when zooming out and brings badge closer
     const double width = 60;
-    const double height = 48; 
-    
-    final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
+    const double height = 48;
+
+    final TextPainter textPainter = TextPainter(
+      textDirection: TextDirection.ltr,
+    );
     textPainter.text = TextSpan(
       text: last4,
       style: const TextStyle(
@@ -351,16 +412,16 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
       ),
     );
     textPainter.layout();
-    
+
     final double paddingHorizontal = 6.0;
     final double paddingVertical = 3.0;
-    
+
     final double boxWidth = textPainter.width + (paddingHorizontal * 2);
     final double boxHeight = textPainter.height + (paddingVertical * 2);
-    
+
     final double startX = (width - boxWidth) / 2;
     final double startY = 8.0; // Space for shadow
-    
+
     final Path tooltipPath = Path();
     final double radius = 4.0;
     final double arrowWidth = 8.0;
@@ -368,54 +429,71 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
     tooltipPath.moveTo(startX + radius, startY);
     tooltipPath.lineTo(startX + boxWidth - radius, startY);
-    tooltipPath.arcToPoint(Offset(startX + boxWidth, startY + radius), radius: Radius.circular(radius));
+    tooltipPath.arcToPoint(
+      Offset(startX + boxWidth, startY + radius),
+      radius: Radius.circular(radius),
+    );
     tooltipPath.lineTo(startX + boxWidth, startY + boxHeight - radius);
-    tooltipPath.arcToPoint(Offset(startX + boxWidth - radius, startY + boxHeight), radius: Radius.circular(radius));
-    
+    tooltipPath.arcToPoint(
+      Offset(startX + boxWidth - radius, startY + boxHeight),
+      radius: Radius.circular(radius),
+    );
+
     // Arrow pointing down
     tooltipPath.lineTo(width / 2 + (arrowWidth / 2), startY + boxHeight);
     tooltipPath.lineTo(width / 2, startY + boxHeight + arrowHeight);
     tooltipPath.lineTo(width / 2 - (arrowWidth / 2), startY + boxHeight);
-    
+
     tooltipPath.lineTo(startX + radius, startY + boxHeight);
-    tooltipPath.arcToPoint(Offset(startX, startY + boxHeight - radius), radius: Radius.circular(radius));
+    tooltipPath.arcToPoint(
+      Offset(startX, startY + boxHeight - radius),
+      radius: Radius.circular(radius),
+    );
     tooltipPath.lineTo(startX, startY + radius);
-    tooltipPath.arcToPoint(Offset(startX + radius, startY), radius: Radius.circular(radius));
+    tooltipPath.arcToPoint(
+      Offset(startX + radius, startY),
+      radius: Radius.circular(radius),
+    );
     tooltipPath.close();
 
     // Soft shadow
     canvas.drawShadow(tooltipPath, const Color(0xFF000000), 5.0, true);
-    
+
     // Background fill (Dark Gray/Black)
     final Paint bgPaint = Paint()..color = const Color(0xFF111827);
     canvas.drawPath(tooltipPath, bgPaint);
-    
+
     // Border (Amber)
     final Paint borderPaint = Paint()
       ..color = const Color(0xFFF59E0B)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0;
     canvas.drawPath(tooltipPath, borderPaint);
-    
+
     // Draw text centered
     textPainter.paint(
-      canvas, 
-      Offset(startX + paddingHorizontal, startY + paddingVertical)
+      canvas,
+      Offset(startX + paddingHorizontal, startY + paddingVertical),
     );
-    
-    final ui.Image markerAsImage = await pictureRecorder.endRecording().toImage(width.toInt(), height.toInt());
-    final ByteData? byteData = await markerAsImage.toByteData(format: ui.ImageByteFormat.png);
+
+    final ui.Image markerAsImage = await pictureRecorder.endRecording().toImage(
+      width.toInt(),
+      height.toInt(),
+    );
+    final ByteData? byteData = await markerAsImage.toByteData(
+      format: ui.ImageByteFormat.png,
+    );
     if (byteData != null) {
       final Uint8List uint8List = byteData.buffer.asUint8List();
       _badgeCache[cacheKey] = BitmapDescriptor.bytes(uint8List);
-      _updateMarkers(); 
+      _updateMarkers();
     }
     _generatingBadges.remove(cacheKey);
   }
 
   void _updateMarkers() {
     if (!mounted) return;
-    
+
     final Set<Marker> newMarkers = {};
     final Map<String, int> counts = {'All': 0};
 
@@ -432,12 +510,16 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
       final LatLng pos = tracker.interpolatedPosition;
       final double heading = tracker.interpolatedHeading;
-  
+
       int roundedHeading = ((heading / 10).round() * 10) % 360;
       if (roundedHeading < 0) roundedHeading += 360;
-      
-      final Map<int, BitmapDescriptor>? angles = _cachedVehicleIcons[tracker.categoryKey];
-      final BitmapDescriptor carIcon = (angles != null && angles.containsKey(roundedHeading)) ? angles[roundedHeading]! : BitmapDescriptor.defaultMarker;
+
+      final Map<int, BitmapDescriptor>? angles =
+          _cachedVehicleIcons[tracker.categoryKey];
+      final BitmapDescriptor carIcon =
+          (angles != null && angles.containsKey(roundedHeading))
+          ? angles[roundedHeading]!
+          : BitmapDescriptor.defaultMarker;
 
       // 1. Vehicle Marker (Using pre-rotated icon to bypass Web rotation bug)
       newMarkers.add(
@@ -448,10 +530,12 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
           flat: true,
           anchor: const Offset(0.5, 0.5),
           icon: carIcon,
-          zIndex: 1, // Use zIndex as requested despite deprecation to avoid typing issues if unsupported SDK
+          zIndex:
+              1, // Use zIndex as requested despite deprecation to avoid typing issues if unsupported SDK
           infoWindow: InfoWindow(
             title: tracker.name,
-            snippet: "Vehicle: ${tracker.plateNumber} (${tracker.modelName}) | Category: ${tracker.categoryKey.toUpperCase().replaceAll('_', ' ')} | Status: ${tracker.isAvailable ? 'AVAILABLE' : 'ON TRIP'}",
+            snippet:
+                "Vehicle: ${tracker.plateNumber} (${tracker.modelName}) | Category: ${tracker.categoryKey.toUpperCase().replaceAll('_', ' ')} | Status: ${tracker.isAvailable ? 'AVAILABLE' : 'ON TRIP'}",
           ),
         ),
       );
@@ -464,9 +548,12 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
           position: pos,
           rotation: 0,
           flat: true,
-          anchor: const Offset(0.5, 1.0), // Anchor at the very bottom of the tall transparent canvas
+          anchor: const Offset(
+            0.5,
+            1.0,
+          ), // Anchor at the very bottom of the tall transparent canvas
           icon: badgeIcon,
-          zIndex: 2, 
+          zIndex: 2,
           consumeTapEvents: true, // Don't let badge taps interfere
         ),
       );
@@ -484,7 +571,10 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
   Widget build(BuildContext context) {
     if (!_isEngineReady) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.blueGrey, strokeWidth: 2.5),
+        child: CircularProgressIndicator(
+          color: Colors.blueGrey,
+          strokeWidth: 2.5,
+        ),
       );
     }
 

@@ -153,7 +153,12 @@ class _OperationsPulse extends StatelessWidget {
   }
 
   Widget _buildPulseItem(
-      String title, String detail, double progress, Color color, IconData icon) {
+    String title,
+    String detail,
+    double progress,
+    Color color,
+    IconData icon,
+  ) {
     return Row(
       children: [
         Container(
@@ -179,14 +184,19 @@ class _OperationsPulse extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: AdminText.body.copyWith(
-                          color: AdminColors.ink, fontWeight: FontWeight.w600),
+                        color: AdminColors.ink,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
                     '${(progress * 100).round()}%',
                     style: AdminText.body.copyWith(
-                        color: color, fontWeight: FontWeight.w900, fontSize: 11),
+                      color: color,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 11,
+                    ),
                   ),
                 ],
               ),
@@ -278,12 +288,19 @@ class _LiveMapSectionState extends State<_LiveMapSection> {
                     },
                     borderRadius: BorderRadius.circular(16),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: isSelected ? AdminColors.primary : AdminColors.canvas,
+                        color: isSelected
+                            ? AdminColors.primary
+                            : AdminColors.canvas,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: isSelected ? AdminColors.primary : AdminColors.line,
+                          color: isSelected
+                              ? AdminColors.primary
+                              : AdminColors.line,
                         ),
                       ),
                       child: Text(
@@ -291,7 +308,9 @@ class _LiveMapSectionState extends State<_LiveMapSection> {
                         style: TextStyle(
                           color: isSelected ? Colors.white : AdminColors.muted,
                           fontSize: 12,
-                          fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: isSelected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                         ),
                       ),
                     ),

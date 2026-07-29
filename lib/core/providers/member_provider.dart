@@ -14,7 +14,7 @@ class MemberProvider with ChangeNotifier {
 
   // 📌 Cache: membershipNo => { 'status': 'ACTIVE'/'INACTIVE', 'reasons': [...] }
   final Map<String, Map<String, dynamic>> _cachedInactiveReasons = {};
-  
+
   // 📌 Cache: membershipNo => payment_history list
   final Map<String, List<dynamic>> _cachedMembershipFees = {};
 
@@ -72,14 +72,20 @@ class MemberProvider with ChangeNotifier {
         final bool isActive = statusResult['isActive'] == true;
         final String newStatus = isActive ? 'active member' : 'inactive member';
         final String reason = statusResult['reason'] ?? '';
-        final List<String> reasonsList = reason.isEmpty ? [] : reason.split(' • ');
+        final List<String> reasonsList = reason.isEmpty
+            ? []
+            : reason.split(' • ');
 
         final currentProfileStatus = member['profile_status']?.toString();
         final currentStatus = member['status']?.toString();
         final currentReason = member['inactiveReason']?.toString();
 
-        if (currentProfileStatus != newStatus || currentStatus != newStatus || currentReason != reason) {
-          final docRef = FirebaseFirestore.instance.collection('member').doc(docId);
+        if (currentProfileStatus != newStatus ||
+            currentStatus != newStatus ||
+            currentReason != reason) {
+          final docRef = FirebaseFirestore.instance
+              .collection('member')
+              .doc(docId);
           batch.update(docRef, {
             'status': newStatus, // Legacy fallback
             'inactiveReason': reason, // Legacy fallback
@@ -199,8 +205,8 @@ class MemberProvider with ChangeNotifier {
               data['branchName'] = 'Loading...';
               data['branchCode'] = 'Loading...';
 
-              // 🚨 CRITICAL: Remove any legacy profile_status/inactive_reasons from 
-              // the raw Firestore 'member' doc so that ONLY the real-time stream 
+              // 🚨 CRITICAL: Remove any legacy profile_status/inactive_reasons from
+              // the raw Firestore 'member' doc so that ONLY the real-time stream
               // from 'member_inactive_reasons' collection controls the status.
               data.remove('profile_status');
               data.remove('inactive_reasons');
@@ -292,7 +298,9 @@ class MemberProvider with ChangeNotifier {
         appliedCount++;
       }
     }
-    debugPrint('📌 APPLY CACHE: Applied inactive reasons to $appliedCount / ${_allMembersList.length} members (cache has ${_cachedInactiveReasons.length} entries)');
+    debugPrint(
+      '📌 APPLY CACHE: Applied inactive reasons to $appliedCount / ${_allMembersList.length} members (cache has ${_cachedInactiveReasons.length} entries)',
+    );
   }
 
   // =========================================================================
@@ -307,7 +315,9 @@ class MemberProvider with ChangeNotifier {
         appliedCount++;
       }
     }
-    debugPrint('📌 APPLY CACHE: Applied membership fees to $appliedCount / ${_allMembersList.length} members');
+    debugPrint(
+      '📌 APPLY CACHE: Applied membership fees to $appliedCount / ${_allMembersList.length} members',
+    );
   }
 
   // =========================================================================
@@ -317,70 +327,89 @@ class MemberProvider with ChangeNotifier {
     if (_appMembershipFeeSubscription != null) {
       _appMembershipFeeSubscription?.cancel();
     }
-    
+
     _appMembershipFeeSubscription = FirebaseFirestore.instance
         .collection('app_membership_fee')
         .snapshots()
         .listen((querySnapshot) {
-      debugPrint('🔄 MEMBERSHIP FEES STREAM: Received ${querySnapshot.docs.length} docs');
-      bool hasUpdates = false;
+          debugPrint(
+            '🔄 MEMBERSHIP FEES STREAM: Received ${querySnapshot.docs.length} docs',
+          );
+          bool hasUpdates = false;
 
-      for (var doc in querySnapshot.docs) {
-        final mNo = doc.id;
-        final data = doc.data() as Map<String, dynamic>;
-        
-        final List<dynamic> history = data['payment_history'] ?? [];
-        _cachedMembershipFees[mNo] = history;
+          for (var doc in querySnapshot.docs) {
+            final mNo = doc.id;
+            final data = doc.data() as Map<String, dynamic>;
 
-        final index = _allMembersList.indexWhere((m) => m['membershipNo'] == mNo);
-        if (index != -1) {
-          _allMembersList[index]['payment_history'] = history;
-          
-          // Re-evaluate the fee status and write back to member_inactive_reasons if needed
-          final Map<String, dynamic> feeCheck = checkMembershipFeeStatus(_allMembersList[index]);
-          if (feeCheck['isFeePaidValid'] == false) {
-             // We detect that the fee is invalid for this month.
-             // If member_inactive_reasons doesn't show it as pending, update it.
-             _ensureFeeStatusInDatabase(mNo, 'pending', 'INACTIVE');
-          } else {
-             _ensureFeeStatusInDatabase(mNo, 'approved', null); // Don't force ACTIVE, let other fields decide
+            final List<dynamic> history = data['payment_history'] ?? [];
+            _cachedMembershipFees[mNo] = history;
+
+            final index = _allMembersList.indexWhere(
+              (m) => m['membershipNo'] == mNo,
+            );
+            if (index != -1) {
+              _allMembersList[index]['payment_history'] = history;
+
+              // Re-evaluate the fee status and write back to member_inactive_reasons if needed
+              final Map<String, dynamic> feeCheck = checkMembershipFeeStatus(
+                _allMembersList[index],
+              );
+              if (feeCheck['isFeePaidValid'] == false) {
+                // We detect that the fee is invalid for this month.
+                // If member_inactive_reasons doesn't show it as pending, update it.
+                _ensureFeeStatusInDatabase(mNo, 'pending', 'INACTIVE');
+              } else {
+                _ensureFeeStatusInDatabase(
+                  mNo,
+                  'approved',
+                  null,
+                ); // Don't force ACTIVE, let other fields decide
+              }
+
+              hasUpdates = true;
+            }
           }
-          
-          hasUpdates = true;
-        }
-      }
 
-      if (hasUpdates) {
-        notifyListeners();
-      }
-    });
+          if (hasUpdates) {
+            notifyListeners();
+          }
+        });
   }
 
-  Future<void> _ensureFeeStatusInDatabase(String mNo, String feeStatus, String? overallStatusOverride) async {
+  Future<void> _ensureFeeStatusInDatabase(
+    String mNo,
+    String feeStatus,
+    String? overallStatusOverride,
+  ) async {
     try {
-      final docRef = FirebaseFirestore.instance.collection('member_inactive_reasons').doc(mNo);
+      final docRef = FirebaseFirestore.instance
+          .collection('member_inactive_reasons')
+          .doc(mNo);
       final docSnap = await docRef.get();
       if (docSnap.exists) {
-         final data = docSnap.data() as Map<String, dynamic>;
-         final currentFeeStatus = data['membership_fee']?.toString().toLowerCase();
-         final currentMainStatus = data['status']?.toString().toUpperCase();
-         
-         bool needsUpdate = false;
-         Map<String, dynamic> updates = {};
-         
-         if (currentFeeStatus != feeStatus) {
-            updates['membership_fee'] = feeStatus;
-            needsUpdate = true;
-         }
-         
-         if (overallStatusOverride != null && currentMainStatus != overallStatusOverride) {
-            updates['status'] = overallStatusOverride;
-            needsUpdate = true;
-         }
-         
-         if (needsUpdate) {
-            await docRef.update(updates);
-         }
+        final data = docSnap.data() as Map<String, dynamic>;
+        final currentFeeStatus = data['membership_fee']
+            ?.toString()
+            .toLowerCase();
+        final currentMainStatus = data['status']?.toString().toUpperCase();
+
+        bool needsUpdate = false;
+        Map<String, dynamic> updates = {};
+
+        if (currentFeeStatus != feeStatus) {
+          updates['membership_fee'] = feeStatus;
+          needsUpdate = true;
+        }
+
+        if (overallStatusOverride != null &&
+            currentMainStatus != overallStatusOverride) {
+          updates['status'] = overallStatusOverride;
+          needsUpdate = true;
+        }
+
+        if (needsUpdate) {
+          await docRef.update(updates);
+        }
       }
     } catch (e) {
       debugPrint('Error updating fee status in DB for $mNo: $e');
@@ -394,83 +423,91 @@ class MemberProvider with ChangeNotifier {
     if (_inactiveReasonsSubscription != null) {
       _inactiveReasonsSubscription?.cancel();
     }
-    
+
     _inactiveReasonsSubscription = FirebaseFirestore.instance
         .collection('member_inactive_reasons')
         .snapshots()
         .listen((querySnapshot) {
-      debugPrint('🔄 INACTIVE REASONS STREAM: Received ${querySnapshot.docs.length} docs');
-      bool hasUpdates = false;
+          debugPrint(
+            '🔄 INACTIVE REASONS STREAM: Received ${querySnapshot.docs.length} docs',
+          );
+          bool hasUpdates = false;
 
-      for (var doc in querySnapshot.docs) {
-        final mNo = doc.id;
-        final data = doc.data() as Map<String, dynamic>;
-        
-        List<String> inactiveReasons = [];
-        
-        // 1. Check for manual blocks
-        if (data['admin_block_permanently'] == true) inactiveReasons.add('Permanently Blocked');
-        if (data['admin_block_temporarily'] == true) inactiveReasons.add('Temporarily Blocked');
-        
-        // 2. Check all required approval fields
-        final approvalFields = {
-          'membership_fee': 'Membership Fee',
-          'driving_licence': 'Driving Licence',
-          'face_verification': 'Face Verification',
-          'id_card_image': 'ID Card Image',
-          'insurance_policy': 'Insurance Policy',
-          'kyc_details': 'KYC Details',
-          'profile_image': 'Profile Image',
-          'revenue_licence': 'Revenue Licence',
-          'vehicle_registration_document': 'Vehicle Registration',
-          'vehicle_image_front': 'Vehicle Front Image',
-          'vehicle_image_back': 'Vehicle Back Image',
-          'vehicle_image_left_side': 'Vehicle Left Side Image',
-          'vehicle_image_right_side': 'Vehicle Right Side Image',
-          'vehicle_image_interior': 'Vehicle Interior Image',
-        };
-        
-        for (var entry in approvalFields.entries) {
-          final val = data[entry.key]?.toString().toLowerCase();
-          // If a field exists and is NOT approved, add it as a reason
-          if (val != null && val != 'approved') {
-            inactiveReasons.add('${entry.value} is $val');
+          for (var doc in querySnapshot.docs) {
+            final mNo = doc.id;
+            final data = doc.data() as Map<String, dynamic>;
+
+            List<String> inactiveReasons = [];
+
+            // 1. Check for manual blocks
+            if (data['admin_block_permanently'] == true)
+              inactiveReasons.add('Permanently Blocked');
+            if (data['admin_block_temporarily'] == true)
+              inactiveReasons.add('Temporarily Blocked');
+
+            // 2. Check all required approval fields
+            final approvalFields = {
+              'membership_fee': 'Membership Fee',
+              'driving_licence': 'Driving Licence',
+              'face_verification': 'Face Verification',
+              'id_card_image': 'ID Card Image',
+              'insurance_policy': 'Insurance Policy',
+              'kyc_details': 'KYC Details',
+              'profile_image': 'Profile Image',
+              'revenue_licence': 'Revenue Licence',
+              'vehicle_registration_document': 'Vehicle Registration',
+              'vehicle_image_front': 'Vehicle Front Image',
+              'vehicle_image_back': 'Vehicle Back Image',
+              'vehicle_image_left_side': 'Vehicle Left Side Image',
+              'vehicle_image_right_side': 'Vehicle Right Side Image',
+              'vehicle_image_interior': 'Vehicle Interior Image',
+            };
+
+            for (var entry in approvalFields.entries) {
+              final val = data[entry.key]?.toString().toLowerCase();
+              // If a field exists and is NOT approved, add it as a reason
+              if (val != null && val != 'approved') {
+                inactiveReasons.add('${entry.value} is $val');
+              }
+            }
+
+            // 3. Add legacy issues if present
+            final issues = data['issues'];
+            if (issues is List) {
+              final legacyReasons = issues
+                  .map((e) => (e is Map ? e['reason'] ?? '' : '').toString())
+                  .where((r) => r.isNotEmpty);
+              inactiveReasons.addAll(legacyReasons);
+            }
+
+            inactiveReasons = inactiveReasons.toSet().toList();
+
+            // Evaluate true profile status
+            final String profileStatus = inactiveReasons.isEmpty
+                ? 'active member'
+                : 'inactive member';
+
+            // Update cache regardless of whether member is in memory yet
+            _cachedInactiveReasons[mNo] = {
+              'profile_status': profileStatus,
+              'inactive_reasons': inactiveReasons,
+            };
+
+            // Also apply directly to existing list if member already loaded
+            final index = _allMembersList.indexWhere(
+              (m) => m['membershipNo'] == mNo,
+            );
+            if (index != -1) {
+              _allMembersList[index]['profile_status'] = profileStatus;
+              _allMembersList[index]['inactive_reasons'] = inactiveReasons;
+              hasUpdates = true;
+            }
           }
-        }
-        
-        // 3. Add legacy issues if present
-        final issues = data['issues'];
-        if (issues is List) {
-          final legacyReasons = issues
-              .map((e) => (e is Map ? e['reason'] ?? '' : '').toString())
-              .where((r) => r.isNotEmpty);
-          inactiveReasons.addAll(legacyReasons);
-        }
-        
-        inactiveReasons = inactiveReasons.toSet().toList();
-        
-        // Evaluate true profile status
-        final String profileStatus = inactiveReasons.isEmpty ? 'active member' : 'inactive member';
 
-        // Update cache regardless of whether member is in memory yet
-        _cachedInactiveReasons[mNo] = {
-          'profile_status': profileStatus,
-          'inactive_reasons': inactiveReasons,
-        };
-
-        // Also apply directly to existing list if member already loaded
-        final index = _allMembersList.indexWhere((m) => m['membershipNo'] == mNo);
-        if (index != -1) {
-          _allMembersList[index]['profile_status'] = profileStatus;
-          _allMembersList[index]['inactive_reasons'] = inactiveReasons;
-          hasUpdates = true;
-        }
-      }
-
-      if (hasUpdates) {
-        notifyListeners();
-      }
-    });
+          if (hasUpdates) {
+            notifyListeners();
+          }
+        });
   }
 
   @override

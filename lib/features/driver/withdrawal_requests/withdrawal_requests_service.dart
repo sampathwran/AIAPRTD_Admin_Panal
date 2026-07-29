@@ -12,12 +12,12 @@ class WithdrawalRequestsService {
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
   }
 
   // Stream for approved/rejected requests (History)
@@ -29,12 +29,12 @@ class WithdrawalRequestsService {
         .limit(100)
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        final data = doc.data();
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            final data = doc.data();
+            data['id'] = doc.id;
+            return data;
+          }).toList();
+        });
   }
 
   // Get current savings balance of a member
@@ -53,7 +53,7 @@ class WithdrawalRequestsService {
   // Approve a withdrawal request
   Future<void> approveWithdrawal(String requestId, String memberId) async {
     final batch = _firestore.batch();
-    
+
     // 1. Update request status
     final reqRef = _firestore.collection('withdrawal_requests').doc(requestId);
     batch.update(reqRef, {
@@ -75,9 +75,14 @@ class WithdrawalRequestsService {
   }
 
   // Reject a withdrawal request and refund savings balance
-  Future<void> rejectWithdrawal(String requestId, String memberId, double amount, String reason) async {
+  Future<void> rejectWithdrawal(
+    String requestId,
+    String memberId,
+    double amount,
+    String reason,
+  ) async {
     final batch = _firestore.batch();
-    
+
     // 1. Update request status
     final reqRef = _firestore.collection('withdrawal_requests').doc(requestId);
     batch.update(reqRef, {
@@ -88,15 +93,14 @@ class WithdrawalRequestsService {
 
     // 2. Refund savings balance
     final memberRef = _firestore.collection('member').doc(memberId);
-    batch.update(memberRef, {
-      'savingsBalance': FieldValue.increment(amount),
-    });
+    batch.update(memberRef, {'savingsBalance': FieldValue.increment(amount)});
 
     // 3. Add notification for member
     final notifRef = _firestore.collection('notifications').doc();
     batch.set(notifRef, {
       'title': 'Withdrawal Rejected',
-      'message': 'Your withdrawal request was rejected. Reason: $reason. The amount has been refunded to your Savings Balance.',
+      'message':
+          'Your withdrawal request was rejected. Reason: $reason. The amount has been refunded to your Savings Balance.',
       'targetType': 'specific',
       'targetMembers': [memberId],
       'createdAt': FieldValue.serverTimestamp(),

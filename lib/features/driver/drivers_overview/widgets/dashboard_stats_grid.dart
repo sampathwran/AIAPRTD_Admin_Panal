@@ -18,7 +18,9 @@ class DashboardStatsGrid extends StatelessWidget {
 
     final totalMembersCount = allMembers.length;
     final activeMembersCount = allMembers.where((d) {
-      final String profileStatusStr = (d['profile_status'] ?? '').toString().toUpperCase();
+      final String profileStatusStr = (d['profile_status'] ?? '')
+          .toString()
+          .toUpperCase();
       return profileStatusStr == 'ACTIVE MEMBER';
     }).length;
     final onlineMembersCount = allMembers
@@ -29,11 +31,15 @@ class DashboardStatsGrid extends StatelessWidget {
       return !isOnline;
     }).length;
     final inactiveMembersCount = allMembers.where((d) {
-      final String profileStatusStr = (d['profile_status'] ?? '').toString().toUpperCase();
+      final String profileStatusStr = (d['profile_status'] ?? '')
+          .toString()
+          .toUpperCase();
       return profileStatusStr != 'ACTIVE MEMBER';
     }).length;
-    final newMembersCount = allMembers.where((d) => d['adminViewedAt'] == null).length;
-    
+    final newMembersCount = allMembers
+        .where((d) => d['adminViewedAt'] == null)
+        .length;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         int crossAxisCount = 6;

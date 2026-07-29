@@ -42,7 +42,9 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
 
     // 💡 Realtime Filtering: Status එක 'active' නොවන (pending/inactive) අය වෙන් කරලා ගන්නවා
     final inactiveMembers = memberProvider.allMembersList.where((driver) {
-      final String profileStatusStr = (driver['profile_status'] ?? '').toString().toUpperCase();
+      final String profileStatusStr = (driver['profile_status'] ?? '')
+          .toString()
+          .toUpperCase();
       return profileStatusStr != 'ACTIVE MEMBER';
     }).toList();
 
@@ -270,8 +272,12 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
                                           36, // Row එකක උස 36px දක්වා සිහින් කළා
                                       itemBuilder: (context, index) {
                                         final driver = filteredMembers[index];
-                                        final statusResult = calculateMemberStatus(driver);
-                                        final String currentStatus = statusResult['isActive'] == true ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
+                                        final statusResult =
+                                            calculateMemberStatus(driver);
+                                        final String currentStatus =
+                                            statusResult['isActive'] == true
+                                            ? 'ACTIVE MEMBER'
+                                            : 'INACTIVE MEMBER';
 
                                         return Container(
                                           decoration: const BoxDecoration(

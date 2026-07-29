@@ -96,7 +96,9 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
         Expanded(
           flex: 1,
           child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20).copyWith(bottom: 20),
+            margin: const EdgeInsets.symmetric(
+              horizontal: 20,
+            ).copyWith(bottom: 20),
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -126,7 +128,12 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                     stream: FirebaseFirestore.instance
                         .collection('app_usage_payments')
                         .where('status', isEqualTo: 'approved')
-                        .where('approvedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(DateTime.now().subtract(const Duration(days: 7))))
+                        .where(
+                          'approvedAt',
+                          isGreaterThanOrEqualTo: Timestamp.fromDate(
+                            DateTime.now().subtract(const Duration(days: 7)),
+                          ),
+                        )
                         .orderBy('approvedAt', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
@@ -168,60 +175,80 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
             controller: scrollController,
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingRowColor: WidgetStateProperty.all(AdminColors.sidebarLine.withOpacity(0.1)),
-          columns: const [
-            DataColumn(label: Text('Date & Time')),
-            DataColumn(label: Text('Driver Info')),
-            DataColumn(label: Text('Amount')),
-            DataColumn(label: Text('Action')),
-          ],
-          rows: docs.map((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final paymentId = doc.id;
-            final driverId = data['driverId'] ?? '';
-            final amount = (data['amount'] ?? 0.0).toDouble();
-            final imageUrl = data['imageUrl'] ?? '';
-            final timestamp = data['timestamp'] as Timestamp?;
-            final approvedAt = data['approvedAt'] as Timestamp?;
-            
-            final dateToShow = (isPending ? timestamp : approvedAt) ?? timestamp;
-            final dateString = dateToShow != null 
-                ? DateFormat('MMM dd, yyyy - hh:mm a').format(dateToShow.toDate())
-                : 'Unknown';
-
-            return DataRow(
-              cells: [
-                DataCell(Text(dateString, style: const TextStyle(fontSize: 13))),
-                DataCell(_buildDriverInfo(driverId)),
-                DataCell(
-                  Text(
-                    'LKR ${NumberFormat('#,##0.00').format(amount)}',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: AdminColors.primary),
-                  ),
-                ),
-                DataCell(
-                  isPending 
-                      ? ElevatedButton.icon(
-                          onPressed: () => _reviewPayment(paymentId, driverId, amount, imageUrl),
-                          icon: const Icon(Icons.rate_review, size: 16),
-                          label: const Text('Review & Approve'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AdminColors.primary,
-                            foregroundColor: Colors.white,
-                          ),
-                        )
-                      : TextButton.icon(
-                          onPressed: () => _editApprovedPayment(paymentId, driverId, amount, imageUrl),
-                          icon: const Icon(Icons.edit_document, size: 16),
-                          label: const Text('Review & Edit'),
-                        ),
-                ),
+              headingRowColor: WidgetStateProperty.all(
+                AdminColors.sidebarLine.withOpacity(0.1),
+              ),
+              columns: const [
+                DataColumn(label: Text('Date & Time')),
+                DataColumn(label: Text('Driver Info')),
+                DataColumn(label: Text('Amount')),
+                DataColumn(label: Text('Action')),
               ],
-            );
-          }).toList(),
-        ),
-        ),
-      ],
+              rows: docs.map((doc) {
+                final data = doc.data() as Map<String, dynamic>;
+                final paymentId = doc.id;
+                final driverId = data['driverId'] ?? '';
+                final amount = (data['amount'] ?? 0.0).toDouble();
+                final imageUrl = data['imageUrl'] ?? '';
+                final timestamp = data['timestamp'] as Timestamp?;
+                final approvedAt = data['approvedAt'] as Timestamp?;
+
+                final dateToShow =
+                    (isPending ? timestamp : approvedAt) ?? timestamp;
+                final dateString = dateToShow != null
+                    ? DateFormat(
+                        'MMM dd, yyyy - hh:mm a',
+                      ).format(dateToShow.toDate())
+                    : 'Unknown';
+
+                return DataRow(
+                  cells: [
+                    DataCell(
+                      Text(dateString, style: const TextStyle(fontSize: 13)),
+                    ),
+                    DataCell(_buildDriverInfo(driverId)),
+                    DataCell(
+                      Text(
+                        'LKR ${NumberFormat('#,##0.00').format(amount)}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AdminColors.primary,
+                        ),
+                      ),
+                    ),
+                    DataCell(
+                      isPending
+                          ? ElevatedButton.icon(
+                              onPressed: () => _reviewPayment(
+                                paymentId,
+                                driverId,
+                                amount,
+                                imageUrl,
+                              ),
+                              icon: const Icon(Icons.rate_review, size: 16),
+                              label: const Text('Review & Approve'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AdminColors.primary,
+                                foregroundColor: Colors.white,
+                              ),
+                            )
+                          : TextButton.icon(
+                              onPressed: () => _editApprovedPayment(
+                                paymentId,
+                                driverId,
+                                amount,
+                                imageUrl,
+                              ),
+                              icon: const Icon(Icons.edit_document, size: 16),
+                              label: const Text('Review & Edit'),
+                            ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -234,13 +261,16 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
           orElse: () => <String, dynamic>{},
         );
         final name = member['fullName'] ?? 'Unknown Member';
-        
+
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(driverId, style: const TextStyle(fontWeight: FontWeight.bold)),
-            Text(name, style: const TextStyle(fontSize: 12, color: AdminColors.faint)),
+            Text(
+              name,
+              style: const TextStyle(fontSize: 12, color: AdminColors.faint),
+            ),
           ],
         );
       },
@@ -249,10 +279,12 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
 
   void _viewSlip(String imageUrl) {
     if (imageUrl.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('No slip image available')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No slip image available')));
       return;
     }
-    
+
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -275,7 +307,12 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 errorBuilder: (context, error, stackTrace) => const SizedBox(
                   width: 300,
                   height: 200,
-                  child: Center(child: Text('Failed to load image', style: TextStyle(color: Colors.red))),
+                  child: Center(
+                    child: Text(
+                      'Failed to load image',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -284,7 +321,9 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
               top: 8,
               child: IconButton(
                 icon: const Icon(Icons.close, color: Colors.black87),
-                style: IconButton.styleFrom(backgroundColor: Colors.white.withOpacity(0.7)),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.7),
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
             ),
@@ -294,8 +333,15 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
     );
   }
 
-  void _reviewPayment(String paymentId, String driverId, double originalAmount, String imageUrl) {
-    final TextEditingController amountController = TextEditingController(text: originalAmount.toString());
+  void _reviewPayment(
+    String paymentId,
+    String driverId,
+    double originalAmount,
+    String imageUrl,
+  ) {
+    final TextEditingController amountController = TextEditingController(
+      text: originalAmount.toString(),
+    );
 
     showDialog(
       context: context,
@@ -313,7 +359,13 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Review Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Review Payment',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.pop(context),
@@ -322,7 +374,7 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 ),
               ),
               const Divider(height: 1),
-              
+
               // Content
               Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -345,7 +397,8 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                               ? Image.network(
                                   imageUrl,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) => const Center(child: Text('Image Error')),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Center(child: Text('Image Error')),
                                 )
                               : const Center(child: Text('No Image')),
                         ),
@@ -358,11 +411,16 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Payment Amount (LKR)', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Payment Amount (LKR)',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             controller: amountController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
                               prefixText: 'Rs. ',
@@ -373,22 +431,26 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                             'You can edit the amount if it doesn\'t match the slip.',
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
-                          
+
                           const SizedBox(height: 40),
-                          
+
                           // Actions
                           Row(
                             children: [
                               Expanded(
                                 child: OutlinedButton(
-                                  onPressed: _isLoading ? null : () {
-                                    Navigator.pop(context);
-                                    _showRejectDialog(paymentId);
-                                  },
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () {
+                                          Navigator.pop(context);
+                                          _showRejectDialog(paymentId);
+                                        },
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: Colors.red,
                                     side: const BorderSide(color: Colors.red),
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                   ),
                                   child: const Text('Reject'),
                                 ),
@@ -396,21 +458,39 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : () {
-                                    final double? finalAmount = double.tryParse(amountController.text);
-                                    if (finalAmount == null || finalAmount <= 0) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Please enter a valid amount')),
-                                      );
-                                      return;
-                                    }
-                                    Navigator.pop(context);
-                                    _handleApprove(paymentId, driverId, finalAmount);
-                                  },
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () {
+                                          final double? finalAmount =
+                                              double.tryParse(
+                                                amountController.text,
+                                              );
+                                          if (finalAmount == null ||
+                                              finalAmount <= 0) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Please enter a valid amount',
+                                                ),
+                                              ),
+                                            );
+                                            return;
+                                          }
+                                          Navigator.pop(context);
+                                          _handleApprove(
+                                            paymentId,
+                                            driverId,
+                                            finalAmount,
+                                          );
+                                        },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                   ),
                                   child: const Text('Approve'),
                                 ),
@@ -430,24 +510,39 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
     );
   }
 
-  Future<void> _handleApprove(String paymentId, String driverId, double amount) async {
+  Future<void> _handleApprove(
+    String paymentId,
+    String driverId,
+    double amount,
+  ) async {
     setState(() => _isLoading = true);
     try {
       await _service.approvePayment(paymentId, driverId, amount);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment approved')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment approved')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _editApprovedPayment(String paymentId, String driverId, double originalAmount, String imageUrl) {
-    final TextEditingController amountController = TextEditingController(text: originalAmount.toString());
+  void _editApprovedPayment(
+    String paymentId,
+    String driverId,
+    double originalAmount,
+    String imageUrl,
+  ) {
+    final TextEditingController amountController = TextEditingController(
+      text: originalAmount.toString(),
+    );
 
     showDialog(
       context: context,
@@ -465,7 +560,13 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Edit Approved Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Edit Approved Payment',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.close),
                       onPressed: () => Navigator.pop(context),
@@ -474,7 +575,7 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 ),
               ),
               const Divider(height: 1),
-              
+
               // Content
               Padding(
                 padding: const EdgeInsets.all(20.0),
@@ -497,7 +598,8 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                               ? Image.network(
                                   imageUrl,
                                   fit: BoxFit.contain,
-                                  errorBuilder: (context, error, stackTrace) => const Center(child: Text('Image Error')),
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Center(child: Text('Image Error')),
                                 )
                               : const Center(child: Text('No Image')),
                         ),
@@ -510,11 +612,16 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Payment Amount (LKR)', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const Text(
+                            'Payment Amount (LKR)',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             controller: amountController,
-                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            keyboardType: const TextInputType.numberWithOptions(
+                              decimal: true,
+                            ),
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
                               prefixText: 'Rs. ',
@@ -525,33 +632,52 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                             'Editing this will adjust the driver\'s outstanding balance automatically.',
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
-                          
+
                           const SizedBox(height: 40),
-                          
+
                           // Actions
                           Row(
                             children: [
                               Expanded(
                                 child: ElevatedButton(
-                                  onPressed: _isLoading ? null : () {
-                                    final double? finalAmount = double.tryParse(amountController.text);
-                                    if (finalAmount == null || finalAmount <= 0) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Please enter a valid amount')),
-                                      );
-                                      return;
-                                    }
-                                    if (finalAmount == originalAmount) {
-                                      Navigator.pop(context);
-                                      return;
-                                    }
-                                    Navigator.pop(context);
-                                    _handleUpdateApproved(paymentId, driverId, originalAmount, finalAmount);
-                                  },
+                                  onPressed: _isLoading
+                                      ? null
+                                      : () {
+                                          final double? finalAmount =
+                                              double.tryParse(
+                                                amountController.text,
+                                              );
+                                          if (finalAmount == null ||
+                                              finalAmount <= 0) {
+                                            ScaffoldMessenger.of(
+                                              context,
+                                            ).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  'Please enter a valid amount',
+                                                ),
+                                              ),
+                                            );
+                                            return;
+                                          }
+                                          if (finalAmount == originalAmount) {
+                                            Navigator.pop(context);
+                                            return;
+                                          }
+                                          Navigator.pop(context);
+                                          _handleUpdateApproved(
+                                            paymentId,
+                                            driverId,
+                                            originalAmount,
+                                            finalAmount,
+                                          );
+                                        },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.blue,
                                     foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 16,
+                                    ),
                                   ),
                                   child: const Text('Update Amount'),
                                 ),
@@ -571,16 +697,30 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
     );
   }
 
-  Future<void> _handleUpdateApproved(String paymentId, String driverId, double oldAmount, double newAmount) async {
+  Future<void> _handleUpdateApproved(
+    String paymentId,
+    String driverId,
+    double oldAmount,
+    double newAmount,
+  ) async {
     setState(() => _isLoading = true);
     try {
-      await _service.updateApprovedPayment(paymentId, driverId, oldAmount, newAmount);
+      await _service.updateApprovedPayment(
+        paymentId,
+        driverId,
+        oldAmount,
+        newAmount,
+      );
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment amount updated')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment amount updated')));
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -604,13 +744,16 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 children: [
                   const Text('Select a reason for rejection:'),
                   const SizedBox(height: 10),
-                  ..._rejectReasons.map((reason) => RadioListTile<String>(
-                    title: Text(reason),
-                    value: reason,
-                    groupValue: selectedReason,
-                    onChanged: (value) => setState(() => selectedReason = value),
-                    contentPadding: EdgeInsets.zero,
-                  )),
+                  ..._rejectReasons.map(
+                    (reason) => RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) =>
+                          setState(() => selectedReason = value),
+                      contentPadding: EdgeInsets.zero,
+                    ),
+                  ),
                   if (selectedReason == 'Other')
                     TextField(
                       controller: otherController,
@@ -628,13 +771,20 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: selectedReason == null ? null : () {
-                  final finalReason = selectedReason == 'Other' ? otherController.text : selectedReason!;
-                  if (finalReason.isEmpty) return;
-                  Navigator.pop(context);
-                  _handleReject(paymentId, finalReason);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                onPressed: selectedReason == null
+                    ? null
+                    : () {
+                        final finalReason = selectedReason == 'Other'
+                            ? otherController.text
+                            : selectedReason!;
+                        if (finalReason.isEmpty) return;
+                        Navigator.pop(context);
+                        _handleReject(paymentId, finalReason);
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
                 child: const Text('Reject'),
               ),
             ],
@@ -648,9 +798,15 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
     setState(() => _isLoading = true);
     try {
       await _service.rejectPayment(paymentId, reason);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment rejected.')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Payment rejected.')));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
