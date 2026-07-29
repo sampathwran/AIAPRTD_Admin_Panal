@@ -213,15 +213,17 @@ class AdminStatusPill extends StatelessWidget {
             Icon(icon, color: color, size: 14),
             const SizedBox(width: 6),
           ],
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: color,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: color,
+                fontSize: 11,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 0,
+              ),
             ),
           ),
         ],
