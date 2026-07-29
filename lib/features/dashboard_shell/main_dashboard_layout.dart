@@ -23,6 +23,8 @@ import 'package:aiaprtd_admin_dashboard/features/driver/membership_approvals/mem
 import 'package:aiaprtd_admin_dashboard/features/driver/vehicle_category_rates/vehicle_category_rates_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/finance/finance_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/member_benefits/member_benefits_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/p2p_transfers/p2p_transfers_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/withdrawal_requests/withdrawal_requests_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/active_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/online_members_panel.dart';
@@ -121,6 +123,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         return const FinancePanel();
       case 13:
         return const MemberBenefitsPanel();
+      case 14:
+        return const P2PTransfersPanel();
+      case 15:
+        return const WithdrawalRequestsPanel();
       default:
         return const DriversOverviewPanel();
     }
@@ -166,6 +172,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         .collection('profile_image_requests')
         .where('status', isEqualTo: 'pending')
         .snapshots();
+    final p2pStream = FirebaseFirestore.instance
+        .collection('p2p_debts')
+        .where('status', isEqualTo: 'pending_admin_verification')
+        .snapshots();
+    final withdrawalStream = FirebaseFirestore.instance
+        .collection('withdrawal_requests')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
 
     final combinedStream = CombineLatestStream.list<QuerySnapshot>([
       paymentStream,
@@ -174,6 +188,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       kycStream,
       bankStream,
       imageStream,
+      p2pStream,
+      withdrawalStream,
     ]);
 
     return SelectionArea(
@@ -186,14 +202,18 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
             builder: (context, snapshot) {
               int pendingPaymentCount = 0;
               int activationCount = 0;
+              int p2pCount = 0;
+              int withdrawalCount = 0;
               
-              if (snapshot.hasData && snapshot.data != null && snapshot.data!.length == 6) {
+              if (snapshot.hasData && snapshot.data != null && snapshot.data!.length == 8) {
                 pendingPaymentCount = snapshot.data![0].docs.length;
                 activationCount = snapshot.data![1].docs.length +
                     snapshot.data![2].docs.length +
                     snapshot.data![3].docs.length +
                     snapshot.data![4].docs.length +
                     snapshot.data![5].docs.length;
+                p2pCount = snapshot.data![6].docs.length;
+                withdrawalCount = snapshot.data![7].docs.length;
               }
               
               final badges = <String, int>{};
@@ -202,6 +222,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
               }
               if (activationCount > 0) {
                 badges['Activation Requests'] = activationCount;
+              }
+              if (p2pCount > 0) {
+                badges['P2P Transfers'] = p2pCount;
+              }
+              if (withdrawalCount > 0) {
+                badges['Withdrawal Requests'] = withdrawalCount;
               }
               
               return AdminSidebar(
