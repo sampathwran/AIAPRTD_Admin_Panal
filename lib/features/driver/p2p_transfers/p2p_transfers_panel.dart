@@ -99,49 +99,51 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Uploaded At')),
-                DataColumn(label: Text('Debtor (Paid)')),
-                DataColumn(label: Text('Creditor (Owed)')),
-                DataColumn(label: Text('Trip ID')),
-                DataColumn(label: Text('Amount')),
-                DataColumn(label: Text('Actions')),
-              ],
-              rows: debts.map((debt) {
-                final date = (debt['uploadedAt'] as Timestamp?)?.toDate();
-                final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
-                final amount = (debt['amount'] ?? 0.0).toDouble();
-                final debtorId = debt['debtorId'] ?? 'Unknown';
-                final creditorId = debt['creditorId'] ?? 'Unknown';
-                final tripId = debt['tripId'] ?? '-';
-                final slipUrl = debt['slipUrl'];
+            child: SelectionArea(
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Uploaded At')),
+                  DataColumn(label: Text('Debtor (Paid)')),
+                  DataColumn(label: Text('Creditor (Owed)')),
+                  DataColumn(label: Text('Trip ID')),
+                  DataColumn(label: Text('Amount')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: debts.map((debt) {
+                  final date = (debt['uploadedAt'] as Timestamp?)?.toDate();
+                  final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
+                  final amount = (debt['amount'] ?? 0.0).toDouble();
+                  final debtorId = debt['debtorId'] ?? 'Unknown';
+                  final creditorId = debt['creditorId'] ?? 'Unknown';
+                  final tripId = debt['tripId'] ?? '-';
+                  final slipUrl = debt['slipUrl'];
 
-                return DataRow(
-                  cells: [
-                    DataCell(Text(dateStr)),
-                    DataCell(Text(debtorId, style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(creditorId, style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(tripId)),
-                    DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (slipUrl != null)
-                            OutlinedButton.icon(
-                              onPressed: () => _showReviewDialog(debt['id'], debtorId, creditorId, amount, slipUrl),
-                              icon: const Icon(Icons.remove_red_eye, size: 16),
-                              label: const Text("Review & Approve"),
-                            )
-                          else
-                            const Text("No Slip"),
-                        ],
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(dateStr)),
+                      DataCell(Text(debtorId, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(creditorId, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(tripId)),
+                      DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (slipUrl != null)
+                              OutlinedButton.icon(
+                                onPressed: () => _showReviewDialog(debt['id'], debtorId, creditorId, amount, slipUrl),
+                                icon: const Icon(Icons.remove_red_eye, size: 16),
+                                label: const Text("Review & Approve"),
+                              )
+                            else
+                              const Text("No Slip"),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
         );
@@ -176,54 +178,56 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Date')),
-                DataColumn(label: Text('Debtor')),
-                DataColumn(label: Text('Creditor')),
-                DataColumn(label: Text('Trip ID')),
-                DataColumn(label: Text('Amount')),
-                DataColumn(label: Text('Payment Method')),
-                DataColumn(label: Text('Status')),
-              ],
-              rows: debts.map((debt) {
-                final date = (debt['createdAt'] as Timestamp?)?.toDate();
-                final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
-                final amount = (debt['amount'] ?? 0.0).toDouble();
-                final debtorId = debt['debtorId'] ?? '-';
-                final creditorId = debt['creditorId'] ?? '-';
-                final tripId = debt['tripId'] ?? '-';
-                final method = debt['paymentMethod'] ?? 'Not selected';
-                final status = debt['status'] ?? 'unknown';
+            child: SelectionArea(
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Date')),
+                  DataColumn(label: Text('Debtor')),
+                  DataColumn(label: Text('Creditor')),
+                  DataColumn(label: Text('Trip ID')),
+                  DataColumn(label: Text('Amount')),
+                  DataColumn(label: Text('Payment Method')),
+                  DataColumn(label: Text('Status')),
+                ],
+                rows: debts.map((debt) {
+                  final date = (debt['createdAt'] as Timestamp?)?.toDate();
+                  final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
+                  final amount = (debt['amount'] ?? 0.0).toDouble();
+                  final debtorId = debt['debtorId'] ?? '-';
+                  final creditorId = debt['creditorId'] ?? '-';
+                  final tripId = debt['tripId'] ?? '-';
+                  final method = debt['paymentMethod'] ?? 'Not selected';
+                  final status = debt['status'] ?? 'unknown';
 
-                return DataRow(
-                  cells: [
-                    DataCell(Text(dateStr)),
-                    DataCell(Text(debtorId)),
-                    DataCell(Text(creditorId)),
-                    DataCell(Text(tripId)),
-                    DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(method.toString().toUpperCase())),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _getStatusColor(status).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          status.toUpperCase(),
-                          style: TextStyle(
-                            color: _getStatusColor(status),
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(dateStr)),
+                      DataCell(Text(debtorId)),
+                      DataCell(Text(creditorId)),
+                      DataCell(Text(tripId)),
+                      DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(method.toString().toUpperCase())),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(status).withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            status.toUpperCase(),
+                            style: TextStyle(
+                              color: _getStatusColor(status),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
         );
@@ -247,8 +251,9 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
       barrierDismissible: false,
       builder: (context) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SizedBox(
-          width: 800,
+        child: SelectionArea(
+          child: SizedBox(
+            width: 800,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -358,6 +363,7 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
             ],
           ),
         ),
+        ),
       ),
     );
   }
@@ -390,8 +396,9 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Reject Union Payment'),
+          return SelectionArea(
+            child: AlertDialog(
+              title: const Text('Reject Union Payment'),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -430,6 +437,7 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
                 child: const Text('Reject Payment'),
               ),
             ],
+            ),
           );
         },
       ),

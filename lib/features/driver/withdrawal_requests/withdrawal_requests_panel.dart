@@ -97,63 +97,65 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Date & Time')),
-                DataColumn(label: Text('Member ID')),
-                DataColumn(label: Text('Amount')),
-                DataColumn(label: Text('Savings Balance')),
-                DataColumn(label: Text('Bank Details')),
-                DataColumn(label: Text('Actions')),
-              ],
-              rows: requests.map((req) {
-                final date = (req['timestamp'] as Timestamp?)?.toDate();
-                final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
-                final amount = (req['amount'] ?? 0.0).toDouble();
-                final memberId = req['memberId'] ?? 'Unknown';
-                final bank = req['bankDetails'] ?? {};
-                
-                final bankStr = "${bank['bankName'] ?? 'N/A'}\n${bank['accountName'] ?? 'N/A'}\n${bank['accountNumber'] ?? 'N/A'}\n${bank['branch'] ?? 'N/A'}";
+            child: SelectionArea(
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Date & Time')),
+                  DataColumn(label: Text('Member ID')),
+                  DataColumn(label: Text('Amount')),
+                  DataColumn(label: Text('Savings Balance')),
+                  DataColumn(label: Text('Bank Details')),
+                  DataColumn(label: Text('Actions')),
+                ],
+                rows: requests.map((req) {
+                  final date = (req['timestamp'] as Timestamp?)?.toDate();
+                  final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
+                  final amount = (req['amount'] ?? 0.0).toDouble();
+                  final memberId = req['memberId'] ?? 'Unknown';
+                  final bank = req['bankDetails'] ?? {};
+                  
+                  final bankStr = "${bank['bankName'] ?? 'N/A'}\n${bank['accountName'] ?? 'N/A'}\n${bank['accountNumber'] ?? 'N/A'}\n${bank['branch'] ?? 'N/A'}";
 
-                return DataRow(
-                  cells: [
-                    DataCell(Text(dateStr)),
-                    DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
-                    DataCell(
-                      FutureBuilder<double>(
-                        future: _service.getMemberSavingsBalance(memberId),
-                        builder: (context, balSnap) {
-                          if (balSnap.connectionState == ConnectionState.waiting) return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
-                          final bal = balSnap.data ?? 0.0;
-                          return Text('LKR ${NumberFormat('#,##0.00').format(bal)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold));
-                        }
-                      )
-                    ),
-                    DataCell(Text(bankStr)),
-                    DataCell(
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ElevatedButton.icon(
-                            onPressed: _isLoading ? null : () => _handleApprove(req['id'], memberId, amount),
-                            icon: const Icon(Icons.check, size: 16),
-                            label: const Text("Approve"),
-                            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-                          ),
-                          const SizedBox(width: 8),
-                          OutlinedButton.icon(
-                            onPressed: _isLoading ? null : () => _showRejectDialog(req['id'], memberId, amount),
-                            icon: const Icon(Icons.close, size: 16),
-                            label: const Text("Reject"),
-                            style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
-                          ),
-                        ],
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(dateStr)),
+                      DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold))),
+                      DataCell(
+                        FutureBuilder<double>(
+                          future: _service.getMemberSavingsBalance(memberId),
+                          builder: (context, balSnap) {
+                            if (balSnap.connectionState == ConnectionState.waiting) return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
+                            final bal = balSnap.data ?? 0.0;
+                            return Text('LKR ${NumberFormat('#,##0.00').format(bal)}', style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold));
+                          }
+                        )
                       ),
-                    ),
-                  ],
-                );
-              }).toList(),
+                      DataCell(Text(bankStr)),
+                      DataCell(
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ElevatedButton.icon(
+                              onPressed: _isLoading ? null : () => _handleApprove(req['id'], memberId, amount),
+                              icon: const Icon(Icons.check, size: 16),
+                              label: const Text("Approve"),
+                              style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              onPressed: _isLoading ? null : () => _showRejectDialog(req['id'], memberId, amount),
+                              icon: const Icon(Icons.close, size: 16),
+                              label: const Text("Reject"),
+                              style: OutlinedButton.styleFrom(foregroundColor: Colors.red),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
         );
@@ -188,53 +190,55 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
           ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Date & Time')),
-                DataColumn(label: Text('Member ID')),
-                DataColumn(label: Text('Amount')),
-                DataColumn(label: Text('Bank Details')),
-                DataColumn(label: Text('Status')),
-                DataColumn(label: Text('Reason (If Rejected)')),
-              ],
-              rows: requests.map((req) {
-                final date = (req['timestamp'] as Timestamp?)?.toDate();
-                final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
-                final amount = (req['amount'] ?? 0.0).toDouble();
-                final memberId = req['memberId'] ?? 'Unknown';
-                final status = req['status'] ?? 'unknown';
-                final reason = req['rejectReason'] ?? '-';
-                final bank = req['bankDetails'] ?? {};
-                
-                final bankStr = "${bank['bankName'] ?? 'N/A'}\n${bank['accountName'] ?? 'N/A'}\n${bank['accountNumber'] ?? 'N/A'}\n${bank['branch'] ?? 'N/A'}";
+            child: SelectionArea(
+              child: DataTable(
+                columns: const [
+                  DataColumn(label: Text('Date & Time')),
+                  DataColumn(label: Text('Member ID')),
+                  DataColumn(label: Text('Amount')),
+                  DataColumn(label: Text('Bank Details')),
+                  DataColumn(label: Text('Status')),
+                  DataColumn(label: Text('Reason (If Rejected)')),
+                ],
+                rows: requests.map((req) {
+                  final date = (req['timestamp'] as Timestamp?)?.toDate();
+                  final dateStr = date != null ? DateFormat('MMM dd, yyyy - hh:mm a').format(date) : 'N/A';
+                  final amount = (req['amount'] ?? 0.0).toDouble();
+                  final memberId = req['memberId'] ?? 'Unknown';
+                  final status = req['status'] ?? 'unknown';
+                  final reason = req['rejectReason'] ?? '-';
+                  final bank = req['bankDetails'] ?? {};
+                  
+                  final bankStr = "${bank['bankName'] ?? 'N/A'}\n${bank['accountName'] ?? 'N/A'}\n${bank['accountNumber'] ?? 'N/A'}\n${bank['branch'] ?? 'N/A'}";
 
-                return DataRow(
-                  cells: [
-                    DataCell(Text(dateStr)),
-                    DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                    DataCell(Text(bankStr)),
-                    DataCell(
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: status == 'approved' ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          status.toUpperCase(),
-                          style: TextStyle(
-                            color: status == 'approved' ? Colors.green : Colors.red,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
+                  return DataRow(
+                    cells: [
+                      DataCell(Text(dateStr)),
+                      DataCell(Text(memberId, style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text('LKR ${NumberFormat('#,##0.00').format(amount)}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                      DataCell(Text(bankStr)),
+                      DataCell(
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: status == 'approved' ? Colors.green.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            status.toUpperCase(),
+                            style: TextStyle(
+                              color: status == 'approved' ? Colors.green : Colors.red,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    DataCell(Text(reason)),
-                  ],
-                );
-              }).toList(),
+                      DataCell(Text(reason)),
+                    ],
+                  );
+                }).toList(),
+              ),
             ),
           ),
         );
@@ -280,47 +284,49 @@ class _WithdrawalRequestsPanelState extends State<WithdrawalRequestsPanel> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setState) {
-          return AlertDialog(
-            title: const Text('Reject Withdrawal'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('This will refund LKR ${NumberFormat('#,##0.00').format(amount)} to their savings balance.'),
-                  const SizedBox(height: 10),
-                  const Text('Select a reason:'),
-                  ..._rejectReasons.map((reason) => RadioListTile<String>(
-                    title: Text(reason),
-                    value: reason,
-                    groupValue: selectedReason,
-                    onChanged: (value) => setState(() => selectedReason = value),
-                    contentPadding: EdgeInsets.zero,
-                  )),
-                  if (selectedReason == 'Other')
-                    TextField(
-                      controller: otherController,
-                      decoration: const InputDecoration(
-                        labelText: 'Enter custom reason',
-                        border: OutlineInputBorder(),
+          return SelectionArea(
+            child: AlertDialog(
+              title: const Text('Reject Withdrawal'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('This will refund LKR ${NumberFormat('#,##0.00').format(amount)} to their savings balance.'),
+                    const SizedBox(height: 10),
+                    const Text('Select a reason:'),
+                    ..._rejectReasons.map((reason) => RadioListTile<String>(
+                      title: Text(reason),
+                      value: reason,
+                      groupValue: selectedReason,
+                      onChanged: (value) => setState(() => selectedReason = value),
+                      contentPadding: EdgeInsets.zero,
+                    )),
+                    if (selectedReason == 'Other')
+                      TextField(
+                        controller: otherController,
+                        decoration: const InputDecoration(
+                          labelText: 'Enter custom reason',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
+              actions: [
+                TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+                ElevatedButton(
+                  onPressed: selectedReason == null ? null : () {
+                    final reason = selectedReason == 'Other' ? otherController.text : selectedReason!;
+                    if (reason.isEmpty) return;
+                    Navigator.pop(context);
+                    _handleReject(requestId, memberId, amount, reason);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  child: const Text('Reject & Refund'),
+                ),
+              ],
             ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: selectedReason == null ? null : () {
-                  final reason = selectedReason == 'Other' ? otherController.text : selectedReason!;
-                  if (reason.isEmpty) return;
-                  Navigator.pop(context);
-                  _handleReject(requestId, memberId, amount, reason);
-                },
-                style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
-                child: const Text('Reject & Refund'),
-              ),
-            ],
           );
         },
       ),
