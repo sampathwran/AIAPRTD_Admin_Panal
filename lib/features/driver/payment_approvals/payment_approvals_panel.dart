@@ -211,9 +211,9 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                           ),
                         )
                       : TextButton.icon(
-                          onPressed: () => _viewSlip(imageUrl),
-                          icon: const Icon(Icons.image, size: 16),
-                          label: const Text('View Slip'),
+                          onPressed: () => _editApprovedPayment(paymentId, driverId, amount, imageUrl),
+                          icon: const Icon(Icons.edit_document, size: 16),
+                          label: const Text('Review & Edit'),
                         ),
                 ),
               ],
@@ -445,19 +445,158 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
             child: const Text('Yes, Approve'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true) return;
-
+    Future<void> _handleApprove(String paymentId, String driverId, double amount) async {
     setState(() => _isLoading = true);
     try {
-      await _service.approvePayment(paymentId, driverId, amount);
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment approved successfully.')));
+      await _paymentService.approvePayment(paymentId, driverId, amount);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment approved')));
+      }
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _editApprovedPayment(String paymentId, String driverId, double originalAmount, String imageUrl) {
+    final TextEditingController amountController = TextEditingController(text: originalAmount.toString());
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: SizedBox(
+          width: 600,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Edit Approved Payment', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              
+              // Content
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Image preview
+                    Expanded(
+                      flex: 1,
+                      child: Container(
+                        height: 300,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey[300]!),
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: imageUrl.isNotEmpty
+                              ? Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) => const Center(child: Text('Image Error')),
+                                )
+                              : const Center(child: Text('No Image')),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 20),
+                    // Form
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Payment Amount (LKR)', style: TextStyle(fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: amountController,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              prefixText: 'Rs. ',
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'Editing this will adjust the driver\'s outstanding balance automatically.',
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                          
+                          const SizedBox(height: 40),
+                          
+                          // Actions
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: _isLoading ? null : () {
+                                    final double? finalAmount = double.tryParse(amountController.text);
+                                    if (finalAmount == null || finalAmount <= 0) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text('Please enter a valid amount')),
+                                      );
+                                      return;
+                                    }
+                                    if (finalAmount == originalAmount) {
+                                      Navigator.pop(context);
+                                      return;
+                                    }
+                                    Navigator.pop(context);
+                                    _handleUpdateApproved(paymentId, driverId, originalAmount, finalAmount);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.blue,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(vertical: 16),
+                                  ),
+                                  child: const Text('Update Amount'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleUpdateApproved(String paymentId, String driverId, double oldAmount, double newAmount) async {
+    setState(() => _isLoading = true);
+    try {
+      await _paymentService.updateApprovedPayment(paymentId, driverId, oldAmount, newAmount);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment amount updated')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
