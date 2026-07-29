@@ -26,15 +26,35 @@ Map<String, dynamic> checkMembershipFeeStatus(Map<String, dynamic>? data) {
   ];
   final String currentMonthName = monthNames[now.month - 1];
   final String currentYearStr = now.year.toString();
+  
+  // Calculate target month for fee validation
+  // If today is < 5th, we check if the PREVIOUS month was paid (Grace Period).
+  // If today is >= 5th, we check if the CURRENT month is paid.
+  String targetMonthName = currentMonthName;
+  String targetYearStr = currentYearStr;
+  
+  if (currentDay < 5) {
+     int prevMonthIndex = now.month - 2;
+     int prevYear = now.year;
+     if (prevMonthIndex < 0) {
+        prevMonthIndex = 11;
+        prevYear -= 1;
+     }
+     targetMonthName = monthNames[prevMonthIndex];
+     targetYearStr = prevYear.toString();
+  }
 
   final List<dynamic> paymentHistory = data['payment_history'] ?? [];
-  final List<dynamic> pendingPayments = data['pending_payments'] ?? [];
-  final List<dynamic> allPaymentsToCheck = [...paymentHistory, ...pendingPayments];
+  final List<dynamic> allPaymentsToCheck = [...paymentHistory];
 
+  bool hasPaidForTargetMonth = false;
   bool hasPaidForCurrentMonth = false;
 
   for (var payment in allPaymentsToCheck) {
     if (payment is Map) {
+      final String pStatus = (payment['status'] ?? '').toString().trim().toLowerCase();
+      if (pStatus == 'pending' || pStatus == 'rejected') continue;
+      
       List<String> monthsToCheck = [];
       if (payment.containsKey('months') && payment['months'] is List) {
         monthsToCheck = (payment['months'] as List).map((m) => m.toString().trim().toLowerCase()).toList();
@@ -57,16 +77,25 @@ Map<String, dynamic> checkMembershipFeeStatus(Map<String, dynamic>? data) {
                                  pReason.contains('fee') || 
                                  pReason.contains('monthly');
 
-      if (monthsToCheck.contains(currentMonthName.toLowerCase()) &&
-          (pYear == currentYearStr || pYear.isEmpty) &&
-          isMembershipPayment) {
-        hasPaidForCurrentMonth = true;
-        break;
+      if (isMembershipPayment) {
+        if (monthsToCheck.contains(currentMonthName.toLowerCase()) && (pYear == currentYearStr || pYear.isEmpty)) {
+          hasPaidForCurrentMonth = true;
+        }
+        if (monthsToCheck.contains(targetMonthName.toLowerCase()) && (pYear == targetYearStr || pYear.isEmpty)) {
+          hasPaidForTargetMonth = true;
+        }
       }
     }
   }
+  
+  if (hasPaidForCurrentMonth) {
+    return {
+      'isFeePaidValid': true,
+      'reason': '',
+    };
+  }
 
-  if (currentDay >= 5 && !hasPaidForCurrentMonth) {
+  if (!hasPaidForTargetMonth) {
     return {
       'isFeePaidValid': false,
       'reason': 'Pending Membership Fee 💰',
@@ -178,7 +207,9 @@ Map<String, dynamic> checkMemberSystemStatus(Map<String, dynamic>? memberData) {
   }
 
   final dynamic rawDocuments =
-      memberData['documents'] ?? memberData['complianceDocuments'];
+      memberData['documents'] ??
+      memberData['complianceDocuments'] ??
+      (memberData['currentVehicle'] is Map ? memberData['currentVehicle']['documents'] : null);
 
   if (rawDocuments is List) {
     for (int i = 0; i < requiredComplianceDocs.length; i++) {
@@ -358,26 +389,6 @@ bool _isDocumentExpired(Map<dynamic, dynamic> document) {
 }
 
 Map<String, dynamic> calculateMemberStatus(Map<String, dynamic> activeData) {
-  // If the Member app has already calculated and synced the profile_status, use it directly!
-  if (activeData.containsKey('profile_status')) {
-    final bool isActive = activeData['profile_status'] == 'active member';
-    
-    String reasonStr = '';
-    if (activeData['inactive_reasons'] is List) {
-       final reasons = List<String>.from(activeData['inactive_reasons']);
-       reasonStr = reasons.join(' • ');
-    } else {
-       reasonStr = activeData['inactiveReason']?.toString() ?? '';
-    }
-
-    return {
-      'isActive': isActive,
-      'reason': reasonStr,
-      'source': 'synced_profile_status',
-    };
-  }
-
-  // Fallback for members who haven't updated their app yet
   List<String> reasons = [];
   bool isActive = true;
 
@@ -421,6 +432,6 @@ Map<String, dynamic> calculateMemberStatus(Map<String, dynamic> activeData) {
   return {
     'isActive': isActive,
     'reason': reasons.join(' • '),
-    'source': 'legacy_fallback',
+    'source': 'dynamic_calculation',
   };
 }

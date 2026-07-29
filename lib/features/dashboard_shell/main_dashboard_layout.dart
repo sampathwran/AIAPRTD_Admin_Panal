@@ -20,11 +20,13 @@ import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/system_s
 import 'package:aiaprtd_admin_dashboard/features/driver/membership_approvals/membership_fee_approvals_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/vehicle_category_rates/vehicle_category_rates_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/finance/finance_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/member_benefits/member_benefits_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/active_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/online_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/offline_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/inactive_members_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/new_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/ongoing_trips_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/today_complete_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/canceled_trips_panel.dart';
@@ -70,6 +72,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         return OfflineMembersPanel(onBack: goBack);
       case 'Inactive Members':
         return InactiveMembersPanel(onBack: goBack);
+      case 'New Members':
+        return NewMembersPanel(onBack: goBack);
       case 'Scheduled Bookings':
         return ScheduledBookingsFullPanel(onBack: goBack);
       case 'Ongoing Trips':
@@ -113,6 +117,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         return const MembershipFeeApprovalsPanel();
       case 12:
         return const FinancePanel();
+      case 13:
+        return const MemberBenefitsPanel();
       default:
         return const DriversOverviewPanel();
     }
@@ -133,8 +139,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           currentMenuTitles.length - 1,
         )];
 
-    return Scaffold(
-      backgroundColor: AdminColors.canvas,
+    return SelectionArea(
+      child: Scaffold(
+        backgroundColor: AdminColors.canvas,
       body: Row(
         children: [
           AdminSidebar(
@@ -192,7 +199,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           ),
         ],
       ),
-    );
+    ));
   }
 }
 

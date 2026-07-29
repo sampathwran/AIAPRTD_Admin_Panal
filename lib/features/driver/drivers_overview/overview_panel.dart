@@ -4,6 +4,7 @@ import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
 import 'package:aiaprtd_admin_dashboard/core/widgets/modern_chart_card.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/widgets/dashboard_stats_grid.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/live_tracking_map.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/widgets/daily_trip_summary_section.dart';
 
 class OverviewPanel extends StatefulWidget {
   final Function(String pageTitle) onSubPageSelected;
@@ -30,6 +31,8 @@ class _OverviewPanelState extends State<OverviewPanel> {
             DashboardStatsGrid(onCardTap: widget.onSubPageSelected),
             const SizedBox(height: 24),
             _OperationsPulse(),
+            const SizedBox(height: 24),
+            const DailyTripSummarySection(),
             const SizedBox(height: 24),
             const _LiveMapSection(),
           ],

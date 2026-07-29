@@ -67,7 +67,7 @@ class LiveTrackingMap extends StatefulWidget {
 }
 
 class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderStateMixin {
-  final Map<String, BitmapDescriptor> _cachedVehicleIcons = {};
+  final Map<String, Map<int, BitmapDescriptor>> _cachedVehicleIcons = {};
   final Map<String, BitmapDescriptor> _badgeCache = {};
   final Set<String> _generatingBadges = {};
   
@@ -77,7 +77,7 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
   final Map<String, VehicleTracker> _trackers = {};
   final ValueNotifier<Set<Marker>> _markersNotifier = ValueNotifier({});
 
-  static const LatLng _sriLankaCenter = LatLng(7.0011, 79.9497);
+  static const LatLng _sriLankaCenter = LatLng(7.8731, 80.7718);
 
   @override
   void initState() {
@@ -117,6 +117,28 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
         .asUint8List();
   }
 
+  Future<BitmapDescriptor> _createRotatedIcon(ui.Image image, double angle) async {
+    final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
+    final Canvas canvas = Canvas(pictureRecorder);
+    
+    final double size = math.sqrt(image.width * image.width + image.height * image.height);
+    final double halfSize = size / 2;
+    
+    canvas.translate(halfSize, halfSize);
+    canvas.rotate(angle * math.pi / 180.0);
+    canvas.translate(-image.width / 2, -image.height / 2);
+    
+    // Draw with high quality
+    final paint = Paint()
+      ..isAntiAlias = true
+      ..filterQuality = FilterQuality.high;
+    canvas.drawImage(image, Offset.zero, paint);
+    
+    final ui.Image rotatedImage = await pictureRecorder.endRecording().toImage(size.toInt(), size.toInt());
+    final ByteData? byteData = await rotatedImage.toByteData(format: ui.ImageByteFormat.png);
+    return BitmapDescriptor.bytes(byteData!.buffer.asUint8List());
+  }
+
   Future<void> _loadVehicleAssetIcons() async {
     final Map<String, String> iconPaths = {
       'budget': 'assets/vehicle_icons/budget_marker.png',
@@ -129,11 +151,18 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
     try {
       for (var entry in iconPaths.entries) {
-        final Uint8List markerIcon = await _getBytesFromAsset(entry.value, 45); // Smaller icon
-        final BitmapDescriptor icon = BitmapDescriptor.bytes(markerIcon);
-        _cachedVehicleIcons[entry.key] = icon;
+        final Uint8List markerIconBytes = await _getBytesFromAsset(entry.value, 45); // Smaller icon
+        ui.Codec codec = await ui.instantiateImageCodec(markerIconBytes);
+        ui.FrameInfo frameInfo = await codec.getNextFrame();
+        ui.Image image = frameInfo.image;
+        
+        Map<int, BitmapDescriptor> angles = {};
+        for (int i = 0; i < 360; i += 10) {
+           angles[i] = await _createRotatedIcon(image, i.toDouble());
+        }
+        _cachedVehicleIcons[entry.key] = angles;
       }
-      debugPrint("✅ ADMIN MAP ENGINE: Base vehicle icons ready.");
+      debugPrint("✅ ADMIN MAP ENGINE: Pre-rotated base vehicle icons ready.");
     } catch (e) {
       debugPrint("❌ ASSET LOGO ERROR: $e");
     }
@@ -188,25 +217,40 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
             tracker.memberNo = memberNo;
             tracker.isAvailable = isAvailable;
 
-            if (tracker.currentPosition.latitude != newPos.latitude || tracker.currentPosition.longitude != newPos.longitude) {
-              tracker.latAnimation = Tween<double>(begin: tracker.currentPosition.latitude, end: newPos.latitude).animate(tracker.controller);
-              tracker.lngAnimation = Tween<double>(begin: tracker.currentPosition.longitude, end: newPos.longitude).animate(tracker.controller);
-              
-              // Dynamically calculate heading based on movement if missing or 0
-              if (heading == 0.0) {
-                 heading = _calculateHeading(tracker.currentPosition, newPos);
+            bool positionChanged = tracker.currentPosition.latitude != newPos.latitude || tracker.currentPosition.longitude != newPos.longitude;
+            
+            // If DB doesn't provide heading, calculate from movement. Otherwise trust the member app's compass.
+            if (heading == 0.0 && positionChanged) {
+               heading = _calculateHeading(tracker.currentPosition, newPos);
+            }
+            if (heading == 0.0) {
+               heading = tracker.currentHeading;
+            }
+
+            bool headingChanged = (heading - tracker.currentHeading).abs() > 0.1;
+
+            if (positionChanged || headingChanged) {
+              if (positionChanged) {
+                tracker.latAnimation = Tween<double>(begin: tracker.currentPosition.latitude, end: newPos.latitude).animate(tracker.controller);
+                tracker.lngAnimation = Tween<double>(begin: tracker.currentPosition.longitude, end: newPos.longitude).animate(tracker.controller);
+                tracker.currentPosition = newPos;
+              } else {
+                tracker.latAnimation = AlwaysStoppedAnimation(tracker.currentPosition.latitude);
+                tracker.lngAnimation = AlwaysStoppedAnimation(tracker.currentPosition.longitude);
               }
 
-              double startHeading = tracker.currentHeading;
-              double endHeading = heading;
-              double diff = endHeading - startHeading;
-              if (diff > 180) endHeading -= 360;
-              if (diff < -180) endHeading += 360;
+              if (headingChanged) {
+                double startHeading = tracker.currentHeading;
+                double endHeading = heading;
+                double diff = endHeading - startHeading;
+                if (diff > 180) endHeading -= 360;
+                if (diff < -180) endHeading += 360;
 
-              tracker.headingAnimation = Tween<double>(begin: startHeading, end: endHeading).animate(tracker.controller);
-
-              tracker.currentPosition = newPos;
-              tracker.currentHeading = heading;
+                tracker.headingAnimation = Tween<double>(begin: startHeading, end: endHeading).animate(tracker.controller);
+                tracker.currentHeading = heading;
+              } else {
+                tracker.headingAnimation = AlwaysStoppedAnimation(tracker.currentHeading);
+              }
               
               tracker.controller.forward(from: 0.0);
             }
@@ -292,35 +336,35 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
     final ui.PictureRecorder pictureRecorder = ui.PictureRecorder();
     final Canvas canvas = Canvas(pictureRecorder);
     
-    // Smaller dimensions so it scales well when zooming out
-    const double width = 80;
-    const double height = 100; 
+    // Smaller dimensions so it scales well when zooming out and brings badge closer
+    const double width = 60;
+    const double height = 48; 
     
     final TextPainter textPainter = TextPainter(textDirection: TextDirection.ltr);
     textPainter.text = TextSpan(
       text: last4,
       style: const TextStyle(
-        fontSize: 16,
+        fontSize: 12,
         color: Colors.white,
         fontWeight: FontWeight.w900,
-        letterSpacing: 1.0,
+        letterSpacing: 0.5,
       ),
     );
     textPainter.layout();
     
-    final double paddingHorizontal = 8.0;
-    final double paddingVertical = 4.0;
+    final double paddingHorizontal = 6.0;
+    final double paddingVertical = 3.0;
     
     final double boxWidth = textPainter.width + (paddingHorizontal * 2);
     final double boxHeight = textPainter.height + (paddingVertical * 2);
     
     final double startX = (width - boxWidth) / 2;
-    final double startY = 10.0; // Space for shadow
+    final double startY = 8.0; // Space for shadow
     
     final Path tooltipPath = Path();
-    final double radius = 6.0;
-    final double arrowWidth = 10.0;
-    final double arrowHeight = 6.0;
+    final double radius = 4.0;
+    final double arrowWidth = 8.0;
+    final double arrowHeight = 5.0;
 
     tooltipPath.moveTo(startX + radius, startY);
     tooltipPath.lineTo(startX + boxWidth - radius, startY);
@@ -388,14 +432,19 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
 
       final LatLng pos = tracker.interpolatedPosition;
       final double heading = tracker.interpolatedHeading;
+  
+      int roundedHeading = ((heading / 10).round() * 10) % 360;
+      if (roundedHeading < 0) roundedHeading += 360;
+      
+      final Map<int, BitmapDescriptor>? angles = _cachedVehicleIcons[tracker.categoryKey];
+      final BitmapDescriptor carIcon = (angles != null && angles.containsKey(roundedHeading)) ? angles[roundedHeading]! : BitmapDescriptor.defaultMarker;
 
-      // 1. Vehicle Marker (rotates correctly with heading)
-      final BitmapDescriptor carIcon = _cachedVehicleIcons[tracker.categoryKey] ?? BitmapDescriptor.defaultMarker;
+      // 1. Vehicle Marker (Using pre-rotated icon to bypass Web rotation bug)
       newMarkers.add(
         Marker(
           markerId: MarkerId(tracker.id),
           position: pos,
-          rotation: heading,
+          rotation: 0, // Keep 0 since the image itself is already rotated!
           flat: true,
           anchor: const Offset(0.5, 0.5),
           icon: carIcon,
@@ -445,7 +494,7 @@ class _LiveTrackingMapState extends State<LiveTrackingMap> with TickerProviderSt
         return GoogleMap(
           initialCameraPosition: const CameraPosition(
             target: _sriLankaCenter,
-            zoom: 13.5,
+            zoom: 7.5,
           ),
           zoomControlsEnabled: true,
           mapType: MapType.normal,

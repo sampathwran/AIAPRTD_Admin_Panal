@@ -290,12 +290,9 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                         itemExtent: 65,
                                         itemBuilder: (context, index) {
                                           final driver = filteredMembers[index];
-                                          final statusResult = calculateMemberStatus(driver);
-                                          final bool isActive = statusResult['isActive'] == true;
-                                          final String inactiveReason = statusResult['reason'] ?? '';
-                                          final String statusText = isActive 
-                                              ? 'ACTIVE MEMBER' 
-                                              : (inactiveReason.isNotEmpty ? 'INACTIVE: $inactiveReason' : 'INACTIVE MEMBER');
+                                          final String profileStatusStr = (driver['profile_status'] ?? '').toString().toUpperCase();
+                                          final bool isActive = profileStatusStr == 'ACTIVE MEMBER';
+                                          final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
 
                                           // 💡 FIXED: මෙතන තිබුණු Bracket issues සියල්ලම ක්ලීන් කරලා සම්පූර්ණ Row එක පිළිවෙලට හැදුවා මචං
                                           return Container(
@@ -385,11 +382,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                     alignment:
                                                         Alignment.centerLeft,
                                                     child: Tooltip(
-                                                      message: isActive 
-                                                          ? 'Active Member' 
-                                                          : inactiveReason.isNotEmpty 
-                                                              ? inactiveReason 
-                                                              : 'Inactive Member',
+                                                      message: isActive ? 'Active Member' : 'Inactive Member',
                                                       child: Container(
                                                         padding:
                                                             const EdgeInsets.symmetric(

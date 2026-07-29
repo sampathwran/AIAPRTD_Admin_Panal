@@ -42,8 +42,8 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
 
     // 💡 Realtime Filtering: Status එක 'active' නොවන (pending/inactive) අය වෙන් කරලා ගන්නවා
     final inactiveMembers = memberProvider.allMembersList.where((driver) {
-      final status = driver['status']?.toString().toLowerCase() ?? '';
-      return status != 'active' && status != 'active member';
+      final String profileStatusStr = (driver['profile_status'] ?? '').toString().toUpperCase();
+      return profileStatusStr != 'ACTIVE MEMBER';
     }).toList();
 
     final filteredMembers = inactiveMembers.where((driver) {

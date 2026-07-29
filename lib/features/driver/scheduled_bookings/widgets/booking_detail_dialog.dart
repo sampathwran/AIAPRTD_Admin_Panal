@@ -7,6 +7,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/scheduled_bookings/widgets/booking_timeline.dart';
 
@@ -52,7 +53,7 @@ class BookingDetailDialog extends StatelessWidget {
     LatLng? pickupPoint;
     LatLng? dropPoint;
 
-    final pickupLoc = data['pickupLocation'];
+    final pickupLoc = data['pickupLocation'] ?? data['startLocation'];
     if (pickupLoc is Map) {
       final lat = _toDouble(pickupLoc['latitude'] ?? pickupLoc['lat']);
       final lng = _toDouble(pickupLoc['longitude'] ?? pickupLoc['lng']);
@@ -63,7 +64,7 @@ class BookingDetailDialog extends StatelessWidget {
       if (lat != 0 && lng != 0) pickupPoint = LatLng(lat, lng);
     }
 
-    final dropLoc = data['dropLocation'];
+    final dropLoc = data['dropLocation'] ?? data['endLocation'];
     if (dropLoc is Map) {
       final lat = _toDouble(dropLoc['latitude'] ?? dropLoc['lat']);
       final lng = _toDouble(dropLoc['longitude'] ?? dropLoc['lng']);
@@ -82,12 +83,29 @@ class BookingDetailDialog extends StatelessWidget {
     final String cancelReason = data['cancelReason'] ?? 'No reason provided';
     final String cancelledBy = data['cancelledBy'] ?? 'Unknown';
     final String passengerName = data['memberName'] ?? data['memberId'] ?? '';
-    final String driverName = data['driverName'] ?? driverMemberId ?? '';
+    final String baseDriverName = data['driverName'] ?? driverMemberId ?? '';
+    final String driverName = (driverMemberId != null && driverMemberId.isNotEmpty && baseDriverName != driverMemberId)
+        ? '$baseDriverName - $driverMemberId'
+        : baseDriverName;
 
     debugPrint(
       '📦 BookingDetailDialog: status=$status driverId=$driverMemberId '
       'pickup=$pickupPoint drop=$dropPoint',
     );
+
+    final bool isRoadPickup = data['isRoadPickup'] == true;
+
+    DateTime? parseDate(dynamic val) {
+      if (val == null) return null;
+      if (val is Timestamp) return val.toDate();
+      if (val is int) return DateTime.fromMillisecondsSinceEpoch(val);
+      if (val is String) return DateTime.tryParse(val);
+      return null;
+    }
+    
+    final startedAt = parseDate(data['startedAt'] ?? data['tripStartTime'] ?? data['createdAt']);
+    final endedAt = parseDate(data['completedAt'] ?? data['tripEndTime'] ?? data['endTime']);
+    final timeFormat = DateFormat('hh:mm a');
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -105,6 +123,84 @@ class BookingDetailDialog extends StatelessWidget {
                 passengerName: passengerName,
                 driverName: driverName,
               ),
+
+              // ── Trip Details Banner (All Trips) ─────────────────────
+              Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    border: Border(bottom: BorderSide(color: Colors.blue.shade100)),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.my_location, size: 16, color: Colors.green),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    data['pickupAddress'] ?? data['startAddress'] ?? 'Unknown Pickup',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              children: [
+                                const Icon(Icons.location_on, size: 16, color: Colors.red),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    data['dropAddress'] ?? data['endAddress'] ?? data['destAddress'] ?? 'Unknown Drop',
+                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Container(width: 1, height: 40, color: Colors.blue.shade200),
+                      const SizedBox(width: 16),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          if (isRoadPickup) ...[
+                            Text(
+                              'Started: ${startedAt != null ? timeFormat.format(startedAt.toLocal()) : 'N/A'}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Ended: ${endedAt != null ? timeFormat.format(endedAt.toLocal()) : 'N/A'}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                          ] else ...[
+                            Text(
+                              'Est: Rs ${data['estimateFare'] ?? '0.00'}',
+                              style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          Text(
+                            'Actual: Rs ${data['totalFare'] ?? data['finalFare'] ?? data['fare'] ?? 'N/A'}',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue.shade800),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
 
               // ── Info banners ─────────────────────────────────────────────
               if (status == 'cancelled')

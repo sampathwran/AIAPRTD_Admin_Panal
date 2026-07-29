@@ -18,8 +18,8 @@ class DashboardStatsGrid extends StatelessWidget {
 
     final totalMembersCount = allMembers.length;
     final activeMembersCount = allMembers.where((d) {
-      final statusResult = calculateMemberStatus(d);
-      return statusResult['isActive'] == true;
+      final String profileStatusStr = (d['profile_status'] ?? '').toString().toUpperCase();
+      return profileStatusStr == 'ACTIVE MEMBER';
     }).length;
     final onlineMembersCount = allMembers
         .where((d) => d['isOnline'] == true || d['onlineStatus'] == 'online')
@@ -29,15 +29,16 @@ class DashboardStatsGrid extends StatelessWidget {
       return !isOnline;
     }).length;
     final inactiveMembersCount = allMembers.where((d) {
-      final statusResult = calculateMemberStatus(d);
-      return statusResult['isActive'] != true;
+      final String profileStatusStr = (d['profile_status'] ?? '').toString().toUpperCase();
+      return profileStatusStr != 'ACTIVE MEMBER';
     }).length;
+    final newMembersCount = allMembers.where((d) => d['adminViewedAt'] == null).length;
     
     return LayoutBuilder(
       builder: (context, constraints) {
-        int crossAxisCount = 5;
-        if (constraints.maxWidth < 1100) crossAxisCount = 4;
-        if (constraints.maxWidth < 800) crossAxisCount = 2;
+        int crossAxisCount = 6;
+        if (constraints.maxWidth < 1300) crossAxisCount = 3;
+        if (constraints.maxWidth < 900) crossAxisCount = 2;
         if (constraints.maxWidth < 500) crossAxisCount = 1;
 
         return GridView.count(
@@ -96,6 +97,16 @@ class DashboardStatsGrid extends StatelessWidget {
                 icon: Icons.person_off_rounded,
                 iconColor: AdminColors.danger,
                 bottomWidget: _buildTrend('Suspended/Pending'),
+              ),
+            ),
+            InkWell(
+              onTap: () => onCardTap('New Members'),
+              child: ModernStatCard(
+                title: 'New Members',
+                value: newMembersCount.toString(),
+                icon: Icons.new_releases_rounded,
+                iconColor: const Color(0xFFE11D48), // Rose
+                bottomWidget: _buildTrend('Unacknowledged'),
               ),
             ),
           ],

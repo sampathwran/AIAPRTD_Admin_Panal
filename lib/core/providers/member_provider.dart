@@ -6,6 +6,7 @@ import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 class MemberProvider with ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _memberSubscription;
   StreamSubscription<QuerySnapshot>? _inactiveReasonsSubscription;
+  StreamSubscription<QuerySnapshot>? _appMembershipFeeSubscription;
 
   int _selectedMenuIndex = 0;
   bool _isLoading = false;
@@ -13,6 +14,9 @@ class MemberProvider with ChangeNotifier {
 
   // 📌 Cache: membershipNo => { 'status': 'ACTIVE'/'INACTIVE', 'reasons': [...] }
   final Map<String, Map<String, dynamic>> _cachedInactiveReasons = {};
+  
+  // 📌 Cache: membershipNo => payment_history list
+  final Map<String, List<dynamic>> _cachedMembershipFees = {};
 
   int get selectedMenuIndex => _selectedMenuIndex;
   bool get isLoading => _isLoading;
@@ -108,6 +112,7 @@ class MemberProvider with ChangeNotifier {
 
     setLoading(true);
 
+    _startListeningToAppMembershipFees();
     _startListeningToInactiveReasons();
 
     _memberSubscription = firestore
@@ -207,6 +212,7 @@ class MemberProvider with ChangeNotifier {
 
             // 📌 Apply cached inactive reasons to freshly loaded member list
             _applyCachedInactiveReasons();
+            _applyCachedMembershipFees();
 
             notifyListeners(); // 🔄 UI එකට Data යවනවා
 
@@ -290,6 +296,98 @@ class MemberProvider with ChangeNotifier {
   }
 
   // =========================================================================
+  // 📌 APPLY CACHED MEMBERSHIP FEES TO MEMBER LIST
+  // =========================================================================
+  void _applyCachedMembershipFees() {
+    int appliedCount = 0;
+    for (var i = 0; i < _allMembersList.length; i++) {
+      final mNo = _allMembersList[i]['membershipNo']?.toString() ?? '';
+      if (mNo.isNotEmpty && _cachedMembershipFees.containsKey(mNo)) {
+        _allMembersList[i]['payment_history'] = _cachedMembershipFees[mNo];
+        appliedCount++;
+      }
+    }
+    debugPrint('📌 APPLY CACHE: Applied membership fees to $appliedCount / ${_allMembersList.length} members');
+  }
+
+  // =========================================================================
+  // 🔄 STREAM: app_membership_fee (Real-Time)
+  // =========================================================================
+  void _startListeningToAppMembershipFees() {
+    if (_appMembershipFeeSubscription != null) {
+      _appMembershipFeeSubscription?.cancel();
+    }
+    
+    _appMembershipFeeSubscription = FirebaseFirestore.instance
+        .collection('app_membership_fee')
+        .snapshots()
+        .listen((querySnapshot) {
+      debugPrint('🔄 MEMBERSHIP FEES STREAM: Received ${querySnapshot.docs.length} docs');
+      bool hasUpdates = false;
+
+      for (var doc in querySnapshot.docs) {
+        final mNo = doc.id;
+        final data = doc.data() as Map<String, dynamic>;
+        
+        final List<dynamic> history = data['payment_history'] ?? [];
+        _cachedMembershipFees[mNo] = history;
+
+        final index = _allMembersList.indexWhere((m) => m['membershipNo'] == mNo);
+        if (index != -1) {
+          _allMembersList[index]['payment_history'] = history;
+          
+          // Re-evaluate the fee status and write back to member_inactive_reasons if needed
+          final Map<String, dynamic> feeCheck = checkMembershipFeeStatus(_allMembersList[index]);
+          if (feeCheck['isFeePaidValid'] == false) {
+             // We detect that the fee is invalid for this month.
+             // If member_inactive_reasons doesn't show it as pending, update it.
+             _ensureFeeStatusInDatabase(mNo, 'pending', 'INACTIVE');
+          } else {
+             _ensureFeeStatusInDatabase(mNo, 'approved', null); // Don't force ACTIVE, let other fields decide
+          }
+          
+          hasUpdates = true;
+        }
+      }
+
+      if (hasUpdates) {
+        notifyListeners();
+      }
+    });
+  }
+
+  Future<void> _ensureFeeStatusInDatabase(String mNo, String feeStatus, String? overallStatusOverride) async {
+    try {
+      final docRef = FirebaseFirestore.instance.collection('member_inactive_reasons').doc(mNo);
+      final docSnap = await docRef.get();
+      if (docSnap.exists) {
+         final data = docSnap.data() as Map<String, dynamic>;
+         final currentFeeStatus = data['membership_fee']?.toString().toLowerCase();
+         final currentMainStatus = data['status']?.toString().toUpperCase();
+         
+         bool needsUpdate = false;
+         Map<String, dynamic> updates = {};
+         
+         if (currentFeeStatus != feeStatus) {
+            updates['membership_fee'] = feeStatus;
+            needsUpdate = true;
+         }
+         
+         if (overallStatusOverride != null && currentMainStatus != overallStatusOverride) {
+            updates['status'] = overallStatusOverride;
+            needsUpdate = true;
+         }
+         
+         if (needsUpdate) {
+            await docRef.update(updates);
+         }
+      }
+    } catch (e) {
+      debugPrint('Error updating fee status in DB for $mNo: $e');
+    }
+  }
+
+  // =========================================================================
   // 🔄 STREAM: member_inactive_reasons (Real-Time)
   // =========================================================================
   void _startListeningToInactiveReasons() {
@@ -308,17 +406,51 @@ class MemberProvider with ChangeNotifier {
         final mNo = doc.id;
         final data = doc.data() as Map<String, dynamic>;
         
-        final String status = data['status']?.toString().toUpperCase() ?? '';
-        final String profileStatus = status == 'ACTIVE' ? 'active member' : 'inactive member';
-        
         List<String> inactiveReasons = [];
+        
+        // 1. Check for manual blocks
+        if (data['admin_block_permanently'] == true) inactiveReasons.add('Permanently Blocked');
+        if (data['admin_block_temporarily'] == true) inactiveReasons.add('Temporarily Blocked');
+        
+        // 2. Check all required approval fields
+        final approvalFields = {
+          'membership_fee': 'Membership Fee',
+          'driving_licence': 'Driving Licence',
+          'face_verification': 'Face Verification',
+          'id_card_image': 'ID Card Image',
+          'insurance_policy': 'Insurance Policy',
+          'kyc_details': 'KYC Details',
+          'profile_image': 'Profile Image',
+          'revenue_licence': 'Revenue Licence',
+          'vehicle_registration_document': 'Vehicle Registration',
+          'vehicle_image_front': 'Vehicle Front Image',
+          'vehicle_image_back': 'Vehicle Back Image',
+          'vehicle_image_left_side': 'Vehicle Left Side Image',
+          'vehicle_image_right_side': 'Vehicle Right Side Image',
+          'vehicle_image_interior': 'Vehicle Interior Image',
+        };
+        
+        for (var entry in approvalFields.entries) {
+          final val = data[entry.key]?.toString().toLowerCase();
+          // If a field exists and is NOT approved, add it as a reason
+          if (val != null && val != 'approved') {
+            inactiveReasons.add('${entry.value} is $val');
+          }
+        }
+        
+        // 3. Add legacy issues if present
         final issues = data['issues'];
         if (issues is List) {
-          inactiveReasons = issues
+          final legacyReasons = issues
               .map((e) => (e is Map ? e['reason'] ?? '' : '').toString())
-              .where((r) => r.isNotEmpty)
-              .toList();
+              .where((r) => r.isNotEmpty);
+          inactiveReasons.addAll(legacyReasons);
         }
+        
+        inactiveReasons = inactiveReasons.toSet().toList();
+        
+        // Evaluate true profile status
+        final String profileStatus = inactiveReasons.isEmpty ? 'active member' : 'inactive member';
 
         // Update cache regardless of whether member is in memory yet
         _cachedInactiveReasons[mNo] = {
@@ -345,6 +477,7 @@ class MemberProvider with ChangeNotifier {
   void dispose() {
     _memberSubscription?.cancel();
     _inactiveReasonsSubscription?.cancel();
+    _appMembershipFeeSubscription?.cancel();
     super.dispose();
   }
 }

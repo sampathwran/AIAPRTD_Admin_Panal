@@ -22,7 +22,8 @@ class DriverProfileDialog extends StatelessWidget {
     final Color statusColor = isActive ? Colors.green.shade700 : Colors.red.shade700;
     final Color statusBg = isActive ? Colors.green.shade50 : Colors.red.shade50;
 
-    return Dialog(
+    return SelectionArea(
+      child: Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Container(
         width: 700,
@@ -73,6 +74,7 @@ class DriverProfileDialog extends StatelessWidget {
             ),
           ],
         ),
+      ),
       ),
     );
   }

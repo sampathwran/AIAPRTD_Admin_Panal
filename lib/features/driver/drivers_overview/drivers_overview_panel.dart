@@ -16,6 +16,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_pan
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/today_complete_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/upcoming_bookings_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/new_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 
 class DriversOverviewPanel extends StatefulWidget {
@@ -59,6 +60,7 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
         CanceledTripsPanel(onBack: _navigateToDashboard),
         ComplaintsPanel(onBack: _navigateToDashboard),
         UpcomingBookingsPanel(onBack: _navigateToDashboard),
+        NewMembersPanel(onBack: _navigateToDashboard),
       ],
     );
   }
@@ -78,6 +80,8 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
     }).length;
     final onlineMembers = allDrivers.where(_isOnline).length;
     final offlineMembers = totalMembers - onlineMembers;
+    final newMembersCount = allDrivers.where((d) => d['adminViewedAt'] == null).length;
+
     final now = DateTime.now();
     final startOfToday = DateTime(now.year, now.month, now.day);
 
@@ -130,8 +134,19 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
                   const Color(0xFF64748B),
                   5,
                 ),
+                _metricCard(
+                  'New Members',
+                  newMembersCount.toString(),
+                  Icons.new_releases_rounded,
+                  const Color(0xFFE11D48), // Rose
+                  11,
+                ),
               ],
             ),
+            const SizedBox(height: 22),
+            _buildSectionHeading('DAILY TRIP SUMMARY'),
+            const SizedBox(height: 12),
+            const _DailyTripSummarySection(),
             const SizedBox(height: 22),
             _buildSectionHeading('VEHICLE CATEGORY LIVE MAP'),
             const SizedBox(height: 12),
@@ -898,6 +913,246 @@ class _DriverMapItem {
     required this.modelName,
     required this.available,
   });
+}
+
+class _DailyTripSummarySection extends StatefulWidget {
+  const _DailyTripSummarySection();
+
+  @override
+  State<_DailyTripSummarySection> createState() => _DailyTripSummarySectionState();
+}
+
+class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
+  bool _isLoading = true;
+  int _totalBookings = 0;
+  int _totalRoadPickups = 0;
+  int _ongoingTrips = 0;
+  int _cancelTrips = 0;
+  double _totalTransactions = 0;
+  double _unionIncomes = 0;
+  int _transactionRequests = 0;
+
+  Timer? _refreshTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDailySummary();
+    _refreshTimer = Timer.periodic(const Duration(minutes: 1), (_) => _fetchDailySummary());
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchDailySummary() async {
+    final now = DateTime.now();
+    final startOfToday = DateTime(now.year, now.month, now.day);
+    final dateStr = "${startOfToday.year}.${startOfToday.month.toString().padLeft(2, '0')}.${startOfToday.day.toString().padLeft(2, '0')}";
+
+    int bookings = 0;
+    int roadPickups = 0;
+    int ongoing = 0;
+    int cancelled = 0;
+    double money = 0;
+    double unionMoney = 0;
+    int txnRequests = 0;
+
+    try {
+      final bookingsSnap = await FirebaseFirestore.instance
+          .collection('all_bookings')
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+          .get();
+      bookings += bookingsSnap.docs.length;
+      for (var doc in bookingsSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        money += double.tryParse(data['totalFare']?.toString() ?? data['estimateFare']?.toString() ?? '0') ?? 0;
+        unionMoney += double.tryParse(data['unionFee']?.toString() ?? data['commission']?.toString() ?? '0') ?? 0;
+      }
+
+      final dailyTripsSnap = await FirebaseFirestore.instance
+          .collection('dayly_trips')
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+          .get();
+      bookings += dailyTripsSnap.docs.length;
+      for (var doc in dailyTripsSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        money += double.tryParse(data['totalFare']?.toString() ?? data['fare']?.toString() ?? '0') ?? 0;
+        unionMoney += double.tryParse(data['unionFee']?.toString() ?? data['commission']?.toString() ?? '0') ?? 0;
+      }
+
+      final memberSnap = await FirebaseFirestore.instance.collection('member').get();
+      final allMembershipNumbers = memberSnap.docs.map((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String originalMemNo = data['membershipNo']?.toString() ?? '';
+        return originalMemNo.isNotEmpty && originalMemNo != '-' ? originalMemNo : doc.id;
+      }).toList();
+
+      List<Future<void>> pickupFutures = [];
+      for (String memNo in allMembershipNumbers) {
+        if (memNo.isEmpty || memNo == '-') continue;
+        pickupFutures.add(
+          FirebaseFirestore.instance
+              .collection('roadpickups_hires')
+              .doc(dateStr)
+              .collection(memNo)
+              .get()
+              .then((snap) {
+                roadPickups += snap.docs.length;
+                for (var doc in snap.docs) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  money += double.tryParse(data['totalFare']?.toString() ?? data['fare']?.toString() ?? '0') ?? 0;
+                  unionMoney += double.tryParse(data['unionFee']?.toString() ?? data['commission']?.toString() ?? '0') ?? 0;
+                }
+              }).catchError((e) {})
+        );
+      }
+      await Future.wait(pickupFutures);
+
+      final tripsSnap = await FirebaseFirestore.instance.collection('trips').get();
+      for (var doc in tripsSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final status = data['status']?.toString().toLowerCase() ?? '';
+        if (status == 'ongoing') ongoing++;
+        if (status == 'canceled' || status == 'cancelled' || status == 'rejected') cancelled++;
+      }
+
+      final financeSnap = await FirebaseFirestore.instance
+          .collection('finance_transactions')
+          .where('timestamp', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
+          .get();
+      for (var doc in financeSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final type = data['type']?.toString().toLowerCase() ?? '';
+        final status = data['status']?.toString().toLowerCase() ?? '';
+        
+        if (type.contains('app_usage') || type.contains('membership')) {
+           unionMoney += double.tryParse(data['amount']?.toString() ?? '0') ?? 0;
+        }
+        
+        if (type.contains('withdrawal') || status == 'pending' || type.contains('request')) {
+           txnRequests++;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _totalBookings = bookings;
+          _totalRoadPickups = roadPickups;
+          _ongoingTrips = ongoing;
+          _cancelTrips = cancelled;
+          _totalTransactions = money;
+          _unionIncomes = unionMoney;
+          _transactionRequests = txnRequests;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error fetching daily summary: $e");
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 30.0),
+        child: Center(
+          child: CircularProgressIndicator(strokeWidth: 2.5),
+        ),
+      );
+    }
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: [
+        _DailyMetricCard('Total Bookings', _totalBookings.toString(), Icons.book_online_rounded, const Color(0xFF2563EB)),
+        _DailyMetricCard('Road Pickups', _totalRoadPickups.toString(), Icons.hail_rounded, const Color(0xFF059669)),
+        _DailyMetricCard('Ongoing Trips', _ongoingTrips.toString(), Icons.local_taxi_rounded, const Color(0xFF7C3AED)),
+        _DailyMetricCard('Canceled Trips', _cancelTrips.toString(), Icons.cancel_rounded, const Color(0xFFDC2626)),
+        _DailyMetricCard('Total Transactions', 'Rs ${_totalTransactions.toStringAsFixed(0)}', Icons.payments_rounded, const Color(0xFFD97706)),
+        _DailyMetricCard('Union Incomes', 'Rs ${_unionIncomes.toStringAsFixed(0)}', Icons.account_balance_rounded, const Color(0xFF4F46E5)),
+        _DailyMetricCard('Txn Requests', _transactionRequests.toString(), Icons.request_quote_rounded, const Color(0xFFE11D48)),
+      ],
+    );
+  }
+}
+
+class _DailyMetricCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final Color accentColor;
+
+  const _DailyMetricCard(this.title, this.value, this.icon, this.accentColor);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 140,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF111827).withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: accentColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Icon(icon, color: accentColor, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF111827),
+                    height: 1.1,
+                  ),
+                ),
+                const SizedBox(height: 1),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: Color(0xFF64748B),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _MapShell extends StatelessWidget {

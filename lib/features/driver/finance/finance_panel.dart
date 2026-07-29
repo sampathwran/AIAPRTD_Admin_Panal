@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'revenue_overview_tab.dart';
 
 class FinancePanel extends StatefulWidget {
   const FinancePanel({super.key});
@@ -360,7 +361,7 @@ class _FinancePanelState extends State<FinancePanel> with SingleTickerProviderSt
   }
 
   Widget _buildOverviewTab() {
-    return const Center(child: Text("Revenue Overview - Coming Soon"));
+    return const RevenueOverviewTab();
   }
 }
 

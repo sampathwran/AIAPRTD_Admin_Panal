@@ -15,6 +15,7 @@ class DriverMenuConstants {
     'System Settings',
     'Membership Approvals',
     'Finance',
+    'Member Benefits',
   ];
 
   static final List<IconData> menuIcons = [
@@ -31,5 +32,6 @@ class DriverMenuConstants {
     Icons.settings_applications_rounded,
     Icons.verified_user_rounded,
     Icons.account_balance_rounded,
+    Icons.card_giftcard_rounded,
   ];
 }

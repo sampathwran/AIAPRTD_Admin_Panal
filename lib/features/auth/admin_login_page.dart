@@ -130,8 +130,9 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FB),
+    return SelectionArea(
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF4F7FB),
       body: LayoutBuilder(
         builder: (context, constraints) {
           final wide = constraints.maxWidth >= 920;
@@ -166,7 +167,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
           );
         },
       ),
-    );
+    ));
   }
 }
 
