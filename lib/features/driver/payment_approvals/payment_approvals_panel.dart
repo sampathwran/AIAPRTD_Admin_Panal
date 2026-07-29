@@ -431,24 +431,9 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
   }
 
   Future<void> _handleApprove(String paymentId, String driverId, double amount) async {
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Approve Payment?'),
-        content: Text('Are you sure you want to approve this payment of LKR ${NumberFormat('#,##0.00').format(amount)}? This will deduct the amount from the driver\'s outstanding balance.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.green, foregroundColor: Colors.white),
-            child: const Text('Yes, Approve'),
-    Future<void> _handleApprove(String paymentId, String driverId, double amount) async {
     setState(() => _isLoading = true);
     try {
-      await _paymentService.approvePayment(paymentId, driverId, amount);
+      await _service.approvePayment(paymentId, driverId, amount);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment approved')));
       }
@@ -589,7 +574,7 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
   Future<void> _handleUpdateApproved(String paymentId, String driverId, double oldAmount, double newAmount) async {
     setState(() => _isLoading = true);
     try {
-      await _paymentService.updateApprovedPayment(paymentId, driverId, oldAmount, newAmount);
+      await _service.updateApprovedPayment(paymentId, driverId, oldAmount, newAmount);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment amount updated')));
       }
