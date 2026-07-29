@@ -11,6 +11,7 @@ class AdminSidebar extends StatelessWidget {
   final VoidCallback onToggleMode;
   final bool isCollapsed;
   final VoidCallback onToggleCollapse;
+  final Map<String, int> menuBadges;
 
   const AdminSidebar({
     super.key,
@@ -22,6 +23,7 @@ class AdminSidebar extends StatelessWidget {
     required this.onToggleMode,
     required this.isCollapsed,
     required this.onToggleCollapse,
+    this.menuBadges = const {},
   });
 
   @override
@@ -225,7 +227,19 @@ class AdminSidebar extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                              if (isSelected)
+                              if (menuBadges.containsKey(title) && menuBadges[title]! > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.redAccent,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Text(
+                                    menuBadges[title]!.toString(),
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              if (isSelected && !(menuBadges.containsKey(title) && menuBadges[title]! > 0))
                                 Icon(
                                   Icons.chevron_right_rounded,
                                   color: accentColor,

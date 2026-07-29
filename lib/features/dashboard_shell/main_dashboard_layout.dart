@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
@@ -10,7 +11,7 @@ import 'package:aiaprtd_admin_dashboard/features/passenger/menu/passenger_menu_c
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/drivers_overview_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/total_members/total_members_list_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/activation_requests_panel.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/ride_history/ride_history_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/payment_approvals/payment_approvals_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/scheduled_bookings/scheduled_bookings_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/support_tickets/support_tickets_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/votes/votes_panel.dart';
@@ -98,7 +99,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       case 2:
         return const ActivationRequestsPanel();
       case 3:
-        return const RideHistoryPanel();
+        return const PaymentApprovalsPanel();
       case 4:
         return const ScheduledBookingsPanel();
       case 5:
@@ -144,26 +145,48 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         backgroundColor: AdminColors.canvas,
       body: Row(
         children: [
-          AdminSidebar(
-            selectedIndex: _selectedIndex,
-            menuTitles: currentMenuTitles,
-            menuIcons: currentMenuIcons,
-            isDriverMode: _isDriverMode,
-            isCollapsed: _isSidebarCollapsed,
-            onToggleCollapse: () =>
-                setState(() => _isSidebarCollapsed = !_isSidebarCollapsed),
-            onMenuSelected: (index) {
-              setState(() {
-                _selectedIndex = index;
-                _currentSubPage = null;
-              });
-            },
-            onToggleMode: () {
-              setState(() {
-                _isDriverMode = !_isDriverMode;
-                _selectedIndex = 0;
-                _currentSubPage = null;
-              });
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('app_usage_payments')
+                .where('status', isEqualTo: 'pending')
+                .snapshots(),
+            builder: (context, snapshot) {
+              int pendingCount = 0;
+              if (snapshot.hasData) {
+                pendingCount = snapshot.data!.docs.length;
+              }
+              
+              final badges = <String, int>{};
+              if (pendingCount > 0) {
+                badges['Payment Approvals'] = pendingCount;
+              }
+              
+              return AdminSidebar(
+                selectedIndex: _selectedIndex,
+                menuTitles: currentMenuTitles,
+                menuIcons: currentMenuIcons,
+                isDriverMode: _isDriverMode,
+                isCollapsed: _isSidebarCollapsed,
+                menuBadges: badges,
+                onToggleCollapse: () {
+                  setState(() {
+                    _isSidebarCollapsed = !_isSidebarCollapsed;
+                  });
+                },
+                onToggleMode: () {
+                  setState(() {
+                    _isDriverMode = !_isDriverMode;
+                    _selectedIndex = 0;
+                    _currentSubPage = null;
+                  });
+                },
+                onMenuSelected: (index) {
+                  setState(() {
+                    _selectedIndex = index;
+                    _currentSubPage = null;
+                  });
+                },
+              );
             },
           ),
           Expanded(
