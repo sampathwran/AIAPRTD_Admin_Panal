@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:rxdart/rxdart.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
@@ -140,25 +141,67 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
           currentMenuTitles.length - 1,
         )];
 
+    final paymentStream = FirebaseFirestore.instance
+        .collection('app_usage_payments')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+    final profileStream = FirebaseFirestore.instance
+        .collection('requests')
+        .where('status', isEqualTo: 'pending')
+        .where('requestType', isEqualTo: 'profile_update')
+        .snapshots();
+    final vehicleStream = FirebaseFirestore.instance
+        .collection('vehicles')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+    final kycStream = FirebaseFirestore.instance
+        .collection('verify_kyc')
+        .where('kycApprovalStatus', isEqualTo: 'pending')
+        .snapshots();
+    final bankStream = FirebaseFirestore.instance
+        .collection('verify_bank')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+    final imageStream = FirebaseFirestore.instance
+        .collection('profile_image_requests')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+
+    final combinedStream = CombineLatestStream.list<QuerySnapshot>([
+      paymentStream,
+      profileStream,
+      vehicleStream,
+      kycStream,
+      bankStream,
+      imageStream,
+    ]);
+
     return SelectionArea(
       child: Scaffold(
         backgroundColor: AdminColors.canvas,
       body: Row(
         children: [
-          StreamBuilder<QuerySnapshot>(
-            stream: FirebaseFirestore.instance
-                .collection('app_usage_payments')
-                .where('status', isEqualTo: 'pending')
-                .snapshots(),
+          StreamBuilder<List<QuerySnapshot>>(
+            stream: combinedStream,
             builder: (context, snapshot) {
-              int pendingCount = 0;
-              if (snapshot.hasData) {
-                pendingCount = snapshot.data!.docs.length;
+              int pendingPaymentCount = 0;
+              int activationCount = 0;
+              
+              if (snapshot.hasData && snapshot.data != null && snapshot.data!.length == 6) {
+                pendingPaymentCount = snapshot.data![0].docs.length;
+                activationCount = snapshot.data![1].docs.length +
+                    snapshot.data![2].docs.length +
+                    snapshot.data![3].docs.length +
+                    snapshot.data![4].docs.length +
+                    snapshot.data![5].docs.length;
               }
               
               final badges = <String, int>{};
-              if (pendingCount > 0) {
-                badges['Payment Approvals'] = pendingCount;
+              if (pendingPaymentCount > 0) {
+                badges['Payment Approvals'] = pendingPaymentCount;
+              }
+              if (activationCount > 0) {
+                badges['Activation Requests'] = activationCount;
               }
               
               return AdminSidebar(
