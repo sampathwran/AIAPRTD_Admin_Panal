@@ -160,8 +160,10 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
   Widget _buildDataTable(List<QueryDocumentSnapshot> docs, bool isPending) {
     return ListView(
       children: [
-        DataTable(
-          headingRowColor: WidgetStateProperty.all(AdminColors.sidebarLine.withOpacity(0.1)),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: WidgetStateProperty.all(AdminColors.sidebarLine.withOpacity(0.1)),
           columns: const [
             DataColumn(label: Text('Date & Time')),
             DataColumn(label: Text('Driver Info')),
@@ -238,6 +240,7 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
               ],
             );
           }).toList(),
+        ),
         ),
       ],
     );
