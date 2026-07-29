@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/admin_edit_ad_dialog.dart';
 
 class MarketplaceActiveTab extends StatelessWidget {
   const MarketplaceActiveTab({super.key});
@@ -206,6 +207,21 @@ class MarketplaceActiveTab extends StatelessWidget {
                           label: const Text("View Details"),
                         ),
                         const Spacer(),
+                        if (data['sellerId'] == 'ADMIN')
+                          IconButton(
+                            icon: const Icon(Icons.edit, color: Colors.blue),
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => AdminEditAdDialog(
+                                  adId: docs[index].id,
+                                  adData: data,
+                                ),
+                              );
+                            },
+                            tooltip: "Edit Ad",
+                          ),
                         IconButton(
                           icon: const Icon(Icons.delete, color: Colors.red),
                           onPressed: () => _deleteAd(docs[index].id),

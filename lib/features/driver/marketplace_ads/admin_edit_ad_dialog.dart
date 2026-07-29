@@ -6,14 +6,21 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-class AdminAddAdDialog extends StatefulWidget {
-  const AdminAddAdDialog({super.key});
+class AdminEditAdDialog extends StatefulWidget {
+  final String adId;
+  final Map<String, dynamic> adData;
+
+  const AdminEditAdDialog({
+    super.key,
+    required this.adId,
+    required this.adData,
+  });
 
   @override
-  State<AdminAddAdDialog> createState() => _AdminAddAdDialogState();
+  State<AdminEditAdDialog> createState() => _AdminEditAdDialogState();
 }
 
-class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
+class _AdminEditAdDialogState extends State<AdminEditAdDialog> {
   final _formKey = GlobalKey<FormState>();
 
   final TextEditingController _titleCtrl = TextEditingController();
@@ -28,17 +35,36 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
   List<String> _currentSubcategories = [];
   bool _isLoadingCategories = true;
 
-  List<XFile> _selectedImages = [];
+  // Holds String (network URL) or XFile (newly picked image)
+  List<dynamic> _selectedImages = [];
   bool _allowBidding = false;
   bool _isSubmitting = false;
 
   LatLng? _selectedLocation;
   GoogleMapController? _mapController;
-  final LatLng _defaultLocation = const LatLng(6.9271, 79.8612); // Colombo
 
   @override
   void initState() {
     super.initState();
+    _titleCtrl.text = widget.adData['title'] ?? '';
+    _priceCtrl.text = widget.adData['price']?.toString() ?? '';
+    _descCtrl.text = widget.adData['description'] ?? '';
+    _addressCtrl.text = widget.adData['address'] ?? '';
+    _allowBidding = widget.adData['allowBidding'] == true;
+    _selectedCategory = widget.adData['category'];
+    _selectedSubcategory = widget.adData['subcategory'];
+
+    if (widget.adData['lat'] != null && widget.adData['lng'] != null) {
+      _selectedLocation = LatLng(
+        (widget.adData['lat'] as num).toDouble(),
+        (widget.adData['lng'] as num).toDouble(),
+      );
+    }
+
+    if (widget.adData['imageUrls'] != null) {
+      _selectedImages = List<dynamic>.from(widget.adData['imageUrls']);
+    }
+
     _fetchCategories();
   }
 
@@ -65,7 +91,10 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
           _categoryToSubcategories[catName] = subs;
         }
 
-        if (_categories.isNotEmpty) {
+        if (_selectedCategory != null) {
+          _currentSubcategories =
+              _categoryToSubcategories[_selectedCategory!] ?? [];
+        } else if (_categories.isNotEmpty) {
           _selectedCategory = _categories.first;
           _currentSubcategories =
               _categoryToSubcategories[_selectedCategory!] ?? [];
@@ -123,52 +152,56 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
     try {
       List<String> imageUrls = [];
 
-      // Upload images
       for (int i = 0; i < _selectedImages.length; i++) {
-        final file = _selectedImages[i];
-        final ext = file.name.split('.').last;
-        final fileName =
-            'admin_ad_${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
-        final ref = FirebaseStorage.instance.ref().child(
-          'marketplace_ads/admin_ads/$fileName',
-        );
+        final item = _selectedImages[i];
+        if (item is String) {
+          // Already an uploaded URL
+          imageUrls.add(item);
+        } else if (item is XFile) {
+          // New file to upload
+          final ext = item.name.split('.').last;
+          final fileName =
+              'admin_ad_${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
+          final ref = FirebaseStorage.instance.ref().child(
+            'marketplace_ads/admin_ads/$fileName',
+          );
 
-        if (kIsWeb) {
-          final bytes = await file.readAsBytes();
-          await ref.putData(bytes);
-        } else {
-          await ref.putFile(File(file.path));
+          if (kIsWeb) {
+            final bytes = await item.readAsBytes();
+            await ref.putData(bytes);
+          } else {
+            await ref.putFile(File(item.path));
+          }
+
+          final url = await ref.getDownloadURL();
+          imageUrls.add(url);
         }
-
-        final url = await ref.getDownloadURL();
-        imageUrls.add(url);
       }
 
-      // Save to Firestore
-      await FirebaseFirestore.instance.collection('marketplace_ads').add({
-        'title': _titleCtrl.text.trim(),
-        'price': _priceCtrl.text.trim(),
-        'description': _descCtrl.text.trim(),
-        'address': _addressCtrl.text.trim(),
-        'category': _selectedCategory,
-        'subcategory': _selectedSubcategory,
-        'allowBidding': _allowBidding,
-        'imageUrls': imageUrls,
-        'lat': _selectedLocation!.latitude,
-        'lng': _selectedLocation!.longitude,
-        'sellerId': 'ADMIN',
-        'status': 'approved',
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+      await FirebaseFirestore.instance
+          .collection('marketplace_ads')
+          .doc(widget.adId)
+          .update({
+            'title': _titleCtrl.text.trim(),
+            'price': _priceCtrl.text.trim(),
+            'description': _descCtrl.text.trim(),
+            'address': _addressCtrl.text.trim(),
+            'category': _selectedCategory,
+            'subcategory': _selectedSubcategory,
+            'allowBidding': _allowBidding,
+            'imageUrls': imageUrls,
+            'lat': _selectedLocation!.latitude,
+            'lng': _selectedLocation!.longitude,
+          });
 
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Ad posted successfully!')),
+          const SnackBar(content: Text('Ad updated successfully!')),
         );
       }
     } catch (e) {
-      debugPrint("Error posting ad: $e");
+      debugPrint("Error updating ad: $e");
       if (mounted) {
         ScaffoldMessenger.of(
           context,
@@ -182,7 +215,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Post Admin Ad'),
+      title: const Text('Edit Admin Ad'),
       content: SizedBox(
         width: 800,
         height: 600,
@@ -193,7 +226,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Left Column - Form Fields
+                    // Left Column
                     Expanded(
                       flex: 1,
                       child: SingleChildScrollView(
@@ -225,7 +258,9 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                             ),
                             const SizedBox(height: 16),
                             DropdownButtonFormField<String>(
-                              value: _selectedCategory,
+                              value: _categories.contains(_selectedCategory)
+                                  ? _selectedCategory
+                                  : null,
                               decoration: const InputDecoration(
                                 labelText: 'Category',
                                 border: OutlineInputBorder(),
@@ -253,7 +288,12 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                             const SizedBox(height: 16),
                             if (_currentSubcategories.isNotEmpty) ...[
                               DropdownButtonFormField<String>(
-                                value: _selectedSubcategory,
+                                value:
+                                    _currentSubcategories.contains(
+                                      _selectedSubcategory,
+                                    )
+                                    ? _selectedSubcategory
+                                    : null,
                                 decoration: const InputDecoration(
                                   labelText: 'Subcategory',
                                   border: OutlineInputBorder(),
@@ -315,7 +355,9 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                               children: [
                                 ..._selectedImages.asMap().entries.map((entry) {
                                   int idx = entry.key;
-                                  XFile file = entry.value;
+                                  var item = entry.value;
+                                  bool isUrl = item is String;
+
                                   return Stack(
                                     children: [
                                       Container(
@@ -326,13 +368,18 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                                             color: Colors.grey,
                                           ),
                                         ),
-                                        child: kIsWeb
+                                        child: isUrl
                                             ? Image.network(
-                                                file.path,
+                                                item,
+                                                fit: BoxFit.cover,
+                                              )
+                                            : kIsWeb
+                                            ? Image.network(
+                                                (item as XFile).path,
                                                 fit: BoxFit.cover,
                                               )
                                             : Image.file(
-                                                File(file.path),
+                                                File((item as XFile).path),
                                                 fit: BoxFit.cover,
                                               ),
                                       ),
@@ -375,7 +422,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                                                 onPressed: idx > 0
                                                     ? () {
                                                         setState(() {
-                                                          final item =
+                                                          final movedItem =
                                                               _selectedImages
                                                                   .removeAt(
                                                                     idx,
@@ -383,7 +430,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                                                           _selectedImages
                                                               .insert(
                                                                 idx - 1,
-                                                                item,
+                                                                movedItem,
                                                               );
                                                         });
                                                       }
@@ -404,7 +451,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                                                             1
                                                     ? () {
                                                         setState(() {
-                                                          final item =
+                                                          final movedItem =
                                                               _selectedImages
                                                                   .removeAt(
                                                                     idx,
@@ -412,7 +459,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                                                           _selectedImages
                                                               .insert(
                                                                 idx + 1,
-                                                                item,
+                                                                movedItem,
                                                               );
                                                         });
                                                       }
@@ -444,7 +491,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                       ),
                     ),
                     const VerticalDivider(),
-                    // Right Column - Map
+                    // Right Column
                     Expanded(
                       flex: 1,
                       child: Column(
@@ -460,13 +507,23 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                               borderRadius: BorderRadius.circular(8),
                               child: GoogleMap(
                                 initialCameraPosition: CameraPosition(
-                                  target: _defaultLocation,
+                                  target:
+                                      _selectedLocation ??
+                                      const LatLng(6.9271, 79.8612),
                                   zoom: 12,
                                 ),
                                 myLocationEnabled: true,
                                 myLocationButtonEnabled: true,
-                                onMapCreated: (controller) =>
-                                    _mapController = controller,
+                                onMapCreated: (controller) {
+                                  _mapController = controller;
+                                  if (_selectedLocation != null) {
+                                    _mapController?.animateCamera(
+                                      CameraUpdate.newLatLng(
+                                        _selectedLocation!,
+                                      ),
+                                    );
+                                  }
+                                },
                                 onTap: (latLng) {
                                   setState(() => _selectedLocation = latLng);
                                 },
@@ -508,7 +565,7 @@ class _AdminAddAdDialogState extends State<AdminAddAdDialog> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Post Ad'),
+              : const Text('Save Changes'),
         ),
       ],
     );
