@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/member_pdf_generator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -51,10 +52,11 @@ class DriverProfileDialog extends StatelessWidget {
               // Tabs Section
               Expanded(
                 child: DefaultTabController(
-                  length: 4,
+                  length: 5,
                   child: Column(
                     children: [
                       const TabBar(
+                        isScrollable: true,
                         labelColor: Color(0xFF1E3A8A),
                         unselectedLabelColor: Colors.grey,
                         indicatorColor: Color(0xFF1E3A8A),
@@ -64,6 +66,7 @@ class DriverProfileDialog extends StatelessWidget {
                           Tab(text: 'Vehicle Details'),
                           Tab(text: 'Membership Fee'),
                           Tab(text: 'Transaction History'),
+                          Tab(text: 'Bank Details'),
                         ],
                       ),
                       Expanded(
@@ -73,6 +76,7 @@ class DriverProfileDialog extends StatelessWidget {
                             _buildVehicleDetailsTab(),
                             _buildMembershipFeeTab(),
                             _buildTransactionHistoryTab(),
+                            _buildBankDetailsTab(),
                           ],
                         ),
                       ),
@@ -325,39 +329,75 @@ class DriverProfileDialog extends StatelessWidget {
   }
 
   Widget _buildVehicleDetailsTab() {
-    final currentVehicle = driver['currentVehicle'] as Map<String, dynamic>?;
-    final vehicleHistory = driver['vehicleHistory'] as List<dynamic>? ?? [];
+    final membershipNo = driver['membershipNo']?.toString();
+    if (membershipNo == null || membershipNo.isEmpty) {
+      return const Center(
+        child: Text('Membership Number is missing.', style: TextStyle(color: Colors.grey)),
+      );
+    }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Current Vehicle'),
-          const SizedBox(height: 16),
-          if (currentVehicle != null)
-            _buildVehicleSection(currentVehicle, isCurrent: true)
-          else
-            const Text(
-              'No current vehicle details available.',
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('vehicles')
+          .doc(membershipNo)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(color: Color(0xFF1E3A8A)));
+        }
+
+        final List<Map<String, dynamic>> dbVehicles = [];
+        if (snapshot.hasData && snapshot.data!.exists) {
+          dbVehicles.add(snapshot.data!.data() as Map<String, dynamic>);
+        } else {
+          // Fallback to driver object
+          final currentVehicle = driver['currentVehicle'] as Map<String, dynamic>?;
+          if (currentVehicle != null) {
+            dbVehicles.add(currentVehicle);
+          }
+        }
+        
+        // Add history from driver object
+        final vehicleHistory = driver['vehicleHistory'] as List<dynamic>? ?? [];
+        for (var v in vehicleHistory) {
+          if (v is Map<String, dynamic>) {
+            dbVehicles.add(v);
+          }
+        }
+
+        if (dbVehicles.isEmpty) {
+          return const Center(
+            child: Text(
+              'No vehicle details available.',
               style: TextStyle(color: Colors.grey),
             ),
+          );
+        }
 
-          if (vehicleHistory.isNotEmpty) ...[
-            const SizedBox(height: 32),
-            const Divider(height: 1, color: Color(0xFFE2E8F0)),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Vehicle History (${vehicleHistory.length})'),
-            const SizedBox(height: 16),
-            ...vehicleHistory.map((v) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 24.0),
-                child: _buildVehicleSection(v as Map<String, dynamic>),
-              );
-            }).toList(),
-          ],
-        ],
-      ),
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ...dbVehicles.asMap().entries.map((entry) {
+                final index = entry.key;
+                final v = entry.value;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionTitle(index == 0 ? 'Current Vehicle' : 'Vehicle History ${index}'),
+                      const SizedBox(height: 16),
+                      _buildVehicleSection(v, isCurrent: index == 0),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -369,30 +409,75 @@ class DriverProfileDialog extends StatelessWidget {
     final docs = v['documents'] as List<dynamic>? ?? [];
     final photos = v['vehiclePhotos'] as Map<String, dynamic>? ?? {};
 
-    // License info is usually doc 3, but let's search just in case
-    Map<String, dynamic>? licenseData;
-    for (var d in docs) {
-      if (d is Map<String, dynamic> && d['reviewData'] != null) {
-        final review = d['reviewData'] as Map<String, dynamic>;
-        if (review.containsKey('License Number')) {
-          licenseData = review;
-          break;
-        }
-      }
-    }
-
     // Vehicle basic details
     final brand = details['brand'] ?? '-';
     final model = details['model'] ?? '-';
-    final year = details['year'] ?? '-';
-    final category = v['selectedCategory'] ?? '-';
+    final category = v['selectedCategory'] ?? v['category'] ?? '-';
     final status = v['status'] ?? '-';
 
     String? approvedAtStr;
     if (v['approvedAt'] != null) {
-      // It's likely a Timestamp, so we convert it simply by toString
       approvedAtStr = v['approvedAt'].toString();
     }
+
+    final List<_InfoItem> gridItems = [
+      _InfoItem('Brand / Model', '$brand $model'),
+      _InfoItem('Category', category),
+      _InfoItem('Approval Status', status.toString().toUpperCase()),
+    ];
+
+    if (approvedAtStr != null) {
+      gridItems.add(_InfoItem('Approved At', approvedAtStr));
+    }
+
+    // Extract all dynamic details from reviewData inside documents
+    for (var d in docs) {
+      if (d is Map<String, dynamic> && d['reviewData'] != null) {
+        final review = d['reviewData'] as Map<String, dynamic>;
+        review.forEach((key, value) {
+          if (value == null || value.toString().isEmpty) return;
+          
+          String displayValue = value.toString();
+          if (value is List) {
+            displayValue = value.join(', ');
+          }
+          
+          // Avoid duplicates
+          final exists = gridItems.any((item) => item.label.toLowerCase() == key.toLowerCase());
+          if (!exists) {
+            gridItems.add(_InfoItem(key, displayValue));
+          }
+        });
+      }
+    }
+
+    // Add all dynamically from details
+    details.forEach((key, value) {
+      if (key == 'brand' || key == 'model') return;
+      if (value == null || value.toString().isEmpty) return;
+      
+      // Convert camelCase to Title Case
+      final formattedKey = key.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
+      final title = formattedKey.isNotEmpty ? formattedKey[0].toUpperCase() + formattedKey.substring(1) : key;
+      
+      final exists = gridItems.any((item) => item.label.toLowerCase() == title.toLowerCase());
+      if (!exists) {
+         gridItems.add(_InfoItem(title, value.toString()));
+      }
+    });
+
+    // Add all dynamically from root (excluding complex objects and already shown ones)
+    final excludeKeys = [
+      'details', 'documents', 'vehiclePhotos', 'selectedCategory', 'category', 'status', 'approvedAt', 'createdAt', 'updatedAt', 'rateProfileRef', 'ratesLastSynced', 'membershipNo'
+    ];
+    v.forEach((key, value) {
+      if (excludeKeys.contains(key)) return;
+      if (value is Map || value is List) return; // Skip complex objects
+      
+      final formattedKey = key.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
+      final title = formattedKey.isNotEmpty ? formattedKey[0].toUpperCase() + formattedKey.substring(1) : key;
+      gridItems.add(_InfoItem(title, value.toString()));
+    });
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -408,22 +493,7 @@ class DriverProfileDialog extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildInfoGrid([
-            _InfoItem('Brand / Model', '$brand $model'),
-            _InfoItem('Manufacture Year', year),
-            _InfoItem('Category', category),
-            _InfoItem('Approval Status', status.toString().toUpperCase()),
-            if (approvedAtStr != null) _InfoItem('Approved At', approvedAtStr),
-            if (licenseData != null)
-              _InfoItem('Driving License', licenseData['License Number']),
-            if (licenseData != null)
-              _InfoItem('License Expiry', licenseData['Expiry Date']),
-            if (licenseData != null && licenseData['LicenseTypes'] != null)
-              _InfoItem(
-                'License Types',
-                (licenseData['LicenseTypes'] as List).join(', '),
-              ),
-          ]),
+          _buildInfoGrid(gridItems),
           if (photos.isNotEmpty) ...[
             const SizedBox(height: 24),
             const Text(
@@ -614,33 +684,35 @@ class DriverProfileDialog extends StatelessWidget {
         final allPending = _deduplicatePayments(allPendingRaw);
         final allHistory = _deduplicatePayments(allHistoryRaw);
 
-        // --- CALC UNPAID MONTHS ---
-        final joinDateStr = driver['joinDate']?.toString() ?? '';
-        DateTime? joinDate;
-        try {
-          if (joinDateStr.isNotEmpty) joinDate = DateTime.parse(joinDateStr);
-        } catch (_) {}
+        return StatefulBuilder(
+          builder: (context, setState) {
+            // --- CALC UNPAID MONTHS ---
+            final joinDateStr = driver['joinDate']?.toString() ?? '';
+            DateTime? joinDate;
+            try {
+              if (joinDateStr.isNotEmpty) joinDate = DateTime.parse(joinDateStr);
+            } catch (_) {}
 
-        int totalMonths = 0;
-        int paidMonths = 0;
-        int arrearsMonths = 0;
-        final List<Map<String, String>> unpaidMonthsList = [];
+            int totalMonths = 0;
+            int paidMonths = 0;
+            int arrearsMonths = 0;
+            final List<Map<String, String>> unpaidMonthsList = [];
 
-        if (joinDate != null) {
-          DateTime now = DateTime.now();
-          int currentYear = now.year;
-          int currentMonth = now.month;
+            if (joinDate != null) {
+              DateTime now = DateTime.now();
+              int currentYear = now.year;
+              int currentMonth = now.month;
 
-          // Grace period: Until the 5th of the month, the current month is not considered in arrears
-          if (now.day <= 5) {
-            currentMonth -= 1;
-            if (currentMonth == 0) {
-              currentMonth = 12;
-              currentYear -= 1;
-            }
-          }
+              // Grace period: Until the 5th of the month, the current month is not considered in arrears
+              if (now.day <= 5) {
+                currentMonth -= 1;
+                if (currentMonth == 0) {
+                  currentMonth = 12;
+                  currentYear -= 1;
+                }
+              }
 
-          DateTime currentDate = DateTime(joinDate.year, joinDate.month);
+              DateTime currentDate = DateTime(joinDate.year, joinDate.month);
           final end = DateTime(currentYear, currentMonth);
           final DateFormat monthFormat = DateFormat('MMMM');
 
@@ -690,7 +762,71 @@ class DriverProfileDialog extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildSectionTitle('Membership Fee Summary'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  _buildSectionTitle('Membership Fee Summary'),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (joinDate != null)
+                        Container(
+                          margin: const EdgeInsets.only(right: 12),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.green.shade50,
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: Colors.green.shade200),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle, size: 16, color: Colors.green.shade700),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Joined: ${DateFormat('yyyy-MM-dd').format(joinDate!)}',
+                                style: TextStyle(
+                                  color: Colors.green.shade800,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF1E3A8A),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        ),
+                        onPressed: () async {
+                          final selectedDate = await showDatePicker(
+                            context: context,
+                            initialDate: joinDate ?? DateTime.now(),
+                            firstDate: DateTime(2020),
+                            lastDate: DateTime.now(),
+                          );
+                          if (selectedDate != null) {
+                            await FirebaseFirestore.instance.collection('vehicles').doc(driver['membershipNo']).update({
+                              'joinDate': selectedDate.toIso8601String()
+                            });
+                            setState(() {
+                              driver['joinDate'] = selectedDate.toIso8601String();
+                            });
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Join Date updated successfully!')));
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.edit_calendar, size: 18),
+                        label: Text(joinDate == null ? 'Set Join Date' : 'Edit Join Date', style: const TextStyle(fontWeight: FontWeight.bold)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
               const SizedBox(height: 16),
               if (joinDate == null)
                 Container(
@@ -756,6 +892,8 @@ class DriverProfileDialog extends StatelessWidget {
                 _buildPaymentTable(allHistory),
             ],
           ),
+        );
+          },
         );
       },
     );
@@ -1147,7 +1285,7 @@ class DriverProfileDialog extends StatelessWidget {
         Expanded(
           child: FutureBuilder<QuerySnapshot>(
             future: FirebaseFirestore.instance
-                .collectionGroup('transactions')
+                .collection('finance_transactions')
                 .where('driverId', isEqualTo: driverId.toString())
                 .orderBy('timestamp', descending: true)
                 .limit(100)
@@ -1201,7 +1339,24 @@ class DriverProfileDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle('Recent Transactions (${docs.length})'),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        _buildSectionTitle('Recent Transactions (${docs.length})'),
+                        ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF1E3A8A),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                          onPressed: () {
+                            MemberPdfGenerator.downloadCertifiedIncomeReport(driver, docs);
+                          },
+                          icon: const Icon(Icons.picture_as_pdf, size: 18),
+                          label: const Text('Download Income Report', style: TextStyle(fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: 16),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -1382,6 +1537,60 @@ class DriverProfileDialog extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildBankDetailsTab() {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('member')
+          .doc(driver['membershipNo']?.toString() ?? '')
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        String bankName = '-';
+        String accHolder = '-';
+        String accNumber = '-';
+        String branchName = '-';
+        String branchCode = '-';
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>;
+          bankName = data['bankName']?.toString() ?? driver['bankName']?.toString() ?? '-';
+          accHolder = data['accountHolderName']?.toString() ?? driver['accountHolderName']?.toString() ?? '-';
+          accNumber = data['accountNumber']?.toString() ?? driver['accountNumber']?.toString() ?? '-';
+          branchName = data['branchName']?.toString() ?? driver['branchName']?.toString() ?? '-';
+          branchCode = data['branchCode']?.toString() ?? driver['branchCode']?.toString() ?? '-';
+        } else {
+          // Fallback to driver data
+          bankName = driver['bankName']?.toString() ?? '-';
+          accHolder = driver['accountHolderName']?.toString() ?? '-';
+          accNumber = driver['accountNumber']?.toString() ?? '-';
+          branchName = driver['branchName']?.toString() ?? '-';
+          branchCode = driver['branchCode']?.toString() ?? '-';
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionTitle('Bank Account Details'),
+              const SizedBox(height: 16),
+              _buildInfoGrid([
+                _InfoItem('Bank Name', bankName),
+                _InfoItem('Account Holder', accHolder),
+                _InfoItem('Account Number', accNumber),
+                _InfoItem('Branch Name', branchName),
+                _InfoItem('Branch Code', branchCode),
+              ]),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -11,7 +11,6 @@ import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/overvie
 import 'package:aiaprtd_admin_dashboard/features/driver/menu/driver_menu_constants.dart';
 import 'package:aiaprtd_admin_dashboard/features/passenger/menu/passenger_menu_constants.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/drivers_overview_panel.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/total_members/total_members_list_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/activation_requests_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/payment_approvals/payment_approvals_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/scheduled_bookings/scheduled_bookings_panel.dart';
@@ -152,7 +151,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       case 0:
         return const DriversOverviewPanel();
       case 1:
-        return const TotalMembersListPanel();
+        return const TotalMembersPanel();
       case 2:
         return const ActivationRequestsPanel();
       case 3:
@@ -234,6 +233,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         .collection('withdrawal_requests')
         .where('status', isEqualTo: 'pending')
         .snapshots();
+    final marketplaceAdsStream = FirebaseFirestore.instance
+        .collection('marketplace_ads')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
 
     final combinedStream = CombineLatestStream.list<QuerySnapshot>([
       paymentStream,
@@ -244,6 +247,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       imageStream,
       p2pStream,
       withdrawalStream,
+      marketplaceAdsStream,
     ]);
 
     return SelectionArea(
@@ -258,10 +262,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                 int activationCount = 0;
                 int p2pCount = 0;
                 int withdrawalCount = 0;
+                int marketplaceAdsCount = 0;
 
                 if (snapshot.hasData &&
                     snapshot.data != null &&
-                    snapshot.data!.length == 8) {
+                    snapshot.data!.length == 9) {
                   pendingPaymentCount = snapshot.data![0].docs.length;
                   activationCount =
                       snapshot.data![1].docs.length +
@@ -271,6 +276,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                       snapshot.data![5].docs.length;
                   p2pCount = snapshot.data![6].docs.length;
                   withdrawalCount = snapshot.data![7].docs.length;
+                  marketplaceAdsCount = snapshot.data![8].docs.length;
                 }
 
                 final badges = <String, int>{};
@@ -285,6 +291,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                 }
                 if (withdrawalCount > 0) {
                   badges['Withdrawal Requests'] = withdrawalCount;
+                }
+                if (marketplaceAdsCount > 0) {
+                  badges['Marketplace Ads'] = marketplaceAdsCount;
                 }
 
                 return AdminSidebar(
