@@ -16,7 +16,18 @@ import 'package:aiaprtd_admin_dashboard/features/driver/payment_approvals/paymen
 import 'package:aiaprtd_admin_dashboard/features/driver/scheduled_bookings/scheduled_bookings_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/support_tickets/support_tickets_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/votes/votes_panel.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/ads_management_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/ads_management_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/services_hub_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/mobile_reload/mobile_reload_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/flight_tracking/flight_tracking_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/welfare_shops/welfare_shops_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/service_stations/service_stations_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/vehicle_parts/vehicle_parts_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/driver_loans/driver_loans_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/police_traffic/police_traffic_management_page.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/emergency_sos/emergency_sos_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/ev_charging/ev_charging_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/app_tutorials/app_tutorials_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/notifications/notifications_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/system_settings_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/membership_approvals/membership_fee_approvals_panel.dart';
@@ -55,50 +66,6 @@ class MainDashboardLayout extends StatefulWidget {
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   bool _isSidebarCollapsed = false;
-
-  int get _selectedIndex {
-    switch (widget.tab) {
-      case 'overview': return 0;
-      case 'total_members': return 1;
-      case 'activation_requests': return 2;
-      case 'payment_approvals': return 3;
-      case 'bookings': return 4;
-      case 'support_tickets': return 5;
-      case 'votes': return 6;
-      case 'marketplace': return 7;
-      case 'notifications': return 8;
-      case 'vehicle_rates': return 9;
-      case 'settings': return 10;
-      case 'membership_approvals': return 11;
-      case 'finance': return 12;
-      case 'member_benefits': return 13;
-      case 'p2p': return 14;
-      case 'withdrawals': return 15;
-      default: return 0;
-    }
-  }
-
-  String _getTabString(int index) {
-    switch (index) {
-      case 0: return 'overview';
-      case 1: return 'total_members';
-      case 2: return 'activation_requests';
-      case 3: return 'payment_approvals';
-      case 4: return 'bookings';
-      case 5: return 'support_tickets';
-      case 6: return 'votes';
-      case 7: return 'marketplace';
-      case 8: return 'notifications';
-      case 9: return 'vehicle_rates';
-      case 10: return 'settings';
-      case 11: return 'membership_approvals';
-      case 12: return 'finance';
-      case 13: return 'member_benefits';
-      case 14: return 'p2p';
-      case 15: return 'withdrawals';
-      default: return 'overview';
-    }
-  }
 
   bool get _isDriverMode => widget.mode == 'driver';
   String? get _currentSubPage => widget.subpage;
@@ -146,59 +113,60 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     }
   }
 
-  Widget _getDriverPanel(int index) {
-    switch (index) {
-      case 0:
-        return const DriversOverviewPanel();
-      case 1:
-        return const TotalMembersPanel();
-      case 2:
-        return const ActivationRequestsPanel();
-      case 3:
-        return const PaymentApprovalsPanel();
-      case 4:
-        return const ScheduledBookingsPanel();
-      case 5:
-        return const SupportTicketsPanel();
-      case 6:
-        return const VotesPanel();
-      case 7:
-        return const AdsManagementPanel();
-      case 8:
-        return const NotificationsPanel();
-      case 9:
-        return const VehicleCategoryRatesPanel();
-      case 10:
-        return const SystemSettingsPanel();
-      case 11:
-        return const MembershipFeeApprovalsPanel();
-      case 12:
-        return const FinancePanel();
-      case 13:
-        return const MemberBenefitsPanel();
-      case 14:
-        return const P2PTransfersPanel();
-      case 15:
-        return const WithdrawalRequestsPanel();
-      default:
-        return const DriversOverviewPanel();
+  Widget _getDriverPanel(String route) {
+    switch (route) {
+      case 'overview': return const DriversOverviewPanel();
+      case 'total_members': return const TotalMembersPanel();
+      case 'activation_requests': return const ActivationRequestsPanel();
+      case 'payment_approvals': return const PaymentApprovalsPanel();
+      case 'bookings': return const ScheduledBookingsPanel();
+      case 'support_tickets': return const SupportTicketsPanel();
+      case 'votes': return const VotesPanel();
+      case 'notifications': return const NotificationsPanel();
+      case 'vehicle_rates': return const VehicleCategoryRatesPanel();
+      case 'settings': return const SystemSettingsPanel();
+      case 'membership_approvals': return const MembershipFeeApprovalsPanel();
+      case 'finance': return const FinancePanel();
+      case 'member_benefits': return const MemberBenefitsPanel();
+      case 'p2p': return const P2PTransfersPanel();
+      case 'withdrawals': return const WithdrawalRequestsPanel();
+      
+      // Driver Service Hub Nested Routes
+      case 'services_hub': return const ServicesHubPanel(); // Fallback if parent clicked
+      case 'services_hub_config': return const ServicesHubPanel();
+      case 'marketplace': return const AdsManagementPanel();
+      case 'mobile_reload': return const MobileReloadPanel();
+      case 'flight_tracking': return const FlightTrackingPanel();
+      case 'welfare_shops': return const WelfareShopsPanel();
+      case 'service_stations': return const ServiceStationsPanel();
+      case 'vehicle_parts': return const VehiclePartsPanel();
+      case 'driver_loans': return const DriverLoansPanel();
+      case 'police_traffic': return const PoliceTrafficManagementPage();
+      case 'emergency_sos': return const EmergencySOSPanel();
+      case 'ev_charging': return const EvChargingPanel();
+      case 'app_tutorials': return const AppTutorialsPanel();
+      
+      default: return const DriversOverviewPanel();
     }
+  }
+
+  String _getTitleForRoute(String route, List<AdminMenuItem> items) {
+    for (var item in items) {
+      if (item.route == route) return item.title;
+      for (var child in item.children) {
+        if (child.route == route) return child.title;
+      }
+    }
+    return 'Dashboard';
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentMenuTitles = _isDriverMode
-        ? DriverMenuConstants.menuTitles
-        : PassengerMenuConstants.menuTitles;
-    final currentMenuIcons = _isDriverMode
-        ? DriverMenuConstants.menuIcons
-        : PassengerMenuConstants.menuIcons;
-    final selectedTitle =
-        _currentSubPage ??
-        currentMenuTitles[_selectedIndex.clamp(
-          0,
-          currentMenuTitles.length - 1,
-        )];
+    final currentMenuItems = _isDriverMode
+        ? DriverMenuConstants.menuItems
+        : PassengerMenuConstants.menuItems;
+        
+    final selectedTitle = _currentSubPage ?? _getTitleForRoute(widget.tab, currentMenuItems);
 
     final paymentStream = FirebaseFirestore.instance
         .collection('app_usage_payments')
@@ -293,13 +261,12 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   badges['Withdrawal Requests'] = withdrawalCount;
                 }
                 if (marketplaceAdsCount > 0) {
-                  badges['Marketplace Ads'] = marketplaceAdsCount;
+                  badges['Marketplace'] = marketplaceAdsCount; // Updated key to match nested title
                 }
 
                 return AdminSidebar(
-                  selectedIndex: _selectedIndex,
-                  menuTitles: currentMenuTitles,
-                  menuIcons: currentMenuIcons,
+                  currentRoute: widget.tab,
+                  menuItems: currentMenuItems,
                   isDriverMode: _isDriverMode,
                   isCollapsed: _isSidebarCollapsed,
                   menuBadges: badges,
@@ -312,8 +279,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     final newMode = _isDriverMode ? 'passenger' : 'driver';
                     context.go('/dashboard/$newMode/overview');
                   },
-                  onMenuSelected: (index) {
-                    context.go('/dashboard/${widget.mode}/${_getTabString(index)}');
+                  onMenuSelected: (route) {
+                    context.go('/dashboard/${widget.mode}/$route');
                   },
                 );
               },
@@ -334,7 +301,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     child: AnimatedSwitcher(
                       duration: const Duration(milliseconds: 180),
                       child: _isDriverMode
-                          ? (_selectedIndex == 0
+                          ? (widget.tab == 'overview'
                                 ? (_currentSubPage != null
                                       ? _getSubPageWidget(_currentSubPage!)
                                       : OverviewPanel(
@@ -343,8 +310,19 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                                             context.go('/dashboard/${widget.mode}/${widget.tab}?subpage=$encoded');
                                           },
                                         ))
-                                : _getDriverPanel(_selectedIndex))
-                          : _PassengerComingSoon(title: selectedTitle),
+                                : _currentSubPage != null
+                                    ? _getSubPageWidget(_currentSubPage!)
+                                    : _getDriverPanel(widget.tab))
+                          : Center(
+                              child: Text(
+                                'Passenger ${selectedTitle} Panel\n(Coming Soon)',
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  color: AdminColors.faint,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
                     ),
                   ),
                 ],
@@ -357,6 +335,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 }
 
+
 class _DashboardTopBar extends StatelessWidget {
   final String title;
   final bool isDriverMode;
@@ -366,272 +345,96 @@ class _DashboardTopBar extends StatelessWidget {
   const _DashboardTopBar({
     required this.title,
     required this.isDriverMode,
-    required this.isSubPage,
+    this.isSubPage = false,
     this.onBack,
   });
 
   @override
   Widget build(BuildContext context) {
-    final accentColor = isDriverMode
-        ? AdminColors.driver
-        : AdminColors.passenger;
-
     return Container(
-      height: 76,
+      height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 24),
       decoration: const BoxDecoration(
-        color: AdminColors.surface,
-        border: Border(bottom: BorderSide(color: AdminColors.line)),
+        color: AdminColors.canvas,
+        border: Border(
+          bottom: BorderSide(color: AdminColors.sidebarLine),
+        ),
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 760;
-
-          return Row(
-            children: [
-              if (isSubPage)
-                Tooltip(
-                  message: 'Back',
-                  child: IconButton(
-                    onPressed: onBack,
-                    icon: const Icon(Icons.arrow_back_rounded),
-                  ),
-                ),
-              if (isSubPage) const SizedBox(width: 4),
-              Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 9,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: accentColor.withValues(alpha: 0.14),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            isDriverMode
-                                ? 'DRIVER OPERATIONS'
-                                : 'PASSENGER OPERATIONS',
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: accentColor.darken(),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 0,
-                            ),
-                          ),
-                        ),
-                        if (!compact) ...[
-                          const SizedBox(width: 8),
-                          const AdminStatusPill(
-                            label: 'LIVE CONSOLE',
-                            icon: Icons.sensors_rounded,
-                            color: AdminColors.success,
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AdminColors.ink,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              if (!compact) ...[
-                const SizedBox(width: 16),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 360),
-                  child: TextField(
-                    style: const TextStyle(
-                      color: AdminColors.ink,
-                      fontSize: 13,
-                    ),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      hintText: 'Search members, bookings, tickets',
-                      hintStyle: const TextStyle(
-                        color: AdminColors.faint,
-                        fontSize: 13,
-                      ),
-                      prefixIcon: const Icon(
-                        Icons.search_rounded,
-                        size: 20,
-                        color: AdminColors.muted,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0),
-                      filled: true,
-                      fillColor: AdminColors.surfaceAlt,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(width: 12),
-              _TopIconButton(
-                icon: Icons.notifications_none_rounded,
-                label: 'Notifications',
-                badgeColor: accentColor,
-              ),
-              const SizedBox(width: 8),
-              if (!compact) ...[
-                _TopIconButton(
-                  icon: Icons.tune_rounded,
-                  label: 'Quick filters',
-                ),
-                const SizedBox(width: 14),
-              ],
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: AdminColors.primary.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: AdminColors.primary.withValues(alpha: 0.3),
-                  ),
-                ),
-                child: const Icon(
-                  Icons.admin_panel_settings_rounded,
-                  color: AdminColors.primary,
-                  size: 20,
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _TopIconButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color? badgeColor;
-
-  const _TopIconButton({
-    required this.icon,
-    required this.label,
-    this.badgeColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: label,
-      child: Stack(
-        clipBehavior: Clip.none,
+      child: Row(
         children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AdminColors.surfaceAlt,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AdminColors.line),
+          if (isSubPage && onBack != null) ...[
+            IconButton(
+              icon: const Icon(Icons.arrow_back, color: AdminColors.ink),
+              onPressed: onBack,
+              tooltip: 'Back',
             ),
-            child: Icon(icon, color: AdminColors.inkSoft, size: 20),
+            const SizedBox(width: 8),
+          ],
+          Text(
+            title,
+            style: const TextStyle(
+              color: AdminColors.ink,
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-          if (badgeColor != null)
-            Positioned(
-              right: 8,
-              top: 8,
-              child: Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: badgeColor,
-                  shape: BoxShape.circle,
-                ),
+          const Spacer(),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 6,
+            ),
+            decoration: BoxDecoration(
+              color: isDriverMode
+                  ? AdminColors.driver.withValues(alpha: 0.1)
+                  : AdminColors.passenger.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDriverMode
+                    ? AdminColors.driver.withValues(alpha: 0.2)
+                    : AdminColors.passenger.withValues(alpha: 0.2),
               ),
             ),
+            child: Row(
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isDriverMode
+                        ? AdminColors.driver
+                        : AdminColors.passenger,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isDriverMode ? 'Driver App Live' : 'Passenger App Live',
+                  style: TextStyle(
+                    color: isDriverMode
+                        ? AdminColors.driver
+                        : AdminColors.passenger,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          const CircleAvatar(
+            radius: 18,
+            backgroundColor: AdminColors.sidebarLine,
+            child: Icon(
+              Icons.person_outline_rounded,
+              color: AdminColors.ink,
+              size: 20,
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-class _PassengerComingSoon extends StatelessWidget {
-  final String title;
 
-  const _PassengerComingSoon({required this.title});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const ValueKey('passenger-panel'),
-      color: AdminColors.canvas,
-      padding: const EdgeInsets.all(24),
-      child: Center(
-        child: AdminSurface(
-          elevated: true,
-          padding: const EdgeInsets.all(28),
-          child: SizedBox(
-            width: 520,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 54,
-                  height: 54,
-                  decoration: BoxDecoration(
-                    color: AdminColors.passenger.withValues(alpha: .12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.groups_2_rounded,
-                    color: AdminColors.passenger,
-                    size: 28,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    color: AdminColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Passenger admin screens are ready to be connected to their data modules.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: AdminColors.muted, height: 1.5),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-extension _ColorTone on Color {
-  Color darken([double amount = .18]) {
-    final hsl = HSLColor.fromColor(this);
-    return hsl
-        .withLightness((hsl.lightness - amount).clamp(0.0, 1.0))
-        .toColor();
-  }
-}

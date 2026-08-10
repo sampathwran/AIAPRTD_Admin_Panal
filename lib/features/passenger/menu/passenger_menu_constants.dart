@@ -1,34 +1,19 @@
 import 'package:flutter/material.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/menu/driver_menu_constants.dart';
 
 class PassengerMenuConstants {
-  // 👤 PASSENGER DASHBOARD MENUS (අයිතම 12)
-  static final List<String> menuTitles = [
-    'Passengers Overview',
-    'Total Users List',
-    'Verification Requests',
-    'User Refunds',
-    'Booking History',
-    'Promo & Benefits',
-    'Customer Support',
-    'Polls & Votes',
-    'Campaign Ads',
-    'Push Notifications',
-    'Fare Category & Rates',
-    'App Configurations',
-  ];
-
-  static final List<IconData> menuIcons = [
-    Icons.pie_chart_rounded,
-    Icons.supervised_user_circle_rounded,
-    Icons.verified_user_rounded,
-    Icons.assignment_return_rounded,
-    Icons.map_rounded,
-    Icons.card_giftcard_rounded,
-    Icons.contact_support_rounded,
-    Icons.poll_rounded,
-    Icons.campaign_rounded,
-    Icons.mail_rounded,
-    Icons.monetization_on_rounded,
-    Icons.tune_rounded,
+  static const List<AdminMenuItem> menuItems = [
+    AdminMenuItem(title: 'Passengers Overview', icon: Icons.pie_chart_rounded, route: 'overview'),
+    AdminMenuItem(title: 'Total Users List', icon: Icons.supervised_user_circle_rounded, route: 'total_users'),
+    AdminMenuItem(title: 'Verification Requests', icon: Icons.verified_user_rounded, route: 'verification_requests'),
+    AdminMenuItem(title: 'User Refunds', icon: Icons.assignment_return_rounded, route: 'refunds'),
+    AdminMenuItem(title: 'Booking History', icon: Icons.map_rounded, route: 'booking_history'),
+    AdminMenuItem(title: 'Promo & Benefits', icon: Icons.card_giftcard_rounded, route: 'promo'),
+    AdminMenuItem(title: 'Customer Support', icon: Icons.contact_support_rounded, route: 'support'),
+    AdminMenuItem(title: 'Polls & Votes', icon: Icons.poll_rounded, route: 'votes'),
+    AdminMenuItem(title: 'Campaign Ads', icon: Icons.campaign_rounded, route: 'campaigns'),
+    AdminMenuItem(title: 'Push Notifications', icon: Icons.mail_rounded, route: 'notifications'),
+    AdminMenuItem(title: 'Fare Category & Rates', icon: Icons.monetization_on_rounded, route: 'fare_rates'),
+    AdminMenuItem(title: 'App Configurations', icon: Icons.tune_rounded, route: 'app_config'),
   ];
 }

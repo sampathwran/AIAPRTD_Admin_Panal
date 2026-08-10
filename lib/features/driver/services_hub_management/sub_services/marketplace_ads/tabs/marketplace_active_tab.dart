@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/admin_edit_ad_dialog.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/admin_edit_ad_dialog.dart';
 
 class MarketplaceActiveTab extends StatelessWidget {
   const MarketplaceActiveTab({super.key});
@@ -239,3 +239,4 @@ class MarketplaceActiveTab extends StatelessWidget {
     );
   }
 }
+

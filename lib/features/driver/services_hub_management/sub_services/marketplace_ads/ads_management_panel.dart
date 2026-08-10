@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_categories_tab.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_pending_tab.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_active_tab.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_sold_tab.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/tabs/marketplace_sponsor_tab.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/marketplace_ads/admin_add_ad_dialog.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/tabs/marketplace_categories_tab.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/tabs/marketplace_pending_tab.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/tabs/marketplace_active_tab.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/tabs/marketplace_sold_tab.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/tabs/marketplace_sponsor_tab.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/marketplace_ads/admin_add_ad_dialog.dart';
 
 class AdsManagementPanel extends StatefulWidget {
   const AdsManagementPanel({super.key});
@@ -155,3 +155,4 @@ class _AdsManagementPanelState extends State<AdsManagementPanel> {
     );
   }
 }
+
