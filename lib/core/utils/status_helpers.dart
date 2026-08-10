@@ -215,6 +215,15 @@ Map<String, dynamic> checkMemberSystemStatus(Map<String, dynamic>? memberData) {
     return {'isActive': false, 'reason': 'Vehicle documents not found'};
   }
 
+  // Bypass document validation if the vehicle itself is marked as approved
+  if (memberData['currentVehicle'] is Map) {
+    final String vStatus =
+        memberData['currentVehicle']['status']?.toString().trim().toLowerCase() ?? '';
+    if (vStatus == 'approved') {
+      return {'isActive': true, 'reason': 'Success'};
+    }
+  }
+
   final dynamic rawDocuments =
       memberData['documents'] ??
       memberData['complianceDocuments'] ??

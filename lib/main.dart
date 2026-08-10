@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/passenger_provider.dart';
@@ -10,13 +11,13 @@ import 'package:aiaprtd_admin_dashboard/core/providers/vehicle_request_provider.
 import 'package:aiaprtd_admin_dashboard/core/providers/profile_image_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/change_bank_details_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/admin_trips_provider.dart';
-import 'package:aiaprtd_admin_dashboard/features/dashboard_shell/main_dashboard_layout.dart';
-import 'package:aiaprtd_admin_dashboard/features/auth/admin_login_page.dart';
 import 'package:aiaprtd_admin_dashboard/firebase_options.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
+import 'package:aiaprtd_admin_dashboard/core/router/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  usePathUrlStrategy();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseFirestore.instance.settings = Settings(
     persistenceEnabled: kIsWeb ? false : true,
@@ -43,9 +44,13 @@ class AIAPRTDAdminApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return MaterialApp.router(
       title: 'AIAPRTD Admin Dashboard',
       debugShowCheckedModeBanner: false,
+      routerConfig: appRouter,
+      builder: (context, child) {
+        return child!;
+      },
       theme: ThemeData(
         useMaterial3: true,
         fontFamily: 'Roboto',
@@ -125,11 +130,6 @@ class AIAPRTDAdminApp extends StatelessWidget {
           ),
         ),
       ),
-      initialRoute: '/login',
-      routes: {
-        '/login': (context) => const AdminLoginPage(),
-        '/dashboard': (context) => const MainDashboardLayout(),
-      },
     );
   }
 }

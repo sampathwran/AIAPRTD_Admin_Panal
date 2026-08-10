@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:go_router/go_router.dart';
 
 class AdminLoginPage extends StatefulWidget {
   const AdminLoginPage({super.key});
@@ -63,7 +64,7 @@ class _AdminLoginPageState extends State<AdminLoginPage> {
       if (adminDoc.exists) {
         if (!mounted) return;
         _showMessage('Login successful.', Colors.green.shade700);
-        Navigator.pushReplacementNamed(context, '/dashboard');
+        context.go('/dashboard');
       } else {
         debugPrint('ADMIN LOGIN DEBUG: admin doc not found, signing out');
         await FirebaseAuth.instance.signOut();

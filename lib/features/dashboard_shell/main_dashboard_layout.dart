@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:rxdart/rxdart.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
@@ -38,17 +39,70 @@ import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_pan
 import 'package:aiaprtd_admin_dashboard/features/driver/scheduled_bookings/scheduled_bookings_full_panel.dart';
 
 class MainDashboardLayout extends StatefulWidget {
-  const MainDashboardLayout({super.key});
+  final String mode;
+  final String tab;
+  final String? subpage;
+
+  const MainDashboardLayout({
+    super.key,
+    required this.mode,
+    required this.tab,
+    this.subpage,
+  });
 
   @override
   State<MainDashboardLayout> createState() => _MainDashboardLayoutState();
 }
 
 class _MainDashboardLayoutState extends State<MainDashboardLayout> {
-  int _selectedIndex = 0;
-  bool _isDriverMode = true;
-  String? _currentSubPage;
   bool _isSidebarCollapsed = false;
+
+  int get _selectedIndex {
+    switch (widget.tab) {
+      case 'overview': return 0;
+      case 'total_members': return 1;
+      case 'activation_requests': return 2;
+      case 'payment_approvals': return 3;
+      case 'bookings': return 4;
+      case 'support_tickets': return 5;
+      case 'votes': return 6;
+      case 'marketplace': return 7;
+      case 'notifications': return 8;
+      case 'vehicle_rates': return 9;
+      case 'settings': return 10;
+      case 'membership_approvals': return 11;
+      case 'finance': return 12;
+      case 'member_benefits': return 13;
+      case 'p2p': return 14;
+      case 'withdrawals': return 15;
+      default: return 0;
+    }
+  }
+
+  String _getTabString(int index) {
+    switch (index) {
+      case 0: return 'overview';
+      case 1: return 'total_members';
+      case 2: return 'activation_requests';
+      case 3: return 'payment_approvals';
+      case 4: return 'bookings';
+      case 5: return 'support_tickets';
+      case 6: return 'votes';
+      case 7: return 'marketplace';
+      case 8: return 'notifications';
+      case 9: return 'vehicle_rates';
+      case 10: return 'settings';
+      case 11: return 'membership_approvals';
+      case 12: return 'finance';
+      case 13: return 'member_benefits';
+      case 14: return 'p2p';
+      case 15: return 'withdrawals';
+      default: return 'overview';
+    }
+  }
+
+  bool get _isDriverMode => widget.mode == 'driver';
+  String? get _currentSubPage => widget.subpage;
 
   @override
   void initState() {
@@ -62,7 +116,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
   }
 
   Widget _getSubPageWidget(String title) {
-    void goBack() => setState(() => _currentSubPage = null);
+    void goBack() => context.go('/dashboard/${widget.mode}/${widget.tab}');
 
     switch (title) {
       case 'Total Members':
@@ -246,17 +300,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     });
                   },
                   onToggleMode: () {
-                    setState(() {
-                      _isDriverMode = !_isDriverMode;
-                      _selectedIndex = 0;
-                      _currentSubPage = null;
-                    });
+                    final newMode = _isDriverMode ? 'passenger' : 'driver';
+                    context.go('/dashboard/$newMode/overview');
                   },
                   onMenuSelected: (index) {
-                    setState(() {
-                      _selectedIndex = index;
-                      _currentSubPage = null;
-                    });
+                    context.go('/dashboard/${widget.mode}/${_getTabString(index)}');
                   },
                 );
               },
@@ -271,7 +319,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                     isSubPage: _currentSubPage != null,
                     onBack: _currentSubPage == null
                         ? null
-                        : () => setState(() => _currentSubPage = null),
+                        : () => context.go('/dashboard/${widget.mode}/${widget.tab}'),
                   ),
                   Expanded(
                     child: AnimatedSwitcher(
@@ -281,10 +329,10 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                                 ? (_currentSubPage != null
                                       ? _getSubPageWidget(_currentSubPage!)
                                       : OverviewPanel(
-                                          onSubPageSelected: (title) =>
-                                              setState(
-                                                () => _currentSubPage = title,
-                                              ),
+                                          onSubPageSelected: (title) {
+                                            final encoded = Uri.encodeComponent(title);
+                                            context.go('/dashboard/${widget.mode}/${widget.tab}?subpage=$encoded');
+                                          },
                                         ))
                                 : _getDriverPanel(_selectedIndex))
                           : _PassengerComingSoon(title: selectedTitle),

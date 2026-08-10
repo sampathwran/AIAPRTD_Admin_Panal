@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/csv_exporter.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/driver_profile_dialog.dart';
 
 class TotalMembersPanel extends StatefulWidget {
@@ -147,11 +148,148 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                     ),
                   ),
                   onPressed: () {
-                    // Export CSV logic
+                    if (filteredMembers.isEmpty) return;
+
+                    final StringBuffer csvData = StringBuffer();
+                    // Headers
+                    csvData.writeln(
+                        '"Membership No","Full Name","Mobile","Vehicle No","Vehicle Type","Status","Join Date"');
+
+                    for (final member in filteredMembers) {
+                      final mNo = member['membershipNo']?.toString() ?? '-';
+                      final name = member['fullName']?.toString() ?? '-';
+                      final mobile = member['mobile']?.toString() ?? '-';
+                      final vNo = member['vehicleNumber']?.toString() ?? '-';
+                      final vType = member['vehicleType']?.toString() ?? '-';
+
+                      final statusResult = calculateMemberStatus(member);
+                      final isActive = statusResult['isActive'] == true;
+                      final statusStr = isActive ? 'ACTIVE' : 'INACTIVE';
+
+                      String dateJoined = '-';
+                      if (member['createdAt'] != null) {
+                        final ts = member['createdAt'] as Timestamp;
+                        final date = ts.toDate();
+                        dateJoined = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+                      }
+
+                      // Escape quotes in fields
+                      String escape(String value) {
+                        final escaped = value.replaceAll('"', '""');
+                        return '"$escaped"';
+                      }
+
+                      csvData.writeln(
+                          "${escape(mNo)},${escape(name)},${escape(mobile)},${escape(vNo)},${escape(vType)},${escape(statusStr)},${escape(dateJoined)}");
+                    }
+
+                    exportToCsv('AIAPRTD_Members.csv', csvData.toString());
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('CSV Exported successfully!'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
                   },
                   icon: const Icon(Icons.download_rounded, size: 16),
                   label: const Text(
                     'Export CSV',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(130, 34),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  onPressed: () {
+                    if (filteredMembers.isEmpty) return;
+
+                    final StringBuffer csvData = StringBuffer();
+                    // Headers
+                    csvData.writeln(
+                        '"Membership No","Full Name","NIC","Mobile","Email","Gender","DOB","Address","Religion","Status","Join Date","Vehicle Category","Vehicle Number","Make & Model","Color","Fuel Type","Current Month Paid","Last Paid Month"');
+
+                    for (final member in filteredMembers) {
+                      final mNo = member['membershipNo']?.toString() ?? '-';
+                      final name = member['fullName']?.toString() ?? member['firstName']?.toString() ?? '-';
+                      final nic = member['nic']?.toString() ?? '-';
+                      final mobile = member['mobile']?.toString() ?? '-';
+                      final email = member['email']?.toString() ?? '-';
+                      final gender = member['gender']?.toString() ?? '-';
+                      final dob = member['dob']?.toString() ?? '-';
+                      final address = member['address']?.toString() ?? '-';
+                      final religion = member['religion']?.toString() ?? '-';
+                      
+                      final statusResult = calculateMemberStatus(member);
+                      final isActive = statusResult['isActive'] == true;
+                      final statusStr = isActive ? 'ACTIVE' : 'INACTIVE';
+
+                      String dateJoined = '-';
+                      if (member['createdAt'] != null) {
+                        try {
+                          final ts = member['createdAt'] as Timestamp;
+                          final date = ts.toDate();
+                          dateJoined = "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+                        } catch (_) {}
+                      }
+
+                      // Vehicle details
+                      final currentVehicle = member['currentVehicle'] as Map<String, dynamic>? ?? {};
+                      final vDetails = currentVehicle['details'] as Map<String, dynamic>? ?? {};
+                      final vCategory = vDetails['category']?.toString() ?? '-';
+                      final vNo = vDetails['number']?.toString() ?? '-';
+                      final vMakeModel = "${vDetails['make'] ?? ''} ${vDetails['model'] ?? ''}".trim();
+                      final vColor = vDetails['color']?.toString() ?? '-';
+                      final vFuel = vDetails['fuelType']?.toString() ?? '-';
+
+                      // Payment details
+                      final feeCheck = checkMembershipFeeStatus(member);
+                      final currentPaid = feeCheck['hasPaidForCurrentMonth'] == true ? 'Yes' : 'No';
+                      
+                      String lastPaidMonth = '-';
+                      final paymentHistory = member['payment_history'] as List<dynamic>? ?? [];
+                      if (paymentHistory.isNotEmpty) {
+                        for (var p in paymentHistory) {
+                          if (p is Map && p['status']?.toString().toLowerCase() == 'paid') {
+                             lastPaidMonth = "${p['month']} ${p['year']}";
+                             break;
+                          }
+                        }
+                      }
+
+                      // Escape quotes in fields
+                      String escape(String value) {
+                        if (value.isEmpty) return '""';
+                        final escaped = value.replaceAll('"', '""');
+                        return '"$escaped"';
+                      }
+
+                      csvData.writeln(
+                          "${escape(mNo)},${escape(name)},${escape(nic)},${escape(mobile)},${escape(email)},${escape(gender)},${escape(dob)},${escape(address)},${escape(religion)},${escape(statusStr)},${escape(dateJoined)},${escape(vCategory)},${escape(vNo)},${escape(vMakeModel)},${escape(vColor)},${escape(vFuel)},${escape(currentPaid)},${escape(lastPaidMonth)}");
+                    }
+
+                    exportToCsv('AIAPRTD_Full_Members_Data.csv', csvData.toString());
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Full CSV Exported successfully!'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.download_for_offline_rounded, size: 16),
+                  label: const Text(
+                    'Export Full Data',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11),
                   ),
                 ),
