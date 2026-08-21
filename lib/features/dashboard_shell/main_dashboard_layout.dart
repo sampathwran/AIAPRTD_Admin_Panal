@@ -30,6 +30,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/
 import 'package:aiaprtd_admin_dashboard/features/driver/services_hub_management/sub_services/app_tutorials/app_tutorials_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/notifications/notifications_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/system_settings_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/special_days_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/membership_approvals/membership_fee_approvals_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/vehicle_category_rates/vehicle_category_rates_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/finance/finance_panel.dart';
@@ -125,6 +126,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       case 'notifications': return const NotificationsPanel();
       case 'vehicle_rates': return const VehicleCategoryRatesPanel();
       case 'settings': return const SystemSettingsPanel();
+      case 'special_days': return const SpecialDaysPanel();
       case 'membership_approvals': return const MembershipFeeApprovalsPanel();
       case 'finance': return const FinancePanel();
       case 'member_benefits': return const MemberBenefitsPanel();
