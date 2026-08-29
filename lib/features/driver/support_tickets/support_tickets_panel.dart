@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'dart:ui' as ui;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -14,6 +15,51 @@ class SupportTicketsPanel extends StatefulWidget {
 
 class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
   String _statusFilter = 'All';
+
+  Future<pw.Widget> _renderSinhalaText(
+    String text, {
+    double fontSize = 12,
+    bool isBold = false,
+    double maxWidth = 500,
+  }) async {
+    if (text.isEmpty) return pw.SizedBox();
+
+    final textSpan = TextSpan(
+      text: text,
+      style: TextStyle(
+        color: Colors.black,
+        fontSize: fontSize * 2, // Scale up for better resolution
+        fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+      ),
+    );
+
+    final textPainter = TextPainter(
+      text: textSpan,
+      textDirection: ui.TextDirection.ltr,
+    );
+    textPainter.layout(maxWidth: maxWidth * 2);
+
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    textPainter.paint(canvas, Offset.zero);
+    final picture = recorder.endRecording();
+
+    final width = textPainter.width.ceil();
+    final height = textPainter.height.ceil();
+
+    if (width <= 0 || height <= 0) return pw.SizedBox();
+
+    final image = await picture.toImage(width, height);
+    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+    if (byteData == null) return pw.SizedBox();
+
+    final bytes = byteData.buffer.asUint8List();
+    return pw.Image(
+      pw.MemoryImage(bytes),
+      width: width / 2,
+      height: height / 2,
+    );
+  }
 
   Future<void> _generatePdf(
     Map<String, dynamic> ticketData,
@@ -35,6 +81,27 @@ class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
         : 'Unknown Date';
 
     final List<dynamic> replies = ticketData['adminReplies'] ?? [];
+
+    // Pre-render Sinhala texts as Images to fix shaping issues
+    final titleWidget = await _renderSinhalaText(
+      title,
+      isBold: true,
+      fontSize: 14,
+    );
+    final descWidget = await _renderSinhalaText(
+      description,
+      fontSize: 12,
+      maxWidth: 500,
+    );
+    final memberNameWidget = await _renderSinhalaText(memberName, fontSize: 12);
+
+    final replyWidgets = <pw.Widget>[];
+    for (var r in replies) {
+      final msg = r['message'] ?? '';
+      replyWidgets.add(
+        await _renderSinhalaText(msg, fontSize: 12, maxWidth: 480),
+      );
+    }
 
     pdf.addPage(
       pw.MultiPage(
@@ -75,7 +142,8 @@ class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
               'Member Details',
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16),
             ),
-            pw.Text('Name: $memberName'),
+            pw.SizedBox(height: 4),
+            pw.Row(children: [pw.Text('Name: '), memberNameWidget]),
             pw.Text('Membership No: $memberNo'),
             pw.Text('Phone: $memberPhone'),
             pw.SizedBox(height: 20),
@@ -83,11 +151,19 @@ class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
               'Complaint / Issue',
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16),
             ),
-            pw.Text(
-              'Title: $title',
-              style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+            pw.SizedBox(height: 4),
+            pw.Row(
+              crossAxisAlignment: pw.CrossAxisAlignment.start,
+              children: [
+                pw.Text(
+                  'Title: ',
+                  style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                ),
+                titleWidget,
+              ],
             ),
-            pw.Text(description),
+            pw.SizedBox(height: 8),
+            descWidget,
             pw.SizedBox(height: 20),
             pw.Divider(),
             pw.Text(
@@ -95,7 +171,8 @@ class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
               style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 16),
             ),
             pw.SizedBox(height: 10),
-            ...replies.map((r) {
+            ...List.generate(replies.length, (index) {
+              final r = replies[index];
               final rDate = r['timestamp'] != null
                   ? DateFormat(
                       'yyyy-MM-dd HH:mm',
@@ -117,7 +194,8 @@ class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
                         fontSize: 10,
                       ),
                     ),
-                    pw.Text(r['message'] ?? ''),
+                    pw.SizedBox(height: 4),
+                    replyWidgets[index],
                   ],
                 ),
               );
@@ -127,9 +205,10 @@ class _SupportTicketsPanelState extends State<SupportTicketsPanel> {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-      name: 'ticket_$ticketId.pdf',
+    final dateStr = DateFormat('yyyy_MM_dd').format(DateTime.now());
+    await Printing.sharePdf(
+      bytes: await pdf.save(),
+      filename: 'ticket_${ticketId}_$dateStr.pdf',
     );
   }
 
