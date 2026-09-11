@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/notification_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:aiaprtd_admin_dashboard/core/services/history_service.dart';
 
@@ -423,6 +424,12 @@ class RequestCard extends StatelessWidget {
       });
 
       await batch.commit();
+
+      await NotificationHelper.sendNotification(
+        membershipNo: membershipNo,
+        title: 'Profile Approved',
+        body: 'Your recent profile update has been approved!',
+      );
 
       // Log History
       await HistoryService.logActivationAction(

@@ -4,6 +4,7 @@ import 'package:aiaprtd_admin_dashboard/core/utils/member_pdf_generator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/edit_driver_profile_dialog.dart';
 
 class DriverProfileDialog extends StatelessWidget {
   final Map<String, dynamic> driver;
@@ -207,10 +208,37 @@ class DriverProfileDialog extends StatelessWidget {
         Positioned(
           top: 16,
           right: 16,
-          child: IconButton(
-            icon: const Icon(Icons.close_rounded, color: Colors.grey),
-            onPressed: () => Navigator.pop(context),
-            splashRadius: 24,
+          child: Row(
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => EditDriverProfileDialog(
+                      driver: driver,
+                      onUpdated: () {
+                        // In a real app we might want to refresh the specific driver,
+                        // but since Provider listens to firestore, it should auto-update in background.
+                      },
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
+                label: const Text(
+                  'Edit Profile',
+                  style: TextStyle(
+                    color: Colors.blue,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                icon: const Icon(Icons.close_rounded, color: Colors.grey),
+                onPressed: () => Navigator.pop(context),
+                splashRadius: 24,
+              ),
+            ],
           ),
         ),
       ],
@@ -332,7 +360,10 @@ class DriverProfileDialog extends StatelessWidget {
     final membershipNo = driver['membershipNo']?.toString();
     if (membershipNo == null || membershipNo.isEmpty) {
       return const Center(
-        child: Text('Membership Number is missing.', style: TextStyle(color: Colors.grey)),
+        child: Text(
+          'Membership Number is missing.',
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 
@@ -343,7 +374,9 @@ class DriverProfileDialog extends StatelessWidget {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: Color(0xFF1E3A8A)));
+          return const Center(
+            child: CircularProgressIndicator(color: Color(0xFF1E3A8A)),
+          );
         }
 
         final List<Map<String, dynamic>> dbVehicles = [];
@@ -351,12 +384,13 @@ class DriverProfileDialog extends StatelessWidget {
           dbVehicles.add(snapshot.data!.data() as Map<String, dynamic>);
         } else {
           // Fallback to driver object
-          final currentVehicle = driver['currentVehicle'] as Map<String, dynamic>?;
+          final currentVehicle =
+              driver['currentVehicle'] as Map<String, dynamic>?;
           if (currentVehicle != null) {
             dbVehicles.add(currentVehicle);
           }
         }
-        
+
         // Add history from driver object
         final vehicleHistory = driver['vehicleHistory'] as List<dynamic>? ?? [];
         for (var v in vehicleHistory) {
@@ -387,7 +421,11 @@ class DriverProfileDialog extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildSectionTitle(index == 0 ? 'Current Vehicle' : 'Vehicle History ${index}'),
+                      _buildSectionTitle(
+                        index == 0
+                            ? 'Current Vehicle'
+                            : 'Vehicle History ${index}',
+                      ),
                       const SizedBox(height: 16),
                       _buildVehicleSection(v, isCurrent: index == 0),
                     ],
@@ -436,14 +474,16 @@ class DriverProfileDialog extends StatelessWidget {
         final review = d['reviewData'] as Map<String, dynamic>;
         review.forEach((key, value) {
           if (value == null || value.toString().isEmpty) return;
-          
+
           String displayValue = value.toString();
           if (value is List) {
             displayValue = value.join(', ');
           }
-          
+
           // Avoid duplicates
-          final exists = gridItems.any((item) => item.label.toLowerCase() == key.toLowerCase());
+          final exists = gridItems.any(
+            (item) => item.label.toLowerCase() == key.toLowerCase(),
+          );
           if (!exists) {
             gridItems.add(_InfoItem(key, displayValue));
           }
@@ -455,27 +495,44 @@ class DriverProfileDialog extends StatelessWidget {
     details.forEach((key, value) {
       if (key == 'brand' || key == 'model') return;
       if (value == null || value.toString().isEmpty) return;
-      
+
       // Convert camelCase to Title Case
       final formattedKey = key.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
-      final title = formattedKey.isNotEmpty ? formattedKey[0].toUpperCase() + formattedKey.substring(1) : key;
-      
-      final exists = gridItems.any((item) => item.label.toLowerCase() == title.toLowerCase());
+      final title = formattedKey.isNotEmpty
+          ? formattedKey[0].toUpperCase() + formattedKey.substring(1)
+          : key;
+
+      final exists = gridItems.any(
+        (item) => item.label.toLowerCase() == title.toLowerCase(),
+      );
       if (!exists) {
-         gridItems.add(_InfoItem(title, value.toString()));
+        gridItems.add(_InfoItem(title, value.toString()));
       }
     });
 
     // Add all dynamically from root (excluding complex objects and already shown ones)
     final excludeKeys = [
-      'details', 'documents', 'vehiclePhotos', 'selectedCategory', 'category', 'status', 'approvedAt', 'createdAt', 'updatedAt', 'rateProfileRef', 'ratesLastSynced', 'membershipNo'
+      'details',
+      'documents',
+      'vehiclePhotos',
+      'selectedCategory',
+      'category',
+      'status',
+      'approvedAt',
+      'createdAt',
+      'updatedAt',
+      'rateProfileRef',
+      'ratesLastSynced',
+      'membershipNo',
     ];
     v.forEach((key, value) {
       if (excludeKeys.contains(key)) return;
       if (value is Map || value is List) return; // Skip complex objects
-      
+
       final formattedKey = key.replaceAll(RegExp(r'(?<!^)(?=[A-Z])'), ' ');
-      final title = formattedKey.isNotEmpty ? formattedKey[0].toUpperCase() + formattedKey.substring(1) : key;
+      final title = formattedKey.isNotEmpty
+          ? formattedKey[0].toUpperCase() + formattedKey.substring(1)
+          : key;
       gridItems.add(_InfoItem(title, value.toString()));
     });
 
@@ -690,7 +747,8 @@ class DriverProfileDialog extends StatelessWidget {
             final joinDateStr = driver['joinDate']?.toString() ?? '';
             DateTime? joinDate;
             try {
-              if (joinDateStr.isNotEmpty) joinDate = DateTime.parse(joinDateStr);
+              if (joinDateStr.isNotEmpty)
+                joinDate = DateTime.parse(joinDateStr);
             } catch (_) {}
 
             int totalMonths = 0;
@@ -713,186 +771,223 @@ class DriverProfileDialog extends StatelessWidget {
               }
 
               DateTime currentDate = DateTime(joinDate.year, joinDate.month);
-          final end = DateTime(currentYear, currentMonth);
-          final DateFormat monthFormat = DateFormat('MMMM');
+              final end = DateTime(currentYear, currentMonth);
+              final DateFormat monthFormat = DateFormat('MMMM');
 
-          // Collect all approved paid months into a set for fast lookup
-          final Set<String> paidMonthYearSet = {};
-          for (var record in allHistory) {
-            if (record is Map<String, dynamic>) {
-              final rMonth = (record['month'] ?? '')
-                  .toString()
-                  .trim()
-                  .toLowerCase();
-              String rYear = (record['year'] ?? '').toString().trim();
+              // Collect all approved paid months into a set for fast lookup
+              final Set<String> paidMonthYearSet = {};
+              for (var record in allHistory) {
+                if (record is Map<String, dynamic>) {
+                  final rMonth = (record['month'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase();
+                  String rYear = (record['year'] ?? '').toString().trim();
 
-              if (rYear.isEmpty) {
-                final dateStr = (record['date'] ?? '').toString().trim();
-                if (dateStr.length >= 4) {
-                  rYear = dateStr.substring(0, 4);
+                  if (rYear.isEmpty) {
+                    final dateStr = (record['date'] ?? '').toString().trim();
+                    if (dateStr.length >= 4) {
+                      rYear = dateStr.substring(0, 4);
+                    }
+                  }
+
+                  if (rMonth.isNotEmpty && rYear.isNotEmpty) {
+                    paidMonthYearSet.add('${rMonth}_$rYear');
+                  }
                 }
               }
 
-              if (rMonth.isNotEmpty && rYear.isNotEmpty) {
-                paidMonthYearSet.add('${rMonth}_$rYear');
+              paidMonths = paidMonthYearSet.length;
+
+              while (!currentDate.isAfter(end)) {
+                totalMonths++;
+                final String mName = monthFormat.format(currentDate);
+                final String yName = currentDate.year.toString();
+                final String key = '${mName.toLowerCase()}_$yName';
+
+                if (!paidMonthYearSet.contains(key)) {
+                  unpaidMonthsList.add({'month': mName, 'year': yName});
+                }
+
+                currentDate = DateTime(currentDate.year, currentDate.month + 1);
               }
-            }
-          }
 
-          paidMonths = paidMonthYearSet.length;
-
-          while (!currentDate.isAfter(end)) {
-            totalMonths++;
-            final String mName = monthFormat.format(currentDate);
-            final String yName = currentDate.year.toString();
-            final String key = '${mName.toLowerCase()}_$yName';
-
-            if (!paidMonthYearSet.contains(key)) {
-              unpaidMonthsList.add({'month': mName, 'year': yName});
+              arrearsMonths = unpaidMonthsList.length;
             }
 
-            currentDate = DateTime(currentDate.year, currentDate.month + 1);
-          }
-
-          arrearsMonths = unpaidMonthsList.length;
-        }
-
-        return SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                crossAxisAlignment: CrossAxisAlignment.center,
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildSectionTitle('Membership Fee Summary'),
                   Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      if (joinDate != null)
-                        Container(
-                          margin: const EdgeInsets.only(right: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.green.shade50,
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: Colors.green.shade200),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.check_circle, size: 16, color: Colors.green.shade700),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Joined: ${DateFormat('yyyy-MM-dd').format(joinDate!)}',
-                                style: TextStyle(
-                                  color: Colors.green.shade800,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 13,
+                      _buildSectionTitle('Membership Fee Summary'),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (joinDate != null)
+                            Container(
+                              margin: const EdgeInsets.only(right: 12),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.green.shade200,
                                 ),
                               ),
-                            ],
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.check_circle,
+                                    size: 16,
+                                    color: Colors.green.shade700,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Joined: ${DateFormat('yyyy-MM-dd').format(joinDate!)}',
+                                    style: TextStyle(
+                                      color: Colors.green.shade800,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF1E3A8A),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: () async {
+                              final selectedDate = await showDatePicker(
+                                context: context,
+                                initialDate: joinDate ?? DateTime.now(),
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime.now(),
+                              );
+                              if (selectedDate != null) {
+                                await FirebaseFirestore.instance
+                                    .collection('vehicles')
+                                    .doc(driver['membershipNo'])
+                                    .update({
+                                      'joinDate': selectedDate
+                                          .toIso8601String(),
+                                    });
+                                setState(() {
+                                  driver['joinDate'] = selectedDate
+                                      .toIso8601String();
+                                });
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Join Date updated successfully!',
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.edit_calendar, size: 18),
+                            label: Text(
+                              joinDate == null
+                                  ? 'Set Join Date'
+                                  : 'Edit Join Date',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
                           ),
-                        ),
-                      ElevatedButton.icon(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF1E3A8A),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        ),
-                        onPressed: () async {
-                          final selectedDate = await showDatePicker(
-                            context: context,
-                            initialDate: joinDate ?? DateTime.now(),
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime.now(),
-                          );
-                          if (selectedDate != null) {
-                            await FirebaseFirestore.instance.collection('vehicles').doc(driver['membershipNo']).update({
-                              'joinDate': selectedDate.toIso8601String()
-                            });
-                            setState(() {
-                              driver['joinDate'] = selectedDate.toIso8601String();
-                            });
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Join Date updated successfully!')));
-                            }
-                          }
-                        },
-                        icon: const Icon(Icons.edit_calendar, size: 18),
-                        label: Text(joinDate == null ? 'Set Join Date' : 'Edit Join Date', style: const TextStyle(fontWeight: FontWeight.bold)),
+                        ],
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  if (joinDate == null)
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.orange.shade200),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.orange,
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Cannot calculate arrears because Join Date is missing. Please update the member profile.',
+                              style: TextStyle(color: Colors.orange),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    _buildFeeSummaryCards(
+                      totalMonths,
+                      paidMonths,
+                      arrearsMonths,
+                    ),
+
+                  const SizedBox(height: 32),
+
+                  if (unpaidMonthsList.isNotEmpty) ...[
+                    _buildSectionTitle(
+                      'Unpaid Months List (${unpaidMonthsList.length})',
+                    ),
+                    const SizedBox(height: 16),
+                    _buildUnpaidMonthsTable(
+                      unpaidMonthsList.reversed.toList(),
+                    ), // Z-A order (newest first)
+                    const SizedBox(height: 32),
+                    const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                    const SizedBox(height: 32),
+                  ],
+
+                  _buildSectionTitle('Pending Payments (${allPending.length})'),
+                  const SizedBox(height: 16),
+                  if (allPending.isEmpty)
+                    const Text(
+                      'No pending payments.',
+                      style: TextStyle(color: Colors.grey),
+                    )
+                  else
+                    _buildPaymentTable(allPending),
+
+                  const SizedBox(height: 32),
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+                  const SizedBox(height: 32),
+
+                  _buildSectionTitle('Payment History (${allHistory.length})'),
+                  const SizedBox(height: 16),
+                  if (allHistory.isEmpty)
+                    const Text(
+                      'No payment history available.',
+                      style: TextStyle(color: Colors.grey),
+                    )
+                  else
+                    _buildPaymentTable(allHistory),
                 ],
               ),
-              const SizedBox(height: 16),
-              if (joinDate == null)
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.orange.shade200),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.warning_amber_rounded, color: Colors.orange),
-                      SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'Cannot calculate arrears because Join Date is missing. Please update the member profile.',
-                          style: TextStyle(color: Colors.orange),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              else
-                _buildFeeSummaryCards(totalMonths, paidMonths, arrearsMonths),
-
-              const SizedBox(height: 32),
-
-              if (unpaidMonthsList.isNotEmpty) ...[
-                _buildSectionTitle(
-                  'Unpaid Months List (${unpaidMonthsList.length})',
-                ),
-                const SizedBox(height: 16),
-                _buildUnpaidMonthsTable(
-                  unpaidMonthsList.reversed.toList(),
-                ), // Z-A order (newest first)
-                const SizedBox(height: 32),
-                const Divider(height: 1, color: Color(0xFFE2E8F0)),
-                const SizedBox(height: 32),
-              ],
-
-              _buildSectionTitle('Pending Payments (${allPending.length})'),
-              const SizedBox(height: 16),
-              if (allPending.isEmpty)
-                const Text(
-                  'No pending payments.',
-                  style: TextStyle(color: Colors.grey),
-                )
-              else
-                _buildPaymentTable(allPending),
-
-              const SizedBox(height: 32),
-              const Divider(height: 1, color: Color(0xFFE2E8F0)),
-              const SizedBox(height: 32),
-
-              _buildSectionTitle('Payment History (${allHistory.length})'),
-              const SizedBox(height: 16),
-              if (allHistory.isEmpty)
-                const Text(
-                  'No payment history available.',
-                  style: TextStyle(color: Colors.grey),
-                )
-              else
-                _buildPaymentTable(allHistory),
-            ],
-          ),
-        );
+            );
           },
         );
       },
@@ -1342,18 +1437,29 @@ class DriverProfileDialog extends StatelessWidget {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildSectionTitle('Recent Transactions (${docs.length})'),
+                        _buildSectionTitle(
+                          'Recent Transactions (${docs.length})',
+                        ),
                         ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF1E3A8A),
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
                           ),
                           onPressed: () {
-                            MemberPdfGenerator.downloadCertifiedIncomeReport(driver, docs);
+                            MemberPdfGenerator.downloadCertifiedIncomeReport(
+                              driver,
+                              docs,
+                            );
                           },
                           icon: const Icon(Icons.picture_as_pdf, size: 18),
-                          label: const Text('Download Income Report', style: TextStyle(fontWeight: FontWeight.bold)),
+                          label: const Text(
+                            'Download Income Report',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ],
                     ),
@@ -1559,11 +1665,26 @@ class DriverProfileDialog extends StatelessWidget {
 
         if (snapshot.hasData && snapshot.data!.exists) {
           final data = snapshot.data!.data() as Map<String, dynamic>;
-          bankName = data['bankName']?.toString() ?? driver['bankName']?.toString() ?? '-';
-          accHolder = data['accountHolderName']?.toString() ?? driver['accountHolderName']?.toString() ?? '-';
-          accNumber = data['accountNumber']?.toString() ?? driver['accountNumber']?.toString() ?? '-';
-          branchName = data['branchName']?.toString() ?? driver['branchName']?.toString() ?? '-';
-          branchCode = data['branchCode']?.toString() ?? driver['branchCode']?.toString() ?? '-';
+          bankName =
+              data['bankName']?.toString() ??
+              driver['bankName']?.toString() ??
+              '-';
+          accHolder =
+              data['accountHolderName']?.toString() ??
+              driver['accountHolderName']?.toString() ??
+              '-';
+          accNumber =
+              data['accountNumber']?.toString() ??
+              driver['accountNumber']?.toString() ??
+              '-';
+          branchName =
+              data['branchName']?.toString() ??
+              driver['branchName']?.toString() ??
+              '-';
+          branchCode =
+              data['branchCode']?.toString() ??
+              driver['branchCode']?.toString() ??
+              '-';
         } else {
           // Fallback to driver data
           bankName = driver['bankName']?.toString() ?? '-';

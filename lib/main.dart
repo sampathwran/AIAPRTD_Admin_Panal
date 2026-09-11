@@ -5,6 +5,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
+import 'dart:html' as html;
+
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/passenger_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/vehicle_request_provider.dart';
@@ -18,6 +20,16 @@ import 'package:aiaprtd_admin_dashboard/core/router/app_router.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   usePathUrlStrategy();
+  
+  if (kIsWeb) {
+    final uri = Uri.tryParse(html.window.location.href);
+    if (uri != null && uri.queryParameters.containsKey('id') && !uri.path.contains('track')) {
+      final id = uri.queryParameters['id'];
+      html.window.location.href = '/track?id=$id';
+      return;
+    }
+  }
+
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseFirestore.instance.settings = Settings(
     persistenceEnabled: kIsWeb ? false : true,

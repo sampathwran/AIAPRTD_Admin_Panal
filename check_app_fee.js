@@ -1,0 +1,1 @@
+const admin = require('firebase-admin'); admin.initializeApp(); admin.firestore().collection('app_membership_fee').limit(2).get().then(snap => console.log(JSON.stringify(snap.docs.map(d => d.data()), null, 2)));

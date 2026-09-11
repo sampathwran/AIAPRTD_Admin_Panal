@@ -216,6 +216,7 @@ class _LiveTrackingMapState extends State<LiveTrackingMap>
         .where('isOnline', isEqualTo: true)
         .snapshots()
         .listen((snapshot) {
+          if (!mounted) return;
           for (var doc in snapshot.docs) {
             final data = doc.data() as Map<String, dynamic>;
             final String id = doc.id;

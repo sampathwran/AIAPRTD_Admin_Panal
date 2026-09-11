@@ -1,5 +1,7 @@
 // ignore_for_file: spell_check_on_languages
 import 'package:flutter/material.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/notification_helper.dart';
+import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:aiaprtd_admin_dashboard/core/services/history_service.dart';
@@ -61,6 +63,12 @@ class KYCVerificationRequests extends StatelessWidget {
       }, SetOptions(merge: true));
 
       // 2.5 Log History
+      await NotificationHelper.sendNotification(
+        membershipNo: membershipNo,
+        title: 'KYC Approved',
+        body: 'Your KYC documents have been approved!',
+      );
+
       await HistoryService.logActivationAction(
         type: 'KYC_VERIFICATION',
         membershipNo: membershipNo,
@@ -119,41 +127,102 @@ class KYCVerificationRequests extends StatelessWidget {
     String membershipNo, {
     bool isFromSlider = false,
   }) async {
+    final List<String> rejectReasons = [
+      "ID Document is blurry or unreadable",
+      "Face does not match the ID",
+      "Document is expired",
+      "Information mismatch",
+      "Other (Invalid format)",
+    ];
+    int selectedIndex = 0;
+    
+    String? reason = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Select Rejection Reason"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: rejectReasons.asMap().entries.map((entry) {
+                  return RadioListTile<int>(
+                    title: Text(entry.value),
+                    value: entry.key,
+                    groupValue: selectedIndex,
+                    onChanged: (int? value) {
+                      setState(() => selectedIndex = value!);
+                    },
+                  );
+                }).toList(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, rejectReasons[selectedIndex]);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text("Reject", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (reason == null) return;
+
     final scaffoldMessenger = ScaffoldMessenger.of(context);
 
     try {
-      // 'verify_kyc' එකෙන් Reject කිරීම
       await FirebaseFirestore.instance
           .collection('verify_kyc')
           .doc(membershipNo)
           .update({
             'kycApprovalStatus': 'rejected',
             'faceKycStatus': 'rejected',
+            'kycRejectReason': reason,
           });
 
-      // User හට ආයෙත් Form එක පිරවීමට අවස්ථාව දීම
       await FirebaseFirestore.instance
           .collection('member')
           .doc(membershipNo)
           .set({
             'kycApprovalStatus': 'rejected',
             'faceKycStatus': 'rejected',
+            'kycRejectReason': reason,
           }, SetOptions(merge: true));
 
-      // Log History
+      await NotificationHelper.sendNotification(
+        membershipNo: membershipNo,
+        title: "KYC Rejected",
+        body: "Your KYC documents were rejected. Reason: $reason",
+      );
+
+      await NotificationHelper.sendNotification(
+        membershipNo: membershipNo,
+        title: 'KYC Approved',
+        body: 'Your KYC documents have been approved!',
+      );
+
       await HistoryService.logActivationAction(
         type: 'KYC_VERIFICATION',
         membershipNo: membershipNo,
         status: 'rejected',
-        requestData: {'membershipNo': membershipNo},
+        requestData: {'membershipNo': membershipNo, 'reason': reason},
       );
 
       if (!context.mounted) return;
-      if (isFromSlider) Navigator.pop(context); // Side Panel එක වහනවා
+      if (isFromSlider) Navigator.pop(context);
 
       scaffoldMessenger.showSnackBar(
         const SnackBar(
-          content: Text("Request Rejected. Driver can submit again! ❌"),
+          content: Text("Request Rejected. Notification Sent."),
           backgroundColor: Colors.amber,
         ),
       );
@@ -230,24 +299,71 @@ class KYCVerificationRequests extends StatelessWidget {
               mainAxisSpacing: 14,
             ),
             itemBuilder: (context, index) {
-              final item = docs[index].data() as Map<String, dynamic>;
+              final kycItem = docs[index].data() as Map<String, dynamic>;
               final String docId = docs[index].id;
-              final String name =
-                  item['fullName']?.toString() ?? 'Anonymous Member';
-              final String mobile = item['mobile']?.toString() ?? 'N/A';
-              final String nic = item['nic']?.toString() ?? 'N/A';
-              final String faceUrl =
-                  item['faceVerificationUrl']?.toString() ?? '';
-              final String idFrontUrl =
-                  item['idCardFrontUrl']?.toString() ?? '';
+              final String actualMembershipNo = kycItem['membershipNo']?.toString() ?? docId;
 
-              return Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+              return FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('member').doc(actualMembershipNo).get(),
+                builder: (context, memberSnapshot) {
+                  if (memberSnapshot.connectionState == ConnectionState.waiting) {
+                    return Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      child: const Center(child: CircularProgressIndicator(color: Colors.deepPurple)),
+                    );
+                  }
+
+                  final memberData = memberSnapshot.data?.data() as Map<String, dynamic>? ?? {};
+                  
+                  // Combine data. Be careful: for App users, memberData has empty strings while kycItem has the real data. 
+                  // For Web users, kycItem has missing fields while memberData has real data.
+                  // We take the non-empty value from either side.
+                  
+                  String getValue(String key) {
+                    final memberVal = memberData[key]?.toString().trim() ?? '';
+                    final kycVal = kycItem[key]?.toString().trim() ?? '';
+                    if (memberVal.isNotEmpty && memberVal != 'null') return memberVal;
+                    return kycVal;
+                  }
+
+                  final item = {
+                    ...kycItem, 
+                    ...memberData,
+                    'fullName': getValue('fullName'),
+                    'mobile': getValue('mobile'),
+                    'nic': getValue('nic'),
+                    'address': getValue('address'),
+                    'dob': getValue('dob'),
+                    'religion': getValue('religion'),
+                    'faceVerificationUrl': kycItem['faceVerificationUrl'] ?? memberData['faceVerificationUrl'],
+                    'idCardFrontUrl': kycItem['idCardFrontUrl'] ?? memberData['idCardFrontUrl'],
+                    'idCardBackUrl': kycItem['idCardBackUrl'] ?? memberData['idCardBackUrl'],
+                    'kycApprovalStatus': kycItem['kycApprovalStatus'], // Ensure status is preserved from kycItem
+                  };
+
+                  String name = item['fullName']?.toString() ?? 'Anonymous Member';
+                  // Some apps accidentally save email as fullName, fallback to member data if valid
+                  if (name.contains('@') && memberData['fullName'] != null && !memberData['fullName'].toString().contains('@') && memberData['fullName'].toString().trim().isNotEmpty) {
+                      name = memberData['fullName'].toString();
+                      item['fullName'] = name;
+                  }
+
+                  final String mobile = item['mobile']?.toString() ?? 'N/A';
+                  final String nic = item['nic']?.toString() ?? 'N/A';
+                  
+                  final String faceUrl = item['faceVerificationUrl']?.toString() ?? '';
+                  final String idFrontUrl = item['idCardFrontUrl']?.toString() ?? '';
+
+                  return Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF0F172A).withValues(alpha: 0.04),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -388,6 +504,8 @@ class KYCVerificationRequests extends StatelessWidget {
                   ),
                 ),
               );
+                },
+              );
             },
           );
         },
@@ -509,8 +627,8 @@ class KYCVerificationRequests extends StatelessWidget {
         return Align(
           alignment: Alignment.centerRight,
           child: Container(
-            width: MediaQuery.of(context).size.width * 0.88,
-            constraints: const BoxConstraints(maxWidth: 460),
+            width: MediaQuery.of(context).size.width * 0.95,
+            constraints: const BoxConstraints(maxWidth: 950),
             height: double.infinity,
             decoration: const BoxDecoration(
               color: Colors.white,
@@ -551,74 +669,91 @@ class KYCVerificationRequests extends StatelessWidget {
                   const Divider(height: 1),
 
                   Expanded(
-                    child: ListView(
-                      padding: const EdgeInsets.all(20),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildSectionTitle(
-                          "VERIFIED IDENTITY CRITERIA (EDITABLE)",
+                        // Left Side: Images
+                        Expanded(
+                          flex: 5,
+                          child: ListView(
+                            padding: const EdgeInsets.all(20),
+                            children: [
+                              _buildSectionTitle("OFFICIAL IDENTITY CARDS"),
+                              const SizedBox(height: 6),
+                              _buildModernImageCard(
+                                context,
+                                "National ID - Front Side",
+                                item['idCardFrontUrl'],
+                              ),
+                              const SizedBox(height: 12),
+                              _buildModernImageCard(
+                                context,
+                                "National ID - Back Side",
+                                item['idCardBackUrl'],
+                              ),
+                              const SizedBox(height: 20),
+                              _buildSectionTitle("AI FACE MATCH SELECTION"),
+                              const SizedBox(height: 6),
+                              _buildModernImageCard(
+                                context,
+                                "Liveness Capture Image",
+                                item['faceVerificationUrl'],
+                              ),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
                         ),
-                        _buildEditableInfoBox(
-                          "Membership Number (Fixed)",
-                          TextEditingController(text: membershipNo),
-                          Icons.fingerprint_rounded,
-                          readOnly: true,
+                        const VerticalDivider(width: 1),
+                        // Right Side: Form
+                        Expanded(
+                          flex: 4,
+                          child: ListView(
+                            padding: const EdgeInsets.all(20),
+                            children: [
+                              _buildSectionTitle(
+                                "VERIFIED IDENTITY CRITERIA (EDITABLE)",
+                              ),
+                              _buildEditableInfoBox(
+                                "Membership Number (Fixed)",
+                                TextEditingController(text: membershipNo),
+                                Icons.fingerprint_rounded,
+                                readOnly: true,
+                              ),
+                              _buildEditableInfoBox(
+                                "Driver Full Name",
+                                nameController,
+                                Icons.person_outline_rounded,
+                              ),
+                              _buildEditableInfoBox(
+                                "Mobile Number",
+                                mobileController,
+                                Icons.phone_android_rounded,
+                              ),
+                              _buildEditableInfoBox(
+                                "NIC Card Identifier",
+                                nicController,
+                                Icons.contact_mail_outlined,
+                              ),
+                              _buildEditableInfoBox(
+                                "Date of Birth",
+                                dobController,
+                                Icons.calendar_month_outlined,
+                              ),
+                              _buildEditableInfoBox(
+                                "Religion Faith",
+                                religionController,
+                                Icons.auto_awesome_outlined,
+                              ),
+                              _buildEditableInfoBox(
+                                "Permanent Residence Address",
+                                addressController,
+                                Icons.map_outlined,
+                                maxLines: 2,
+                              ),
+                              const SizedBox(height: 40),
+                            ],
+                          ),
                         ),
-                        _buildEditableInfoBox(
-                          "Driver Full Name",
-                          nameController,
-                          Icons.person_outline_rounded,
-                        ),
-                        _buildEditableInfoBox(
-                          "Mobile Number",
-                          mobileController,
-                          Icons.phone_android_rounded,
-                        ),
-                        _buildEditableInfoBox(
-                          "NIC Card Identifier",
-                          nicController,
-                          Icons.contact_mail_outlined,
-                        ),
-                        _buildEditableInfoBox(
-                          "Date of Birth",
-                          dobController,
-                          Icons.calendar_month_outlined,
-                        ),
-                        _buildEditableInfoBox(
-                          "Religion Faith",
-                          religionController,
-                          Icons.auto_awesome_outlined,
-                        ),
-                        _buildEditableInfoBox(
-                          "Permanent Residence Address",
-                          addressController,
-                          Icons.map_outlined,
-                          maxLines: 2,
-                        ),
-
-                        const SizedBox(height: 20),
-                        _buildSectionTitle("AI FACE MATCH SELECTION"),
-                        const SizedBox(height: 6),
-                        _buildModernImageCard(
-                          context,
-                          "Liveness Capture Image",
-                          item['faceVerificationUrl'],
-                        ),
-
-                        const SizedBox(height: 20),
-                        _buildSectionTitle("OFFICIAL IDENTITY CARDS"),
-                        const SizedBox(height: 6),
-                        _buildModernImageCard(
-                          context,
-                          "National ID - Front Side",
-                          item['idCardFrontUrl'],
-                        ),
-                        const SizedBox(height: 12),
-                        _buildModernImageCard(
-                          context,
-                          "National ID - Back Side",
-                          item['idCardBackUrl'],
-                        ),
-                        const SizedBox(height: 40),
                       ],
                     ),
                   ),
@@ -796,80 +931,19 @@ class KYCVerificationRequests extends StatelessWidget {
     String title,
     String? imageUrl,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF334155),
-          ),
-        ),
-        const SizedBox(height: 6),
-        if (imageUrl != null && imageUrl.isNotEmpty)
-          GestureDetector(
-            onTap: () {
-              showDialog(
-                context: context,
-                builder: (context) => Dialog(
-                  backgroundColor: Colors.transparent,
-                  insetPadding: const EdgeInsets.all(10),
-                  child: Stack(
-                    alignment: Alignment.topRight,
-                    children: [
-                      InteractiveViewer(
-                        panEnabled: true,
-                        boundaryMargin: const EdgeInsets.all(20),
-                        minScale: 0.5,
-                        maxScale: 4,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: Image.network(imageUrl, fit: BoxFit.contain),
-                        ),
-                      ),
-                      CircleAvatar(
-                        backgroundColor: Colors.black54,
-                        child: IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            },
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                color: const Color(0xFFF1F5F9),
-                width: double.infinity,
-                height: 180,
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return const Center(
-                      child: CircularProgressIndicator(
-                        color: Color(0xFF4F46E5),
-                        strokeWidth: 2,
-                      ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) => const Center(
-                    child: Icon(
-                      Icons.broken_image_outlined,
-                      color: Colors.grey,
-                    ),
-                  ),
-                ),
-              ),
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF334155),
             ),
-          )
-        else
+          ),
+          const SizedBox(height: 6),
           Container(
             height: 80,
             width: double.infinity,
@@ -884,6 +958,149 @@ class KYCVerificationRequests extends StatelessWidget {
               ),
             ),
           ),
+        ],
+      );
+    }
+
+    return _RotatableZoomableImageCard(
+      title: title,
+      imageUrl: imageUrl,
+    );
+  }
+}
+
+class _RotatableZoomableImageCard extends StatefulWidget {
+  final String title;
+  final String imageUrl;
+
+  const _RotatableZoomableImageCard({
+    Key? key,
+    required this.title,
+    required this.imageUrl,
+  }) : super(key: key);
+
+  @override
+  State<_RotatableZoomableImageCard> createState() => _RotatableZoomableImageCardState();
+}
+
+class _RotatableZoomableImageCardState extends State<_RotatableZoomableImageCard> {
+  int _quarterTurns = 0;
+  final TransformationController _transformationController = TransformationController();
+
+  void _rotateImage() {
+    setState(() {
+      _quarterTurns = (_quarterTurns + 1) % 4;
+    });
+  }
+
+  void _resetZoom() {
+    _transformationController.value = Matrix4.identity();
+  }
+
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              widget.title,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF334155),
+              ),
+            ),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.grey),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  constraints: const BoxConstraints(),
+                  onPressed: _resetZoom,
+                  tooltip: "Reset Zoom",
+                ),
+                IconButton(
+                  icon: const Icon(Icons.rotate_right_rounded, size: 20, color: Color(0xFF4F46E5)),
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  constraints: const BoxConstraints(),
+                  onPressed: _rotateImage,
+                  tooltip: "Rotate Image",
+                ),
+              ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            color: const Color(0xFFF1F5F9),
+            width: double.infinity,
+            height: 250, // increased height for better visibility
+            child: Listener(
+              onPointerSignal: (pointerSignal) {
+                if (pointerSignal is PointerScrollEvent) {
+                  GestureBinding.instance.pointerSignalResolver.register(
+                    pointerSignal,
+                    (PointerSignalEvent event) {
+                      final PointerScrollEvent scrollEvent = event as PointerScrollEvent;
+                      // Adjust zoom direction: wheel up = zoom out, wheel down = zoom in
+                      final double scaleChange = scrollEvent.scrollDelta.dy > 0 ? 0.9 : 1.1;
+                      
+                      final Matrix4 matrix = _transformationController.value;
+                      final Offset localPosition = scrollEvent.localPosition;
+                      
+                      final Matrix4 newMatrix = matrix.clone()
+                        ..translate(localPosition.dx, localPosition.dy, 0.0)
+                        ..scale(scaleChange, scaleChange, 1.0)
+                        ..translate(-localPosition.dx, -localPosition.dy, 0.0);
+                        
+                      _transformationController.value = newMatrix;
+                    },
+                  );
+                }
+              },
+              child: InteractiveViewer(
+                transformationController: _transformationController,
+                panEnabled: true,
+                minScale: 0.5,
+                maxScale: 10.0,
+                child: RotatedBox(
+                  quarterTurns: _quarterTurns,
+                  child: Image.network(
+                    widget.imageUrl,
+                    fit: BoxFit.contain, // Fit entire ID card into view
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFF4F46E5),
+                          strokeWidth: 2,
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) => const Center(
+                      child: Icon(
+                        Icons.broken_image_outlined,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
       ],
     );
   }

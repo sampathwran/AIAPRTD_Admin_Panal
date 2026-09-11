@@ -133,17 +133,43 @@ class _MembershipFeeApprovalsPanelState
 
               final webSyncMap = {
                 for (var doc in webSyncSnapshot.data?.docs ?? [])
-                  doc.id: doc.data() as Map<String, dynamic>,
+                  doc.id.trim(): doc.data() as Map<String, dynamic>,
               };
               final appFeeMap = {
                 for (var doc in appFeeSnapshot.data?.docs ?? [])
-                  doc.id: doc.data() as Map<String, dynamic>,
+                  doc.id.trim(): doc.data() as Map<String, dynamic>,
               };
 
               final allItems = allMembers.map((member) {
-                final memNo = member['membershipNo']?.toString() ?? '';
-                final wSync = webSyncMap[memNo] ?? {};
-                final aFee = appFeeMap[memNo] ?? {};
+                final memNo = (member['membershipNo']?.toString() ?? '').trim();
+                final docId = (member['doc_id']?.toString() ?? '').trim();
+                final uid = (member['uid']?.toString() ?? '').trim();
+                final userEmail = (member['user_email']?.toString() ?? '').trim();
+                final email = (member['email']?.toString() ?? '').trim();
+
+                String webSyncDocId = memNo;
+                Map<String, dynamic> wSync = {};
+                if (memNo.isNotEmpty && webSyncMap.containsKey(memNo)) { wSync = webSyncMap[memNo]!; webSyncDocId = memNo; }
+                else if (docId.isNotEmpty && webSyncMap.containsKey(docId)) { wSync = webSyncMap[docId]!; webSyncDocId = docId; }
+                else if (uid.isNotEmpty && webSyncMap.containsKey(uid)) { wSync = webSyncMap[uid]!; webSyncDocId = uid; }
+                else if (userEmail.isNotEmpty && webSyncMap.containsKey(userEmail)) { wSync = webSyncMap[userEmail]!; webSyncDocId = userEmail; }
+                else if (email.isNotEmpty && webSyncMap.containsKey(email)) { wSync = webSyncMap[email]!; webSyncDocId = email; }
+                
+                String appFeeDocId = memNo;
+                Map<String, dynamic> aFee = {};
+                if (memNo.isNotEmpty && appFeeMap.containsKey(memNo)) { aFee = appFeeMap[memNo]!; appFeeDocId = memNo; }
+                else if (docId.isNotEmpty && appFeeMap.containsKey(docId)) { aFee = appFeeMap[docId]!; appFeeDocId = docId; }
+                else if (uid.isNotEmpty && appFeeMap.containsKey(uid)) { aFee = appFeeMap[uid]!; appFeeDocId = uid; }
+                else if (userEmail.isNotEmpty && appFeeMap.containsKey(userEmail)) { aFee = appFeeMap[userEmail]!; appFeeDocId = userEmail; }
+                else if (email.isNotEmpty && appFeeMap.containsKey(email)) { aFee = appFeeMap[email]!; appFeeDocId = email; }
+
+                if (memNo == 'AIAPRTD-26-0800' || docId == 'AIAPRTD-26-0800' || uid == 'AIAPRTD-26-0800') {
+                  debugPrint('=== DEBUG 0800 ===');
+                  debugPrint('Member Details -> memNo: "$memNo", docId: "$docId", uid: "$uid"');
+                  debugPrint('Web Sync -> found: ${wSync.isNotEmpty}');
+                  debugPrint('App Fee -> found: ${aFee.isNotEmpty}');
+                  debugPrint('==================');
+                }
 
                 final appApprovedList = _safeList(aFee['payment_history']);
                 final webPendingList = _safeList(wSync['payment_history']);
@@ -166,6 +192,8 @@ class _MembershipFeeApprovalsPanelState
                   'webSync': wSync,
                   'appFee': aFee,
                   'unapprovedWebCount': unapprovedWebCount,
+                  'webSyncDocId': webSyncDocId,
+                  'appFeeDocId': appFeeDocId,
                 };
               }).toList();
 
@@ -256,71 +284,114 @@ class _MembershipFeeApprovalsPanelState
                     ),
                     const SizedBox(height: 24),
 
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 400),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          onChanged: (value) =>
-                              setState(() => _searchQuery = value),
-                          decoration: InputDecoration(
-                            hintText: 'Search by Membership No or Name...',
-                            hintStyle: const TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey,
-                            ),
-                            prefixIcon: const Icon(
-                              Icons.search_rounded,
-                              color: Color(0xFF1E3A8A),
-                              size: 20,
-                            ),
-                            suffixIcon: _searchQuery.isNotEmpty
-                                ? IconButton(
-                                    icon: const Icon(
-                                      Icons.clear_rounded,
-                                      size: 18,
-                                    ),
-                                    onPressed: () {
-                                      _searchController.clear();
-                                      setState(() => _searchQuery = "");
-                                    },
-                                  )
-                                : null,
-                            border: OutlineInputBorder(
+                    Row(
+                      children: [
+                        ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 400),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade200,
-                              ),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
                             ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: BorderSide(
-                                color: Colors.grey.shade200,
+                            child: TextField(
+                              controller: _searchController,
+                              onChanged: (value) =>
+                                  setState(() => _searchQuery = value),
+                              decoration: InputDecoration(
+                                hintText: 'Search by Membership No or Name...',
+                                hintStyle: const TextStyle(
+                                  fontSize: 13,
+                                  color: Colors.grey,
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.search_rounded,
+                                  color: Color(0xFF1E3A8A),
+                                  size: 20,
+                                ),
+                                suffixIcon: _searchQuery.isNotEmpty
+                                    ? IconButton(
+                                        icon: const Icon(
+                                          Icons.clear_rounded,
+                                          size: 18,
+                                        ),
+                                        onPressed: () {
+                                          _searchController.clear();
+                                          setState(() => _searchQuery = "");
+                                        },
+                                      )
+                                    : null,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: BorderSide(
+                                    color: Colors.grey.shade200,
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  borderSide: const BorderSide(
+                                    color: Color(0xFF1E3A8A),
+                                  ),
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                               ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(10),
-                              borderSide: const BorderSide(
-                                color: Color(0xFF1E3A8A),
-                              ),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                              vertical: 12,
                             ),
                           ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        ElevatedButton(
+                          onPressed: () async {
+                            try {
+                              final m = await FirebaseFirestore.instance.collection('member').doc('AIAPRTD-26-0800').get();
+                              final m2 = await FirebaseFirestore.instance.collection('member').where('membershipNo', isEqualTo: 'AIAPRTD-26-0800').get();
+                              final w = await FirebaseFirestore.instance.collection('web_sync_membership_fee').doc('AIAPRTD-26-0800').get();
+                              final a = await FirebaseFirestore.instance.collection('app_membership_fee').doc('AIAPRTD-26-0800').get();
+                              
+                              String msg = 'Member doc by ID (AIAPRTD-26-0800): ${m.exists ? "EXISTS" : "NOT FOUND"}\n';
+                              msg += 'Member docs by field (membershipNo=AIAPRTD-26-0800): ${m2.docs.length} found\n';
+                              if (m2.docs.isNotEmpty) {
+                                msg += '  Found IDs: ${m2.docs.map((e)=>e.id).join(", ")}\n';
+                              }
+                              msg += 'Web Sync doc: ${w.exists ? "EXISTS" : "NOT FOUND"}\n';
+                              if (w.exists) {
+                                final p = w.data()?['payment_history'] as List?;
+                                msg += '  Web Payments: ${p?.length ?? 0}\n';
+                              }
+                              msg += 'App Fee doc: ${a.exists ? "EXISTS" : "NOT FOUND"}\n';
+                              if (a.exists) {
+                                final p = a.data()?['payment_history'] as List?;
+                                msg += '  App Approved: ${p?.length ?? 0}\n';
+                              }
+
+                              if (!context.mounted) return;
+                              showDialog(context: context, builder: (_) => AlertDialog(
+                                title: const Text('Debug 0800'),
+                                content: Text(msg),
+                                actions: [TextButton(onPressed: ()=>Navigator.pop(context), child: const Text('OK'))],
+                              ));
+                            } catch(e) {
+                               if (!context.mounted) return;
+                               showDialog(context: context, builder: (_) => AlertDialog(content: Text('Error: $e')));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                          child: const Text('Debug 0800'),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 16),
 
@@ -707,7 +778,9 @@ class _MembershipFeeApprovalsPanelState
   // =========================================================================
   Widget _buildProfileView(Map<String, dynamic> combinedData) {
     final member = combinedData['memberData'] as Map<String, dynamic>;
-    final membershipNo = member['membershipNo'] ?? 'Unknown';
+    final membershipNo = member['membershipNo']?.toString() ?? 'Unknown';
+    final appFeeDocId = combinedData['appFeeDocId']?.toString() ?? membershipNo;
+    final webSyncDocId = combinedData['webSyncDocId']?.toString() ?? membershipNo;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -745,9 +818,12 @@ class _MembershipFeeApprovalsPanelState
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instance
             .collection('app_membership_fee')
-            .doc(membershipNo)
+            .doc(appFeeDocId)
             .snapshots(),
         builder: (context, appFeeSnapshot) {
+          if (appFeeSnapshot.hasError) return const Center(child: Text("Error fetching data"));
+          if (!appFeeSnapshot.hasData) return const Center(child: CircularProgressIndicator());
+
           final appData =
               appFeeSnapshot.data?.data() as Map<String, dynamic>? ?? {};
           final pendingAppList = _safeList(appData['pending_payments']);
@@ -756,7 +832,7 @@ class _MembershipFeeApprovalsPanelState
           return StreamBuilder<DocumentSnapshot>(
             stream: FirebaseFirestore.instance
                 .collection('web_sync_membership_fee')
-                .doc(membershipNo)
+                .doc(webSyncDocId)
                 .snapshots(),
             builder: (context, webFeeSnapshot) {
               final webData =

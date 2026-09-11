@@ -2,11 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/request_details_page.dart';
 
-class RequestList extends StatelessWidget {
+class RequestList extends StatefulWidget {
   final String selectedStatus;
   final String searchQuery;
 
-  // Dashboard එකෙන් select වෙන status එකයි search query එකයි මෙහාට pass කරනවා
   const RequestList({
     super.key,
     required this.selectedStatus,
@@ -14,16 +13,40 @@ class RequestList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    // Query එක dynamic කරනවා status එක අනුව
-    Query query = FirebaseFirestore.instance.collection('vehicles');
+  State<RequestList> createState() => _RequestListState();
+}
 
-    if (selectedStatus != 'all') {
-      query = query.where('status', isEqualTo: selectedStatus);
+class _RequestListState extends State<RequestList> {
+  late Stream<QuerySnapshot> _stream;
+  String _lastStatus = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _initStream();
+  }
+
+  @override
+  void didUpdateWidget(RequestList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedStatus != widget.selectedStatus) {
+      _initStream();
     }
+  }
 
+  void _initStream() {
+    _lastStatus = widget.selectedStatus;
+    Query query = FirebaseFirestore.instance.collection('vehicles');
+    if (_lastStatus != 'all') {
+      query = query.where('status', isEqualTo: _lastStatus);
+    }
+    _stream = query.snapshots();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<QuerySnapshot>(
-      stream: query.snapshots(),
+      stream: _stream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(
@@ -40,13 +63,18 @@ class RequestList extends StatelessWidget {
 
         var docs = snapshot.data!.docs;
 
-        // Membership Number එකෙන් client-side filtering කරනවා (Realtime)
-        if (searchQuery.isNotEmpty) {
+        // Search filtering logic (Name, MembershipNo, VehicleName)
+        if (widget.searchQuery.isNotEmpty) {
+          final queryStr = widget.searchQuery.toLowerCase();
           docs = docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final membershipNo =
-                data['membershipNo']?.toString().toLowerCase() ?? '';
-            return membershipNo.contains(searchQuery.toLowerCase());
+            final membershipNo = data['membershipNo']?.toString().toLowerCase() ?? '';
+            final memberName = data['memberName']?.toString().toLowerCase() ?? '';
+            final vehicleName = data['vehicleName']?.toString().toLowerCase() ?? '';
+
+            return membershipNo.contains(queryStr) ||
+                memberName.contains(queryStr) ||
+                vehicleName.contains(queryStr);
           }).toList();
         }
 
@@ -55,7 +83,7 @@ class RequestList extends StatelessWidget {
         }
 
         return ListView.builder(
-          shrinkWrap: true, // Dashboard එක ඇතුලේ scroll වෙන්න shrinkWrap දානවා
+          shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(vertical: 10),
           itemCount: docs.length,
@@ -63,12 +91,18 @@ class RequestList extends StatelessWidget {
             final doc = docs[index];
             final data = doc.data() as Map<String, dynamic>;
 
-            // DB fields missing නම් crash නොවෙන්න default tags දානවා
             final memberName = data['memberName'] ?? 'Unknown Member';
             final membershipNo = data['membershipNo'] ?? 'No ID';
             final profileImage = data['profileImage'] ?? '';
             final status = data['status'] ?? 'pending';
             final vehicleName = data['vehicleName'] ?? 'Vehicle Details N/A';
+
+            // Check if any document inside this request has a pending status (New Upload)
+            bool hasPendingDocs = false;
+            if (data['documents'] is List) {
+              final docList = data['documents'] as List;
+              hasPendingDocs = docList.any((d) => d is Map && d['status'] == 'pending');
+            }
 
             return RequestCard(
               memberName: memberName,
@@ -76,6 +110,7 @@ class RequestList extends StatelessWidget {
               profileImage: profileImage,
               status: status,
               vehicleName: vehicleName,
+              hasPendingDocs: hasPendingDocs,
               onViewPressed: () {
                 Navigator.push(
                   context,
@@ -91,7 +126,6 @@ class RequestList extends StatelessWidget {
     );
   }
 
-  // Data නැති වෙලාවට පෙන්නන ලස්සන Empty View එකක්
   Widget _buildEmptyState() {
     return Container(
       padding: const EdgeInsets.all(30),
@@ -105,7 +139,7 @@ class RequestList extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            "No ${selectedStatus != 'all' ? selectedStatus.toUpperCase() : ''} Requests Found",
+            "No ${widget.selectedStatus != 'all' ? widget.selectedStatus.toUpperCase() : ''} Requests Found",
             style: const TextStyle(
               fontSize: 14,
               color: Colors.grey,
@@ -124,6 +158,7 @@ class RequestCard extends StatelessWidget {
   final String profileImage;
   final String status;
   final String vehicleName;
+  final bool hasPendingDocs;
   final VoidCallback onViewPressed;
 
   const RequestCard({
@@ -133,12 +168,12 @@ class RequestCard extends StatelessWidget {
     required this.profileImage,
     required this.status,
     required this.vehicleName,
+    required this.hasPendingDocs,
     required this.onViewPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Status එක අනුව color එක තීරණය කරනවා
     Color statusColor = Colors.orange;
     if (status == 'approved') statusColor = Colors.green;
     if (status == 'rejected') statusColor = Colors.red;
@@ -159,15 +194,38 @@ class RequestCard extends StatelessWidget {
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
-          leading: CircleAvatar(
-            radius: 22,
-            backgroundColor: Colors.grey.shade100,
-            backgroundImage: profileImage.isNotEmpty
-                ? NetworkImage(profileImage)
-                : null,
-            child: profileImage.isEmpty
-                ? Icon(Icons.person, color: Colors.grey.shade600)
-                : null,
+          leading: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Colors.grey.shade100,
+                backgroundImage: profileImage.isNotEmpty
+                    ? NetworkImage(profileImage)
+                    : null,
+                child: profileImage.isEmpty
+                    ? Icon(Icons.person, color: Colors.grey.shade600)
+                    : null,
+              ),
+              if (hasPendingDocs)
+                Positioned(
+                  right: -4,
+                  top: -4,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.notifications_active,
+                      size: 12,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
           ),
           title: Text(
             memberName,

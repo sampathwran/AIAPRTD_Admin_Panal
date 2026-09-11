@@ -10,6 +10,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/prof
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/profile_update_requests.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/vehicle_change_requests.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/activation_history_screen.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/recent_history_list.dart';
 
 class ActivationRequestsPanel extends StatelessWidget {
   const ActivationRequestsPanel({super.key});
@@ -173,6 +174,9 @@ class ActivationRequestsPanel extends StatelessWidget {
               const Text('REQUEST CATEGORIES', style: AdminText.overline),
               const SizedBox(height: 10),
               _RequestCategoryGrid(categories: categories),
+              
+              // Recent History View for Reverting Approvals/Rejections
+              const RecentHistoryList(),
             ],
           ),
         );

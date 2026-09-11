@@ -1,5 +1,5 @@
-// ignore_for_file: avoid_print
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-void main() {
-  print('Scratch runner is intentionally disabled.');
+void main() async {
+  // Not a standalone flutter script, won't work easily.
 }

@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="si" class="h-full w-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIAPRTD - Live Ride Tracking</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden; /* Prevent body scrolling */
+        }
+        #map {
+            height: 45vh; /* Safer unit */
+            width: 100%;
+            border-radius: 0 0 24px 24px;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 font-sans text-slate-800 antialiased h-full w-full">
+
+    <div id="loading" class="fixed inset-0 bg-white z-50 flex flex-col items-center justify-center">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mb-4"></div>
+        <p class="text-slate-500 font-medium">Loading Live Tracking...</p>
+    </div>
+
+    <div id="main-content" class="w-full h-full flex flex-col hidden bg-white shadow-xl overflow-hidden relative">
+        
+        <div id="tracking-view" class="flex flex-col h-full w-full">
+            <div id="status-banner" class="bg-blue-600 text-white text-center py-3 px-4 font-bold text-sm shadow-md transition-colors duration-300 flex-shrink-0 z-20">
+                Connecting to driver...
+            </div>
+
+            <div id="map" class="shadow-inner bg-slate-200 flex-shrink-0 z-10"></div>
+
+            <div class="p-6 flex-grow flex flex-col overflow-y-auto bg-white pb-8">
+                <div>
+                    <div class="flex items-center space-x-4 mb-6">
+                        <img id="vehicle-img" src="https://img.icons8.com/fluency/96/car.png" alt="Vehicle" class="w-16 h-16 object-contain bg-slate-100 p-2 rounded-full">
+                        <div>
+                            <h2 id="driver-name" class="text-xl font-bold text-slate-900">Driver</h2>
+                            <p id="vehicle-info" class="text-sm text-slate-500 font-medium">Vehicle Details</p>
+                        </div>
+                    </div>
+
+                    <hr class="border-slate-100 my-4" />
+
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-3">
+                            <span class="w-3 h-3 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></span>
+                            <div>
+                                <p class="text-xs text-slate-400 font-bold tracking-wide uppercase">Pickup Location</p>
+                                <p id="pickup-addr" class="text-sm font-semibold text-slate-700">Loading...</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start space-x-3">
+                            <span class="w-3 h-3 rounded-full bg-red-500 mt-1.5 flex-shrink-0"></span>
+                            <div>
+                                <p class="text-xs text-slate-400 font-bold tracking-wide uppercase">Drop Location</p>
+                                <p id="drop-addr" class="text-sm font-semibold text-slate-700">Loading...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actual Vehicle Photos -->
+                    <div id="real-vehicle-container" class="mt-6 hidden">
+                        <p class="text-xs text-slate-400 font-bold tracking-wide uppercase mb-2">Driver's Vehicle</p>
+                        <div id="real-vehicle-images" class="flex overflow-x-auto space-x-4 pb-2 snap-x hide-scrollbar">
+                            <!-- Images injected here -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center text-xs text-slate-400 mt-10 mb-4 font-medium flex-shrink-0">
+                    Powered by AIAPRTD Safety Network
+                </div>
+            </div>
+        </div>
+
+        <div id="summary-view" class="hidden flex-col items-center justify-center p-8 text-center flex-grow">
+            <div class="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mb-6">
+                <svg class="w-10 h-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+            
+            <h1 class="text-2xl font-black text-slate-900 mb-2">Trip Completed!</h1>
+            <p class="text-slate-500 text-sm max-w-xs mb-8">Thank you for riding with AIAPRTD. The passenger has safely reached the destination.</p>
+
+            <div class="w-full bg-slate-50 border border-slate-100 rounded-2xl p-6 mb-6">
+                <p class="text-xs text-slate-400 font-bold uppercase tracking-wider mb-1">Total Fare Paid</p>
+                <p id="summary-fare" class="text-3xl font-black text-green-600 mb-4">LKR 0.00</p>
+                
+                <div class="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 text-left">
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium">Distance Covered</p>
+                        <p id="summary-distance" class="text-sm font-bold text-slate-700">0.0 km</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400 font-medium">Vehicle Category</p>
+                        <p id="summary-category" class="text-sm font-bold text-slate-700">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <p class="text-xs text-slate-400 font-medium mt-auto">AIAPRTD Ride Share Ecosystem</p>
+        </div>
+
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2ZaITIFYTcb1fThVzChQYJ-cHm0aZ2iE&callback=initMap" async defer></script>
+
+    <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyCDBGrVPwHFh3gNs_AXY7o1lFfsBw_1B00",
+            authDomain: "aiaprtd-member.firebaseapp.com",
+            projectId: "aiaprtd-member",
+            storageBucket: "aiaprtd-member.firebasestorage.app",
+            messagingSenderId: "1012060339384",
+            appId: "1:1012060339384:web:2d4cceffb2f8ed8dcac84d",
+            measurementId: "G-YZ9MZ3LF8R"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
+        let map, driverMarker, pickupMarker, dropMarker;
+        let directionsService, directionsRenderer;
+        let bookingId = "";
+        let currentRoutePhase = "";
+        let lastCalculatedDriverPos = null;
+
+        // URL එකෙන් booking ID එක ගන්නවා (?id=xxxx)
+        const urlParams = new URLSearchParams(window.location.search);
+        bookingId = urlParams.get('id');
+
+        function initMap() {
+            // Define CarMarker class here so google is defined
+            CarMarker = class extends google.maps.OverlayView {
+                constructor(map, position, imageUrl) {
+                    super();
+                    this.position = new google.maps.LatLng(position.lat, position.lng);
+                    this.imageUrl = imageUrl;
+                    this.heading = 0;
+                    this.div = null;
+                    this.animFrame = null;
+                    this.setMap(map);
+                }
+
+                onAdd() {
+                    this.div = document.createElement('div');
+                    this.div.style.position = 'absolute';
+                    this.div.style.width = '90px';
+                    this.div.style.height = '90px';
+                    this.div.style.marginLeft = '-45px';
+                    this.div.style.marginTop = '-45px';
+                    this.div.style.zIndex = '999';
+                    
+                    this.div.innerHTML = `
+                        <img src="${this.imageUrl}" style="width: 100%; height: 100%; object-fit: contain; position: relative; z-index: 1; transition: transform 0.5s ease-out;">
+                    `;
+                    
+                    const panes = this.getPanes();
+                    panes.overlayImage.appendChild(this.div);
+                }
+
+                draw() {
+                    if (!this.div) return;
+                    const projection = this.getProjection();
+                    if (!projection) return;
+                    
+                    const pixel = projection.fromLatLngToDivPixel(this.position);
+                    if (pixel) {
+                        this.div.style.left = pixel.x + 'px';
+                        this.div.style.top = pixel.y + 'px';
+                        const img = this.div.querySelector('img');
+                        if (img) img.style.transform = `rotate(${this.heading}deg)`;
+                    }
+                }
+
+                onRemove() {
+                    if (this.div) {
+                        this.div.parentNode.removeChild(this.div);
+                        this.div = null;
+                    }
+                }
+
+                animateTo(newPos, newHeading, durationMs = 1500) {
+                    if (this.animFrame) cancelAnimationFrame(this.animFrame);
+                    const startLat = this.position.lat();
+                    const startLng = this.position.lng();
+                    const endLat = newPos.lat;
+                    const endLng = newPos.lng;
+                    this.heading = newHeading;
+                    const startTime = performance.now();
+                    
+                    const animate = (time) => {
+                        const elapsed = time - startTime;
+                        const progress = Math.min(elapsed / durationMs, 1);
+                        const currentLat = startLat + (endLat - startLat) * progress;
+                        const currentLng = startLng + (endLng - startLng) * progress;
+                        this.position = new google.maps.LatLng(currentLat, currentLng);
+                        this.draw();
+                        if (progress < 1) this.animFrame = requestAnimationFrame(animate);
+                    };
+                    this.animFrame = requestAnimationFrame(animate);
+                }
+            };
+
+            // Default center - Sri Lanka
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 14,
+                center: { lat: 7.8731, lng: 80.7718 },
+                disableDefaultUI: true,
+                zoomControl: true
+            });
+
+            directionsService = new google.maps.DirectionsService();
+            directionsRenderer = new google.maps.DirectionsRenderer({
+                map: map,
+                suppressMarkers: true,
+                polylineOptions: {
+                    strokeColor: '#2563EB',
+                    strokeOpacity: 0.8,
+                    strokeWeight: 5
+                }
+            });
+
+            if (bookingId) {
+                startRealtimeTracking();
+            } else {
+                document.getElementById("loading").innerHTML = '<p class="text-red-500 font-bold p-8 text-center">Invalid Tracking Link: Booking ID is missing.</p>';
+            }
+        }
+
+        function startRealtimeTracking() {
+            db.collection("all_bookings").doc(bookingId).onSnapshot((doc) => {
+                if (!doc.exists) {
+                    document.getElementById("loading").innerHTML = '<p class="text-red-500 font-bold p-8 text-center">Booking not found.</p>';
+                    return;
+                }
+
+                const data = doc.data();
+                
+                // Loading screen hide කරනවා
+                document.getElementById("loading").classList.add("hidden");
+                document.getElementById("main-content").classList.remove("hidden");
+
+                // Trip completed check
+                if (data.status === 'Completed' || data.status === 'completed' || data.tripState === 'completed') {
+                    showTripSummary(data);
+                    return;
+                }
+
+                // UI update
+                document.getElementById("driver-name").innerText = data.driverName || "Assigned Driver";
+                document.getElementById("vehicle-info").innerText = data.driverVehicle || data.vehicleCategory || "Vehicle";
+                document.getElementById("pickup-addr").innerText = data.pickupLocation?.address || data.startAddress || "Pickup Location";
+                document.getElementById("drop-addr").innerText = data.dropLocation?.address || data.endAddress || "Drop Location";
+
+                // Vehicle category image update
+                updateVehicleImage(data);
+
+                // Status banner update
+                const banner = document.getElementById("status-banner");
+                const rawTripState = (data.tripState || '').toLowerCase();
+                const rawStatus = (data.status || '').toLowerCase();
+                const currentStatus = rawTripState || (rawStatus === 'accepted' ? 'accepted' : rawStatus);
+                
+                if (currentStatus === 'accepted' || currentStatus === 'pending') {
+                    banner.innerText = "👨‍✈️ Driver is on the way to pick you up";
+                    banner.className = "bg-blue-600 text-white text-center py-3 px-4 font-bold text-sm shadow-md";
+                } else if (currentStatus === 'arrived') {
+                    banner.innerText = "🚨 Driver has arrived at the pickup location!";
+                    banner.className = "bg-orange-500 text-white text-center py-3 px-4 font-bold text-sm shadow-md animate-pulse";
+                } else if (currentStatus === 'started') {
+                    banner.innerText = "🚕 Trip in progress. Heading to destination.";
+                    banner.innerText = "🚕 Trip in progress. Heading to destination.";
+                    banner.className = "bg-green-600 text-white text-center py-3 px-4 font-bold text-sm shadow-md";
+                }
+
+                // Map markers update
+                updateMapMarkers(data);
+
+            }, (error) => {
+                console.error("Error listening to database: ", error);
+            });
+        }
+
+        function updateVehicleImage(data) {
+            const imgElement = document.getElementById("vehicle-img");
+            const realImgContainer = document.getElementById("real-vehicle-container");
+            
+            const category = data.vehicleCategory || data.selectedCategory || 'mini';
+            const cat = category.toLowerCase();
+            const fallbackSrc = getCategoryFallbackImage(cat);
+            
+            // Set the profile image if available, else fallback icon
+            if (data.driverImage) {
+                imgElement.src = data.driverImage;
+                imgElement.className = "w-16 h-16 object-cover bg-slate-100 rounded-full border-2 border-blue-500 shadow-sm";
+            } else {
+                imgElement.src = fallbackSrc;
+                imgElement.className = "w-16 h-16 object-contain bg-slate-100 p-2 rounded-full";
+            }
+
+            // Fetch real vehicle photos
+            const driverId = data.acceptedBy || data.driverId;
+            if (driverId) {
+                db.collection("vehicles").doc(driverId).get().then((doc) => {
+                    if (doc.exists && doc.data().vehiclePhotos) {
+                        const photos = doc.data().vehiclePhotos;
+                        const labels = ['Front', 'Back', 'Left Side', 'Right Side', 'Interior'];
+                        let hasImages = false;
+                        const imagesContainer = document.getElementById("real-vehicle-images");
+                        if (imagesContainer) {
+                            imagesContainer.innerHTML = '';
+                            labels.forEach(label => {
+                                if (photos[label] && photos[label].url) {
+                                    hasImages = true;
+                                    
+                                    const wrapper = document.createElement("div");
+                                    wrapper.className = "flex-none w-[260px] snap-center relative";
+                                    
+                                    const img = document.createElement("img");
+                                    img.src = photos[label].url;
+                                    img.className = "w-full h-40 object-cover rounded-xl shadow-sm border border-slate-200";
+                                    img.alt = label;
+                                    
+                                    const labelBadge = document.createElement("div");
+                                    labelBadge.className = "absolute bottom-3 left-3 bg-black/60 text-white text-xs font-bold px-3 py-1.5 rounded-lg backdrop-blur-sm";
+                                    labelBadge.innerText = label;
+                                    
+                                    wrapper.appendChild(img);
+                                    wrapper.appendChild(labelBadge);
+                                    imagesContainer.appendChild(wrapper);
+                                }
+                            });
+                        }
+                        
+                        if (hasImages) {
+                            realImgContainer.classList.remove("hidden");
+                        } else {
+                            const availableKeys = Object.keys(photos).join(", ");
+                            realImgContainer.innerHTML = "<p class='text-red-500 font-bold p-4 bg-red-50 rounded-xl text-center text-sm'>No vehicle photos match the labels. Keys found in DB: " + availableKeys + "</p>";
+                            realImgContainer.classList.remove("hidden");
+                        }
+                    } else {
+                        realImgContainer.innerHTML = "<p class='text-orange-500 font-bold p-4 bg-orange-50 rounded-xl text-center text-sm'>No vehicle photos object found.</p>";
+                        realImgContainer.classList.remove("hidden");
+                    }
+                }).catch((err) => {
+                    realImgContainer.innerHTML = "<p class='text-red-500 font-bold p-4 bg-red-50 rounded-xl text-center text-sm'>Firebase Error: " + err.message + "</p>";
+                    realImgContainer.classList.remove("hidden");
+                });
+            } else {
+                realImgContainer.innerHTML = "<p class='text-slate-500 p-4 bg-slate-50 rounded-xl text-center text-sm'>Waiting for driver assignment...</p>";
+                realImgContainer.classList.remove("hidden");
+            }
+        }
+        
+        function getCategoryFallbackImage(cat) {
+            if (cat.includes("sedan")) return "/assets/images/sedan.png"; 
+            if (cat.includes("budget")) return "/assets/images/budget.png";
+            if (cat.includes("6 seater") || cat.includes("6_seater")) return "/assets/images/6_seater.png";
+            if (cat.includes("9 seater") || cat.includes("9_seater")) return "/assets/images/9_seater.png";
+            if (cat.includes("14 seater") || cat.includes("14_seater")) return "/assets/images/14_seater.png";
+            return "/assets/images/mini.png";
+        }
+
+        function getCategoryMapImage(cat) {
+            if (cat.includes("sedan")) return "/assets/images/map_sedan.png"; 
+            if (cat.includes("budget")) return "/assets/images/map_budget.png";
+            if (cat.includes("6 seater") || cat.includes("6_seater")) return "/assets/images/map_6_seater.png";
+            if (cat.includes("9 seater") || cat.includes("9_seater")) return "/assets/images/map_9_seater.png";
+            if (cat.includes("14 seater") || cat.includes("14_seater")) return "/assets/images/map_14_seater.png";
+            return "/assets/images/map_mini.png";
+        }
+
+        // Will define CarMarker class inside initMap where google is loaded
+        let CarMarker;
+
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const toRad = x => x * Math.PI / 180;
+            const toDeg = x => x * 180 / Math.PI;
+            const dLon = toRad(lon2 - lon1);
+            const y = Math.sin(dLon) * Math.cos(toRad(lat2));
+            const x = Math.cos(toRad(lat1)) * Math.sin(toRad(lat2)) -
+                      Math.sin(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.cos(dLon);
+            return (toDeg(Math.atan2(y, x)) + 360) % 360;
+        }
+
+        function updateMapMarkers(data) {
+            const bounds = new google.maps.LatLngBounds();
+            let pPos = null;
+            let dPos = null;
+            let drvPos = null;
+
+            // 1. Pickup Marker
+            const pLat = parseFloat(data.pickupLocation?.lat || data.pickupLat);
+            const pLng = parseFloat(data.pickupLocation?.lng || data.pickupLng);
+            if (!isNaN(pLat) && !isNaN(pLng)) {
+                pPos = { lat: pLat, lng: pLng };
+                if (!pickupMarker) {
+                    pickupMarker = new google.maps.Marker({
+                        position: pPos,
+                        map: map,
+                        icon: 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+                        title: 'Pickup'
+                    });
+                }
+                bounds.extend(pPos);
+            }
+
+            // 2. Drop Marker
+            const dLat = parseFloat(data.dropLocation?.lat || data.dropLat);
+            const dLng = parseFloat(data.dropLocation?.lng || data.dropLng);
+            if (!isNaN(dLat) && !isNaN(dLng)) {
+                dPos = { lat: dLat, lng: dLng };
+                if (!dropMarker) {
+                    dropMarker = new google.maps.Marker({
+                        position: dPos,
+                        map: map,
+                        icon: 'http://maps.google.com/mapfiles/ms/icons/red-dot.png',
+                        title: 'Destination'
+                    });
+                }
+                if (data.tripState === 'started') {
+                    bounds.extend(dPos);
+                }
+            }
+
+            // 3. Live Driver Marker
+            const drvLat = parseFloat(data.driverLat);
+            const drvLng = parseFloat(data.driverLng);
+            const rawHeading = parseFloat(data.driverHeading);
+
+            if (!isNaN(drvLat) && !isNaN(drvLng)) {
+                drvPos = { lat: drvLat, lng: drvLng };
+                
+                if (!driverMarker) {
+                    const cat = (data.vehicleCategory || data.selectedCategory || "mini").toLowerCase();
+                    const carImageUrl = getCategoryMapImage(cat);
+                    driverMarker = new CarMarker(map, drvPos, carImageUrl);
+                    if (!isNaN(rawHeading)) driverMarker.heading = rawHeading;
+                } else {
+                    let finalHeading = rawHeading;
+                    if (isNaN(finalHeading) || finalHeading === 0) {
+                        const oldLat = driverMarker.position.lat();
+                        const oldLng = driverMarker.position.lng();
+                        const dist = Math.sqrt(Math.pow(drvLat - oldLat, 2) + Math.pow(drvLng - oldLng, 2));
+                        if (dist > 0.00005) {
+                            finalHeading = calculateBearing(oldLat, oldLng, drvLat, drvLng);
+                        } else {
+                            finalHeading = driverMarker.heading;
+                        }
+                    }
+                    driverMarker.animateTo(drvPos, finalHeading, 1500);
+                }
+                bounds.extend(drvPos);
+            }
+
+            // 4. Directions Route
+            let targetPos = null;
+            let expectedPhase = "";
+            const activeRawTripState = (data.tripState || '').toLowerCase();
+            const activeRawStatus = (data.status || '').toLowerCase();
+            const activeStatus = activeRawTripState || (activeRawStatus === 'accepted' ? 'accepted' : activeRawStatus);
+
+            if ((activeStatus === 'accepted' || activeStatus === 'pending') && pPos) {
+                targetPos = pPos;
+                expectedPhase = 'to_pickup';
+            } else if (activeStatus === 'started' && dPos) {
+                targetPos = dPos;
+                expectedPhase = 'to_drop';
+            } else if (activeStatus === 'completed') {
+                directionsRenderer.setDirections({routes: []}); // clear route
+            }
+
+            if (drvPos && targetPos) {
+                let needNewRoute = false;
+                if (currentRoutePhase !== expectedPhase) {
+                    needNewRoute = true;
+                } else if (lastCalculatedDriverPos) {
+                    // Recalculate if driver moved approx > 50m (0.0005 deg)
+                    const dLat = Math.abs(drvPos.lat - lastCalculatedDriverPos.lat);
+                    const dLng = Math.abs(drvPos.lng - lastCalculatedDriverPos.lng);
+                    if (dLat > 0.0005 || dLng > 0.0005) {
+                        needNewRoute = true;
+                    }
+                } else {
+                    needNewRoute = true;
+                }
+
+                if (needNewRoute) {
+                    currentRoutePhase = expectedPhase;
+                    lastCalculatedDriverPos = drvPos;
+                    
+                    const request = {
+                        origin: drvPos,
+                        destination: targetPos,
+                        travelMode: google.maps.TravelMode.DRIVING
+                    };
+                    
+                    directionsService.route(request, (result, status) => {
+                        if (status == 'OK') {
+                            directionsRenderer.setDirections(result);
+                            if (window.fallbackPolyline) {
+                                window.fallbackPolyline.setMap(null);
+                            }
+                        } else {
+                            console.error("Directions request failed due to " + status);
+                            // Fallback to straight line
+                            if (!window.fallbackPolyline) {
+                                window.fallbackPolyline = new google.maps.Polyline({
+                                    path: [drvPos, targetPos],
+                                    geodesic: true,
+                                    strokeColor: '#FF0000', // Red dashed fallback
+                                    strokeOpacity: 0.8,
+                                    strokeWeight: 4,
+                                    map: map
+                                });
+                            } else {
+                                window.fallbackPolyline.setPath([drvPos, targetPos]);
+                                window.fallbackPolyline.setMap(map);
+                            }
+                        }
+                    });
+                } else if (window.fallbackPolyline) {
+                    // Update straight line live if it's being used
+                    window.fallbackPolyline.setPath([drvPos, targetPos]);
+                }
+            }
+
+            // Auto fit bounds
+            if (!bounds.isEmpty()) {
+                map.fitBounds(bounds);
+                const listener = google.maps.event.addListener(map, "idle", function() { 
+                    if (map.getZoom() > 16) map.setZoom(16); 
+                    google.maps.event.removeListener(listener); 
+                });
+            }
+        }
+
+        function showTripSummary(data) {
+            document.getElementById("tracking-view").classList.add("hidden");
+            document.getElementById("summary-view").classList.remove("hidden");
+
+            const fare = data.totalFare || data.estimateFare || 0.00;
+            document.getElementById("summary-fare").innerText = "LKR " + parseFloat(fare).toFixed(2);
+            document.getElementById("summary-distance").innerText = (data.distanceKm ? parseFloat(data.distanceKm).toFixed(1) : "0.0") + " km";
+            document.getElementById("summary-category").innerText = data.vehicleCategory || data.selectedCategory || "Mini";
+        }
+    </script>
+</body>
+</html>

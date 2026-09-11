@@ -208,6 +208,13 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
         .where('status', isEqualTo: 'pending')
         .snapshots();
 
+    final appFeeStream = FirebaseFirestore.instance
+        .collection('app_membership_fee')
+        .snapshots();
+    final webSyncStream = FirebaseFirestore.instance
+        .collection('web_sync_membership_fee')
+        .snapshots();
+
     final combinedStream = CombineLatestStream.list<QuerySnapshot>([
       paymentStream,
       profileStream,
@@ -218,6 +225,8 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
       p2pStream,
       withdrawalStream,
       marketplaceAdsStream,
+      appFeeStream,
+      webSyncStream,
     ]);
 
     return SelectionArea(
@@ -233,10 +242,11 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                 int p2pCount = 0;
                 int withdrawalCount = 0;
                 int marketplaceAdsCount = 0;
+                int membershipFeeCount = 0;
 
                 if (snapshot.hasData &&
                     snapshot.data != null &&
-                    snapshot.data!.length == 9) {
+                    snapshot.data!.length == 11) {
                   pendingPaymentCount = snapshot.data![0].docs.length;
                   activationCount =
                       snapshot.data![1].docs.length +
@@ -247,6 +257,75 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                   p2pCount = snapshot.data![6].docs.length;
                   withdrawalCount = snapshot.data![7].docs.length;
                   marketplaceAdsCount = snapshot.data![8].docs.length;
+
+                  // Membership Fee Logic
+                  final appFeeDocs = snapshot.data![9].docs;
+                  final webSyncDocs = snapshot.data![10].docs;
+                  
+                  // Helper for safe list
+                  List<dynamic> safeList(dynamic data) {
+                    if (data is List) return data;
+                    return [];
+                  }
+
+                  // Count app fees that have pending_payments
+                  int pendingCount = 0;
+                  final Set<String> membersWithAppPending = {};
+                  
+                  for (var doc in appFeeDocs) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final pendingList = safeList(data['pending_payments']);
+                    if (pendingList.isNotEmpty) {
+                      pendingCount++;
+                      membersWithAppPending.add(doc.id);
+                    }
+                  }
+
+                  // Check web sync docs for unapproved payments that aren't already pending in app
+                  for (var doc in webSyncDocs) {
+                    if (membersWithAppPending.contains(doc.id)) continue;
+                    
+                    final data = doc.data() as Map<String, dynamic>;
+                    final webPendingList = safeList(data['payment_history']);
+                    final appDoc = appFeeDocs.where((d) => d.id == doc.id).firstOrNull;
+                    final appData = appDoc != null ? appDoc.data() as Map<String, dynamic> : {};
+                    final appHistory = safeList(appData['payment_history']);
+
+                    bool hasUnapprovedWeb = false;
+                    for (var webRec in webPendingList) {
+                      final recMap = webRec is Map ? Map<String, dynamic>.from(webRec) : {};
+                      final m = safeList(recMap['months']).join(', ');
+                      
+                      // Check if already in app history
+                      bool foundInApp = false;
+                      final query = m.toLowerCase();
+                      for (var appRec in appHistory) {
+                        if (appRec is! Map) continue;
+                        final appMonthList = safeList(appRec['months']);
+                        if (appMonthList.isNotEmpty) {
+                          for (var appM in appMonthList) {
+                            if (query.contains(appM.toString().toLowerCase())) {
+                              foundInApp = true;
+                              break;
+                            }
+                          }
+                        } else if (appRec.containsKey('month')) {
+                           if (query.contains(appRec['month'].toString().toLowerCase())) foundInApp = true;
+                        }
+                        if (foundInApp) break;
+                      }
+
+                      if (m.isNotEmpty && !foundInApp) {
+                        hasUnapprovedWeb = true;
+                        break;
+                      }
+                    }
+
+                    if (hasUnapprovedWeb) {
+                      pendingCount++;
+                    }
+                  }
+                  membershipFeeCount = pendingCount;
                 }
 
                 final badges = <String, int>{};
@@ -264,6 +343,9 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
                 }
                 if (marketplaceAdsCount > 0) {
                   badges['Marketplace'] = marketplaceAdsCount; // Updated key to match nested title
+                }
+                if (membershipFeeCount > 0) {
+                  badges['Membership Approvals'] = membershipFeeCount;
                 }
 
                 return AdminSidebar(

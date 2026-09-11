@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/notification_helper.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
@@ -33,7 +34,13 @@ class ProfileImageRequests extends StatelessWidget {
           });
 
       // 3. Log History
-      await HistoryService.logActivationAction(
+      await NotificationHelper.sendNotification(
+          membershipNo: membershipNo,
+          title: 'Profile Image Approved',
+          body: 'Your profile image has been approved!',
+        );
+
+        await HistoryService.logActivationAction(
         type: 'PROFILE_IMAGE_UPDATE',
         membershipNo: membershipNo,
         status: 'approved',
@@ -175,77 +182,87 @@ class ProfileImageRequests extends StatelessWidget {
     String docId,
     String membershipNo,
   ) async {
-    final TextEditingController reasonController = TextEditingController();
-    bool confirmed = false;
-
-    await showDialog(
+    final List<String> rejectReasons = [
+      "Face is not clearly visible",
+      "Image is too dark or blurry",
+      "Not a real/live photo",
+      "Wearing sunglasses or face is covered",
+      "Other (Invalid format)",
+    ];
+    int selectedIndex = 0;
+    
+    String? reason = await showDialog<String>(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: const Text("Reject Request"),
-          content: TextField(
-            controller: reasonController,
-            decoration: const InputDecoration(
-              labelText: "Reason for rejection",
-              border: OutlineInputBorder(),
-            ),
-            maxLines: 2,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (reasonController.text.trim().isNotEmpty) {
-                  confirmed = true;
-                  Navigator.pop(context);
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Please enter a reason."),
-                      backgroundColor: Colors.orange,
-                    ),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text("Select Rejection Reason"),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: rejectReasons.asMap().entries.map((entry) {
+                  return RadioListTile<int>(
+                    title: Text(entry.value),
+                    value: entry.key,
+                    groupValue: selectedIndex,
+                    onChanged: (int? value) {
+                      setState(() => selectedIndex = value!);
+                    },
                   );
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              child: const Text(
-                "Reject",
-                style: TextStyle(color: Colors.white),
+                }).toList(),
               ),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancel"),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context, rejectReasons[selectedIndex]);
+                  },
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  child: const Text("Reject", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    if (confirmed) {
+    if (reason != null) {
       try {
         await FirebaseFirestore.instance
             .collection('profile_image_requests')
             .doc(docId)
             .update({
               'status': 'rejected',
-              'rejectReason': reasonController.text.trim(),
+              'rejectReason': reason,
               'rejectedAt': FieldValue.serverTimestamp(),
             });
 
-        // Log History
+        await NotificationHelper.sendNotification(
+          membershipNo: membershipNo,
+          title: "Profile Image Rejected",
+          body: "Your profile image was rejected. Reason: $reason",
+        );
+
+        await NotificationHelper.sendNotification(
+          membershipNo: membershipNo,
+          title: 'Profile Image Approved',
+          body: 'Your profile image has been approved!',
+        );
+
         await HistoryService.logActivationAction(
           type: 'PROFILE_IMAGE_UPDATE',
           membershipNo: membershipNo,
           status: 'rejected',
-          requestData: {'reason': reasonController.text.trim()},
-          remarks: reasonController.text.trim(),
+          requestData: {'reason': reason},
+          remarks: reason,
         );
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Request rejected."),
-              backgroundColor: Colors.red,
-            ),
+            const SnackBar(content: Text("Request rejected."), backgroundColor: Colors.red),
           );
         }
       } catch (e) {

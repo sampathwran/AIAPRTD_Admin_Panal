@@ -139,12 +139,50 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                // NEW: Migrate IDs Button
+                Tooltip(
+                  message: 'Migrate Email IDs to Membership No',
+                  child: ElevatedButton.icon(
+                    onPressed: () =>
+                        _showMigrateIdsDialog(context, filteredMembers),
+                    icon: const Icon(
+                      Icons.sync_problem,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    label: const Text(
+                      'Fix IDs',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 PopupMenuButton<String>(
                   tooltip: 'Export Options',
                   offset: const Offset(0, 40),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 9,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E3A8A),
                       borderRadius: BorderRadius.circular(6),
@@ -152,11 +190,26 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: const [
-                        Icon(Icons.download_rounded, color: Colors.white, size: 16),
+                        Icon(
+                          Icons.download_rounded,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                         SizedBox(width: 6),
-                        Text('Export Data', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11)),
+                        Text(
+                          'Export Data',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 11,
+                          ),
+                        ),
                         SizedBox(width: 4),
-                        Icon(Icons.arrow_drop_down, color: Colors.white, size: 16),
+                        Icon(
+                          Icons.arrow_drop_down,
+                          color: Colors.white,
+                          size: 16,
+                        ),
                       ],
                     ),
                   ),
@@ -166,8 +219,16 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                   },
                   itemBuilder: (context) => [
                     _buildPopupItem('all', 'All Details', Icons.list_alt),
-                    _buildPopupItem('personal', 'Personal Details', Icons.person_outline),
-                    _buildPopupItem('vehicle', 'Vehicle Details', Icons.directions_car_outlined),
+                    _buildPopupItem(
+                      'personal',
+                      'Personal Details',
+                      Icons.person_outline,
+                    ),
+                    _buildPopupItem(
+                      'vehicle',
+                      'Vehicle Details',
+                      Icons.directions_car_outlined,
+                    ),
                     _buildPopupItem('fee', 'Membership Fee', Icons.payment),
                   ],
                 ),
@@ -317,7 +378,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                               ? 'ACTIVE MEMBER'
                                               : 'INACTIVE MEMBER';
 
-                                          // 💡 FIXED: මෙතන තිබුණු Bracket issues සියල්ලම ක්ලීන් කරලා සම්පූර්ණ Row එක පිළිවෙලට හැදුවා මචං
+                                          // ðŸ’¡ FIXED: à¶¸à·™à¶­à¶± à¶­à·’à¶¶à·”à¶«à·” Bracket issues à·ƒà·’à¶ºà¶½à·Šà¶½à¶¸ à¶šà·Šà¶½à·“à¶±à·Š à¶šà¶»à¶½à· à·ƒà¶¸à·Šà¶´à·–à¶»à·Šà¶« Row à¶‘à¶š à¶´à·’à·…à·’à·€à·™à¶½à¶§ à·„à·à¶¯à·”à·€à· à¶¸à¶ à¶‚
                                           return Container(
                                             decoration: const BoxDecoration(
                                               border: Border(
@@ -555,7 +616,11 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
     );
   }
 
-  PopupMenuItem<String> _buildPopupItem(String value, String text, IconData icon) {
+  PopupMenuItem<String> _buildPopupItem(
+    String value,
+    String text,
+    IconData icon,
+  ) {
     return PopupMenuItem<String>(
       value: value,
       child: Row(
@@ -568,7 +633,10 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
     );
   }
 
-  Future<void> _handleExport(String type, List<Map<String, dynamic>> filteredMembers) async {
+  Future<void> _handleExport(
+    String type,
+    List<Map<String, dynamic>> filteredMembers,
+  ) async {
     String escape(String value) {
       if (value.isEmpty) return '""';
       final escaped = value.replaceAll('"', '""');
@@ -599,14 +667,25 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
 
       final StringBuffer csvData = StringBuffer();
       final List<String> idCols = ["Membership No", "Full Name", "NIC"];
-      
+
       if (type == 'personal') {
-        final List<String> columns = [...idCols, "Mobile", "Email", "Gender", "DOB", "Address", "Religion", "Status", "Join Date"];
+        final List<String> columns = [
+          ...idCols,
+          "Mobile",
+          "Email",
+          "Gender",
+          "DOB",
+          "Address",
+          "Religion",
+          "Status",
+          "Join Date",
+        ];
         csvData.writeln(columns.map((h) => '"$h"').join(','));
-        
+
         for (final m in filteredMembers) {
           final mNo = m['membershipNo']?.toString() ?? '-';
-          final name = m['fullName']?.toString() ?? m['firstName']?.toString() ?? '-';
+          final name =
+              m['fullName']?.toString() ?? m['firstName']?.toString() ?? '-';
           final nic = m['nic']?.toString() ?? '-';
           final mobile = m['mobile']?.toString() ?? '-';
           final email = m['email']?.toString() ?? '-';
@@ -614,123 +693,155 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
           final dob = m['dob']?.toString() ?? '-';
           final address = m['address']?.toString() ?? '-';
           final religion = m['religion']?.toString() ?? '-';
-          
+
           final statusResult = calculateMemberStatus(m);
-          final statusStr = statusResult['isActive'] == true ? 'ACTIVE' : 'INACTIVE';
+          final statusStr = statusResult['isActive'] == true
+              ? 'ACTIVE'
+              : 'INACTIVE';
           final dateJoined = getDateJoined(m);
 
-          csvData.writeln("${escape(mNo)},${escape(name)},${escape(nic)},${escape(mobile)},${escape(email)},${escape(gender)},${escape(dob)},${escape(address)},${escape(religion)},${escape(statusStr)},${escape(dateJoined)}");
+          csvData.writeln(
+            "${escape(mNo)},${escape(name)},${escape(nic)},${escape(mobile)},${escape(email)},${escape(gender)},${escape(dob)},${escape(address)},${escape(religion)},${escape(statusStr)},${escape(dateJoined)}",
+          );
         }
         exportToCsv('AIAPRTD_Personal_Details.csv', csvData.toString());
-
       } else if (type == 'fee') {
         final Map<String, int> monthToNumber = {
-          'january': 1, 'february': 2, 'march': 3, 'april': 4, 'may': 5, 'june': 6,
-          'july': 7, 'august': 8, 'september': 9, 'october': 10, 'november': 11, 'december': 12
+          'january': 1,
+          'february': 2,
+          'march': 3,
+          'april': 4,
+          'may': 5,
+          'june': 6,
+          'july': 7,
+          'august': 8,
+          'september': 9,
+          'october': 10,
+          'november': 11,
+          'december': 12,
         };
 
         final Set<String> uniqueMonths = {};
         for (final m in filteredMembers) {
           final paymentHistory = m['payment_history'] as List<dynamic>? ?? [];
           for (var p in paymentHistory) {
-             if (p is Map) {
-                final mStr = p['month']?.toString().trim() ?? '';
-                final yStr = p['year']?.toString().trim() ?? '';
-                if (mStr.isNotEmpty && yStr.isNotEmpty) {
-                   uniqueMonths.add("$mStr $yStr");
-                } else if (mStr.isNotEmpty) {
-                   uniqueMonths.add("$mStr 2026");
-                }
-             }
+            if (p is Map) {
+              final mStr = p['month']?.toString().trim() ?? '';
+              final yStr = p['year']?.toString().trim() ?? '';
+              if (mStr.isNotEmpty && yStr.isNotEmpty) {
+                uniqueMonths.add("$mStr $yStr");
+              } else if (mStr.isNotEmpty) {
+                uniqueMonths.add("$mStr 2026");
+              }
+            }
           }
         }
-        
-        final sortedMonths = uniqueMonths.toList()..sort((a, b) {
-           final partsA = a.split(' ');
-           final partsB = b.split(' ');
-           final yearA = int.tryParse(partsA.length > 1 ? partsA[1] : '2026') ?? 2026;
-           final yearB = int.tryParse(partsB.length > 1 ? partsB[1] : '2026') ?? 2026;
-           
-           if (yearA != yearB) return yearA.compareTo(yearB);
-           
-           final mA = monthToNumber[partsA[0].toLowerCase()] ?? 0;
-           final mB = monthToNumber[partsB[0].toLowerCase()] ?? 0;
-           return mA.compareTo(mB);
-        });
 
-        final List<String> columns = [...idCols, "Join Date", "Status", ...sortedMonths];
+        final sortedMonths = uniqueMonths.toList()
+          ..sort((a, b) {
+            final partsA = a.split(' ');
+            final partsB = b.split(' ');
+            final yearA =
+                int.tryParse(partsA.length > 1 ? partsA[1] : '2026') ?? 2026;
+            final yearB =
+                int.tryParse(partsB.length > 1 ? partsB[1] : '2026') ?? 2026;
+
+            if (yearA != yearB) return yearA.compareTo(yearB);
+
+            final mA = monthToNumber[partsA[0].toLowerCase()] ?? 0;
+            final mB = monthToNumber[partsB[0].toLowerCase()] ?? 0;
+            return mA.compareTo(mB);
+          });
+
+        final List<String> columns = [
+          ...idCols,
+          "Join Date",
+          "Status",
+          ...sortedMonths,
+        ];
         csvData.writeln(columns.map((h) => '"$h"').join(','));
-        
+
         for (final m in filteredMembers) {
           final mNo = m['membershipNo']?.toString() ?? '-';
-          final name = m['fullName']?.toString() ?? m['firstName']?.toString() ?? '-';
+          final name =
+              m['fullName']?.toString() ?? m['firstName']?.toString() ?? '-';
           final nic = m['nic']?.toString() ?? '-';
-          
+
           final statusResult = calculateMemberStatus(m);
-          final statusStr = statusResult['isActive'] == true ? 'ACTIVE' : 'INACTIVE';
+          final statusStr = statusResult['isActive'] == true
+              ? 'ACTIVE'
+              : 'INACTIVE';
           final dateJoined = getDateJoined(m);
-          
-          final List<String> rowValues = [escape(mNo), escape(name), escape(nic), escape(dateJoined), escape(statusStr)];
-          
+
+          final List<String> rowValues = [
+            escape(mNo),
+            escape(name),
+            escape(nic),
+            escape(dateJoined),
+            escape(statusStr),
+          ];
+
           final paymentHistory = m['payment_history'] as List<dynamic>? ?? [];
           final Map<String, List<Map>> memberPayments = {};
-          
+
           for (var p in paymentHistory) {
-             if (p is Map) {
-                final mStr = p['month']?.toString().trim() ?? '';
-                final yStr = p['year']?.toString().trim() ?? '';
-                String key = '';
-                if (mStr.isNotEmpty && yStr.isNotEmpty) {
-                   key = "$mStr $yStr";
-                } else if (mStr.isNotEmpty) {
-                   key = "$mStr 2026";
-                }
-                
-                if (key.isNotEmpty) {
-                   if (!memberPayments.containsKey(key)) memberPayments[key] = [];
-                   memberPayments[key]!.add(p);
-                }
-             }
+            if (p is Map) {
+              final mStr = p['month']?.toString().trim() ?? '';
+              final yStr = p['year']?.toString().trim() ?? '';
+              String key = '';
+              if (mStr.isNotEmpty && yStr.isNotEmpty) {
+                key = "$mStr $yStr";
+              } else if (mStr.isNotEmpty) {
+                key = "$mStr 2026";
+              }
+
+              if (key.isNotEmpty) {
+                if (!memberPayments.containsKey(key)) memberPayments[key] = [];
+                memberPayments[key]!.add(p);
+              }
+            }
           }
-          
+
           for (final monthKey in sortedMonths) {
-             final payments = memberPayments[monthKey] ?? [];
-             if (payments.isEmpty) {
-                rowValues.add(escape('-'));
-             } else {
-                final List<String> cellParts = [];
-                for (var p in payments) {
-                   final amt = p['amount']?.toString() ?? '';
-                   final tType = p['type']?.toString() ?? p['method']?.toString() ?? '';
-                   final status = p['status']?.toString() ?? '';
-                   final dt = p['date']?.toString() ?? '';
-                   final reason = p['reason']?.toString() ?? '';
-                   
-                   String txt = '';
-                   if (status.toLowerCase() == 'approved') {
-                      txt = "Paid";
-                      if (amt.isNotEmpty) txt += " $amt";
-                      if (tType.isNotEmpty) txt += " ($tType)";
-                      if (dt.isNotEmpty) txt += " on $dt";
-                   } else {
-                      txt = "Pending ($status)";
-                   }
-                   if (reason.isNotEmpty && reason != "Monthly Membership Fee") {
-                      txt += " [$reason]";
-                   }
-                   cellParts.add(txt);
+            final payments = memberPayments[monthKey] ?? [];
+            if (payments.isEmpty) {
+              rowValues.add(escape('-'));
+            } else {
+              final List<String> cellParts = [];
+              for (var p in payments) {
+                final amt = p['amount']?.toString() ?? '';
+                final tType =
+                    p['type']?.toString() ?? p['method']?.toString() ?? '';
+                final status = p['status']?.toString() ?? '';
+                final dt = p['date']?.toString() ?? '';
+                final reason = p['reason']?.toString() ?? '';
+
+                String txt = '';
+                if (status.toLowerCase() == 'approved') {
+                  txt = "Paid";
+                  if (amt.isNotEmpty) txt += " $amt";
+                  if (tType.isNotEmpty) txt += " ($tType)";
+                  if (dt.isNotEmpty) txt += " on $dt";
+                } else {
+                  txt = "Pending ($status)";
                 }
-                rowValues.add(escape(cellParts.join(' | ')));
-             }
+                if (reason.isNotEmpty && reason != "Monthly Membership Fee") {
+                  txt += " [$reason]";
+                }
+                cellParts.add(txt);
+              }
+              rowValues.add(escape(cellParts.join(' | ')));
+            }
           }
-          
+
           csvData.writeln(rowValues.join(','));
         }
         exportToCsv('AIAPRTD_Membership_Fee.csv', csvData.toString());
-
       } else if (type == 'vehicle' || type == 'all') {
         // Fetch vehicles
-        final vehiclesSnap = await FirebaseFirestore.instance.collection('vehicles').get();
+        final vehiclesSnap = await FirebaseFirestore.instance
+            .collection('vehicles')
+            .get();
         final Map<String, Map<String, dynamic>> allVehicles = {};
         for (var doc in vehiclesSnap.docs) {
           allVehicles[doc.id] = doc.data();
@@ -738,118 +849,159 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
 
         final Set<String> dynamicVehicleKeys = {};
         for (final member in filteredMembers) {
-           final mNo = member['membershipNo']?.toString();
-           if (mNo == null) continue;
-           
-           final v = allVehicles[mNo];
-           if (v != null) {
-             v.forEach((k, val) {
-               if (k != 'details' && k != 'documents' && k != 'vehiclePhotos' && k != 'vehicleHistory' && val is! Map && val is! List) {
-                 dynamicVehicleKeys.add(k);
-               }
-             });
-             
-             final details = v['details'] as Map<String, dynamic>? ?? {};
-             details.forEach((k, val) {
+          final mNo = member['membershipNo']?.toString();
+          if (mNo == null) continue;
+
+          final v = allVehicles[mNo];
+          if (v != null) {
+            v.forEach((k, val) {
+              if (k != 'details' &&
+                  k != 'documents' &&
+                  k != 'vehiclePhotos' &&
+                  k != 'vehicleHistory' &&
+                  val is! Map &&
+                  val is! List) {
                 dynamicVehicleKeys.add(k);
-             });
-             
-             final docs = v['documents'] as List<dynamic>? ?? [];
-             for (var d in docs) {
-                if (d is Map<String, dynamic> && d['reviewData'] != null) {
-                  final review = d['reviewData'] as Map<String, dynamic>;
-                  review.forEach((k, val) {
-                     dynamicVehicleKeys.add(k);
-                  });
-                }
-             }
-           }
+              }
+            });
+
+            final details = v['details'] as Map<String, dynamic>? ?? {};
+            details.forEach((k, val) {
+              dynamicVehicleKeys.add(k);
+            });
+
+            final docs = v['documents'] as List<dynamic>? ?? [];
+            for (var d in docs) {
+              if (d is Map<String, dynamic> && d['reviewData'] != null) {
+                final review = d['reviewData'] as Map<String, dynamic>;
+                review.forEach((k, val) {
+                  dynamicVehicleKeys.add(k);
+                });
+              }
+            }
+          }
         }
-        
+
         final dynamicKeysList = dynamicVehicleKeys.toList()..sort();
-        final List<String> standardColumns = type == 'all' 
-          ? [...idCols, "Mobile", "Email", "Gender", "DOB", "Address", "Religion", "Status", "Join Date", "Current Month Paid", "Last Paid Month"]
-          : idCols;
+        final List<String> standardColumns = type == 'all'
+            ? [
+                ...idCols,
+                "Mobile",
+                "Email",
+                "Gender",
+                "DOB",
+                "Address",
+                "Religion",
+                "Status",
+                "Join Date",
+                "Current Month Paid",
+                "Last Paid Month",
+              ]
+            : idCols;
 
         final List<String> headerRow = [...standardColumns, ...dynamicKeysList];
         csvData.writeln(headerRow.map((h) => '"$h"').join(','));
 
         for (final member in filteredMembers) {
           final mNo = member['membershipNo']?.toString() ?? '-';
-          final name = member['fullName']?.toString() ?? member['firstName']?.toString() ?? '-';
+          final name =
+              member['fullName']?.toString() ??
+              member['firstName']?.toString() ??
+              '-';
           final nic = member['nic']?.toString() ?? '-';
-          
-          final List<String> rowValues = [escape(mNo), escape(name), escape(nic)];
+
+          final List<String> rowValues = [
+            escape(mNo),
+            escape(name),
+            escape(nic),
+          ];
 
           if (type == 'all') {
-             final mobile = member['mobile']?.toString() ?? '-';
-             final email = member['email']?.toString() ?? '-';
-             final gender = member['gender']?.toString() ?? '-';
-             final dob = member['dob']?.toString() ?? '-';
-             final address = member['address']?.toString() ?? '-';
-             final religion = member['religion']?.toString() ?? '-';
-             
-             final statusResult = calculateMemberStatus(member);
-             final statusStr = statusResult['isActive'] == true ? 'ACTIVE' : 'INACTIVE';
-             final dateJoined = getDateJoined(member);
-             
-             final feeCheck = checkMembershipFeeStatus(member);
-             final currentPaid = feeCheck['hasPaidForCurrentMonth'] == true ? 'Yes' : 'No';
-             String lastPaidMonth = '-';
-             final paymentHistory = member['payment_history'] as List<dynamic>? ?? [];
-             if (paymentHistory.isNotEmpty) {
-                for (var p in paymentHistory) {
-                  if (p is Map && p['status']?.toString().toLowerCase() == 'paid') {
-                     lastPaidMonth = "${p['month']} ${p['year']}";
-                     break;
-                  }
-                }
-             }
+            final mobile = member['mobile']?.toString() ?? '-';
+            final email = member['email']?.toString() ?? '-';
+            final gender = member['gender']?.toString() ?? '-';
+            final dob = member['dob']?.toString() ?? '-';
+            final address = member['address']?.toString() ?? '-';
+            final religion = member['religion']?.toString() ?? '-';
 
-             rowValues.addAll([
-               escape(mobile), escape(email), escape(gender), escape(dob), escape(address), escape(religion), 
-               escape(statusStr), escape(dateJoined), escape(currentPaid), escape(lastPaidMonth)
-             ]);
+            final statusResult = calculateMemberStatus(member);
+            final statusStr = statusResult['isActive'] == true
+                ? 'ACTIVE'
+                : 'INACTIVE';
+            final dateJoined = getDateJoined(member);
+
+            final feeCheck = checkMembershipFeeStatus(member);
+            final currentPaid = feeCheck['hasPaidForCurrentMonth'] == true
+                ? 'Yes'
+                : 'No';
+            String lastPaidMonth = '-';
+            final paymentHistory =
+                member['payment_history'] as List<dynamic>? ?? [];
+            if (paymentHistory.isNotEmpty) {
+              for (var p in paymentHistory) {
+                if (p is Map &&
+                    p['status']?.toString().toLowerCase() == 'paid') {
+                  lastPaidMonth = "${p['month']} ${p['year']}";
+                  break;
+                }
+              }
+            }
+
+            rowValues.addAll([
+              escape(mobile),
+              escape(email),
+              escape(gender),
+              escape(dob),
+              escape(address),
+              escape(religion),
+              escape(statusStr),
+              escape(dateJoined),
+              escape(currentPaid),
+              escape(lastPaidMonth),
+            ]);
           }
 
           final v = allVehicles[mNo] ?? {};
           final details = v['details'] as Map<String, dynamic>? ?? {};
           final docs = v['documents'] as List<dynamic>? ?? [];
-          
+
           final Map<String, String> flatVehicleData = {};
-          
+
           v.forEach((k, val) {
-             if (val != null && val is! Map && val is! List) flatVehicleData[k] = val.toString();
+            if (val != null && val is! Map && val is! List)
+              flatVehicleData[k] = val.toString();
           });
-          
+
           details.forEach((k, val) {
-             if (val != null) flatVehicleData[k] = val.toString();
+            if (val != null) flatVehicleData[k] = val.toString();
           });
-          
+
           for (var d in docs) {
             if (d is Map<String, dynamic> && d['reviewData'] != null) {
               final review = d['reviewData'] as Map<String, dynamic>;
               review.forEach((k, val) {
-                 if (val != null) {
-                   if (val is List) {
-                      flatVehicleData[k] = val.join(', ');
-                   } else {
-                      flatVehicleData[k] = val.toString();
-                   }
-                 }
+                if (val != null) {
+                  if (val is List) {
+                    flatVehicleData[k] = val.join(', ');
+                  } else {
+                    flatVehicleData[k] = val.toString();
+                  }
+                }
               });
             }
           }
-          
+
           for (final dk in dynamicKeysList) {
-             final val = flatVehicleData[dk] ?? '';
-             rowValues.add(escape(val));
+            final val = flatVehicleData[dk] ?? '';
+            rowValues.add(escape(val));
           }
 
           csvData.writeln(rowValues.join(','));
         }
-        
-        final fileName = type == 'all' ? 'AIAPRTD_All_Details.csv' : 'AIAPRTD_Vehicle_Details.csv';
+
+        final fileName = type == 'all'
+            ? 'AIAPRTD_All_Details.csv'
+            : 'AIAPRTD_Vehicle_Details.csv';
         exportToCsv(fileName, csvData.toString());
       }
 
@@ -862,14 +1014,197 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Export failed: $e'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showMigrateIdsDialog(
+    BuildContext context,
+    List<Map<String, dynamic>> allMembers,
+  ) async {
+    final emailMembers = allMembers.where((m) {
+      final docId = m['doc_id']?.toString() ?? '';
+      return docId.contains('@');
+    }).toList();
+
+    if (emailMembers.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Export failed: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
+        const SnackBar(
+          content: Text('No members found with email-based Document IDs!'),
+          backgroundColor: Colors.green,
         ),
       );
+      return;
     }
+
+    bool isLoading = false;
+    int successCount = 0;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Migrate Email Document IDs'),
+            content: SizedBox(
+              width: 400,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Found ${emailMembers.length} members with Email as their Document ID in Firestore.',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'This action will:\n'
+                    '1. Copy their document to a new ID based on their Membership Number.\n'
+                    '2. Delete the old Email-based document.\n'
+                    '3. Do the same for related collections (vehicles, bank_details, etc).\n\n'
+                    'WARNING: If the mobile app strictly relies on reading the document by Email ID, it might break for these users until they re-login or update the app.',
+                    style: TextStyle(color: Colors.red, fontSize: 12),
+                  ),
+                  if (isLoading) ...[
+                    const SizedBox(height: 24),
+                    const CircularProgressIndicator(),
+                    const SizedBox(height: 8),
+                    const Text('Migrating... Please do not close.'),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              if (!isLoading)
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+              if (!isLoading)
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange.shade700,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () async {
+                    setState(() => isLoading = true);
+
+                    for (final member in emailMembers) {
+                      final oldId = member['doc_id']?.toString() ?? '';
+                      final newId = member['membershipNo']?.toString() ?? '';
+
+                      if (oldId.isNotEmpty &&
+                          oldId.contains('@') &&
+                          newId.isNotEmpty &&
+                          newId != '-' &&
+                          newId != oldId) {
+                        try {
+                          final batch = FirebaseFirestore.instance.batch();
+
+                          // 1. Migrate `member` collection
+                          final oldMemberRef = FirebaseFirestore.instance
+                              .collection('member')
+                              .doc(oldId);
+                          final newMemberRef = FirebaseFirestore.instance
+                              .collection('member')
+                              .doc(newId);
+                          final oldMemberDoc = await oldMemberRef.get();
+                          if (oldMemberDoc.exists) {
+                            batch.set(newMemberRef, oldMemberDoc.data()!);
+                            batch.delete(oldMemberRef);
+                          }
+
+                          // 2. Migrate `vehicles` collection
+                          final oldVehicleRef = FirebaseFirestore.instance
+                              .collection('vehicles')
+                              .doc(oldId);
+                          final newVehicleRef = FirebaseFirestore.instance
+                              .collection('vehicles')
+                              .doc(newId);
+                          final oldVehicleDoc = await oldVehicleRef.get();
+                          if (oldVehicleDoc.exists) {
+                            batch.set(newVehicleRef, oldVehicleDoc.data()!);
+                            batch.delete(oldVehicleRef);
+                          }
+
+                          // 3. Migrate `bank_details` collection
+                          final oldBankRef = FirebaseFirestore.instance
+                              .collection('bank_details')
+                              .doc(oldId);
+                          final newBankRef = FirebaseFirestore.instance
+                              .collection('bank_details')
+                              .doc(newId);
+                          final oldBankDoc = await oldBankRef.get();
+                          if (oldBankDoc.exists) {
+                            batch.set(newBankRef, oldBankDoc.data()!);
+                            batch.delete(oldBankRef);
+                          }
+
+                          // 4. Migrate `member_inactive_reasons` collection
+                          final oldReasonRef = FirebaseFirestore.instance
+                              .collection('member_inactive_reasons')
+                              .doc(oldId);
+                          final newReasonRef = FirebaseFirestore.instance
+                              .collection('member_inactive_reasons')
+                              .doc(newId);
+                          final oldReasonDoc = await oldReasonRef.get();
+                          if (oldReasonDoc.exists) {
+                            batch.set(newReasonRef, oldReasonDoc.data()!);
+                            batch.delete(oldReasonRef);
+                          }
+
+                          // 5. Migrate `app_membership_fee` collection
+                          final oldFeeRef = FirebaseFirestore.instance
+                              .collection('app_membership_fee')
+                              .doc(oldId);
+                          final newFeeRef = FirebaseFirestore.instance
+                              .collection('app_membership_fee')
+                              .doc(newId);
+                          final oldFeeDoc = await oldFeeRef.get();
+                          if (oldFeeDoc.exists) {
+                            batch.set(newFeeRef, oldFeeDoc.data()!);
+                            batch.delete(oldFeeRef);
+                          }
+
+                          await batch.commit();
+                          successCount++;
+                        } catch (e) {
+                          debugPrint('Error migrating $oldId to $newId: $e');
+                        }
+                      }
+                    }
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Migrated $successCount documents successfully!',
+                          ),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+                      // Refresh members
+                      Provider.of<MemberProvider>(
+                        context,
+                        listen: false,
+                      ).startListeningToMembers();
+                    }
+                  },
+                  child: const Text('Start Migration'),
+                ),
+            ],
+          );
+        },
+      ),
+    );
   }
 }
