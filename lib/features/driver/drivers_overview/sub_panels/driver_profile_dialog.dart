@@ -4,6 +4,8 @@ import 'package:aiaprtd_admin_dashboard/core/utils/member_pdf_generator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/edit_driver_profile_dialog.dart';
 
 class DriverProfileDialog extends StatelessWidget {
@@ -199,40 +201,55 @@ class DriverProfileDialog extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => _promptDeleteMember(context, driver),
+                          icon: const Icon(Icons.delete_forever, size: 14, color: Colors.red),
+                          label: const Text(
+                            'Delete Member',
+                            style: TextStyle(
+                              color: Colors.red,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.red, width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        OutlinedButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (context) => EditDriverProfileDialog(
+                                driver: driver,
+                                onUpdated: () {},
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.edit, size: 14, color: Colors.blue),
+                          label: const Text(
+                            'Edit Profile',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.blue, width: 1.5),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
-            ],
-          ),
-        ),
-        Positioned(
-          top: 16,
-          right: 16,
-          child: Row(
-            children: [
-              TextButton.icon(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => EditDriverProfileDialog(
-                      driver: driver,
-                      onUpdated: () {
-                        // In a real app we might want to refresh the specific driver,
-                        // but since Provider listens to firestore, it should auto-update in background.
-                      },
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.edit, size: 16, color: Colors.blue),
-                label: const Text(
-                  'Edit Profile',
-                  style: TextStyle(
-                    color: Colors.blue,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.grey),
                 onPressed: () => Navigator.pop(context),
@@ -1759,6 +1776,125 @@ class DriverProfileDialog extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+
+  void _promptDeleteMember(BuildContext context, Map<String, dynamic> member) {
+    final TextEditingController passwordController = TextEditingController();
+    bool isDeleting = false;
+    String errorMsg = '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('CRITICAL: Delete Member', style: TextStyle(color: Colors.red)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Are you sure you want to completely remove ${member['membershipNo']} from the system? This action CANNOT be undone.'),
+                  const SizedBox(height: 16),
+                  const Text('Enter Admin Password to confirm:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Password',
+                    ),
+                  ),
+                  if (errorMsg.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(errorMsg, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          if (passwordController.text != '885313') {
+                            setDialogState(() => errorMsg = 'Incorrect password.');
+                            return;
+                          }
+                          
+                          setDialogState(() {
+                            isDeleting = true;
+                            errorMsg = '';
+                          });
+
+                          try {
+                            String membershipNo = member['membershipNo'];
+                            var firestore = FirebaseFirestore.instance;
+                            
+                            // 1. Delete from 'member' collection
+                            await firestore.collection('member').doc(membershipNo).delete();
+                            var memberDocs = await firestore.collection('member').where('membershipNo', isEqualTo: membershipNo).get();
+                            for (var doc in memberDocs.docs) {
+                              await doc.reference.delete();
+                            }
+                            
+                            // 2. Delete from 'web_sync_member'
+                            var webSyncDocs = await firestore.collection('web_sync_member').where('membershipNo', isEqualTo: membershipNo).get();
+                            for (var doc in webSyncDocs.docs) {
+                              await doc.reference.delete();
+                            }
+                            await firestore.collection('web_sync_member').doc(membershipNo).delete();
+                            
+                            // 3. Delete from fees
+                            await firestore.collection('web_sync_membership_fee').doc(membershipNo).delete();
+                            await firestore.collection('app_membership_fee').doc(membershipNo).delete();
+                            
+                            // 4. Delete from WordPress via API
+                            try {
+                              final response = await http.post(
+                                Uri.parse('https://aiaprtd.lk/wp-json/aiaprtd/v1/delete-member'),
+                                body: {
+                                  'membership_no': membershipNo,
+                                  'secure_token': 'AIA_SUPER_SECRET_2026',
+                                },
+                              );
+                              if (response.statusCode != 200) {
+                                debugPrint('WP Delete Failed: ${response.body}');
+                              }
+                            } catch (wpError) {
+                              debugPrint('WP Delete Error: $wpError');
+                            }
+                            
+                            if (context.mounted) {
+                              Navigator.pop(dialogContext); // Close warning dialog
+                              Navigator.pop(context); // Close profile dialog
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Member successfully deleted from the system.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() {
+                              isDeleting = false;
+                              errorMsg = 'Error: $e';
+                            });
+                          }
+                        },
+                  child: isDeleting 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Permanently Delete'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

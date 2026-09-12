@@ -1,6 +1,7 @@
 // ignore_for_file: spell_check_on_languages
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
@@ -148,10 +149,25 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
             subtitle:
                 '${member['membershipNo'] ?? '-'} · ${member['fullName'] ?? 'Unknown member'}',
             icon: Icons.badge_rounded,
-            trailing: OutlinedButton.icon(
-              onPressed: () => setState(() => _selectedMember = null),
-              icon: const Icon(Icons.arrow_back_rounded, size: 18),
-              label: const Text('Back to directory'),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: () => _promptDeleteMember(member),
+                  icon: const Icon(Icons.delete_forever, size: 18),
+                  label: const Text('Delete Member'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                OutlinedButton.icon(
+                  onPressed: () => setState(() => _selectedMember = null),
+                  icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                  label: const Text('Back to directory'),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 18),
@@ -192,6 +208,109 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
           PaymentHistoryCard(memberData: member),
         ],
       ),
+    );
+  }
+
+  void _promptDeleteMember(Map<String, dynamic> member) {
+    final TextEditingController passwordController = TextEditingController();
+    bool isDeleting = false;
+    String errorMsg = '';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('CRITICAL: Delete Member', style: TextStyle(color: Colors.red)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Are you sure you want to completely remove ${member['membershipNo']} from the system? This action CANNOT be undone.'),
+                  const SizedBox(height: 16),
+                  const Text('Enter Admin Password to confirm:', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: true,
+                    decoration: const InputDecoration(
+                      border: OutlineInputBorder(),
+                      hintText: 'Password',
+                    ),
+                  ),
+                  if (errorMsg.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(errorMsg, style: const TextStyle(color: Colors.red)),
+                  ],
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: isDeleting ? null : () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+                  onPressed: isDeleting
+                      ? null
+                      : () async {
+                          if (passwordController.text != '885313') {
+                            setDialogState(() => errorMsg = 'Incorrect password.');
+                            return;
+                          }
+                          
+                          setDialogState(() {
+                            isDeleting = true;
+                            errorMsg = '';
+                          });
+
+                          try {
+                            String membershipNo = member['membershipNo'];
+                            var firestore = FirebaseFirestore.instance;
+                            
+                            // 1. Delete from 'member' collection
+                            await firestore.collection('member').doc(membershipNo).delete();
+                            var memberDocs = await firestore.collection('member').where('membershipNo', isEqualTo: membershipNo).get();
+                            for (var doc in memberDocs.docs) {
+                              await doc.reference.delete();
+                            }
+                            
+                            // 2. Delete from 'web_sync_member'
+                            var webSyncDocs = await firestore.collection('web_sync_member').where('membershipNo', isEqualTo: membershipNo).get();
+                            for (var doc in webSyncDocs.docs) {
+                              await doc.reference.delete();
+                            }
+                            await firestore.collection('web_sync_member').doc(membershipNo).delete();
+                            
+                            // 3. Delete from fees
+                            await firestore.collection('web_sync_membership_fee').doc(membershipNo).delete();
+                            await firestore.collection('app_membership_fee').doc(membershipNo).delete();
+                            
+                            if (mounted) {
+                              Navigator.pop(dialogContext);
+                              setState(() => _selectedMember = null);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Member successfully deleted from the system.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() {
+                              isDeleting = false;
+                              errorMsg = 'Error: $e';
+                            });
+                          }
+                        },
+                  child: isDeleting 
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Permanently Delete'),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 }

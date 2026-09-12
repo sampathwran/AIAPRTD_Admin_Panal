@@ -244,7 +244,7 @@ class ProfileImageRequests extends StatelessWidget {
         await NotificationHelper.sendNotification(
           membershipNo: membershipNo,
           title: "Profile Image Rejected",
-          body: "Your profile image was rejected. Reason: $reason",
+          body: "Your profile image was rejected.\n\nREASON: $reason",
         );
 
         await NotificationHelper.sendNotification(

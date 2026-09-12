@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:aiaprtd_admin_dashboard/core/services/history_service.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/notification_helper.dart';
 
 class VehicleRequestProvider with ChangeNotifier {
   bool _isProcessing = false;
@@ -104,6 +105,12 @@ class VehicleRequestProvider with ChangeNotifier {
         requestData: data,
       );
 
+      await NotificationHelper.sendNotification(
+        membershipNo: membershipNo,
+        title: 'Vehicle Approved',
+        body: 'Your vehicle details have been approved!',
+      );
+
       _setProcessing(false);
       return true;
     } catch (e) {
@@ -137,6 +144,12 @@ class VehicleRequestProvider with ChangeNotifier {
         remarks: reason,
       );
 
+      await NotificationHelper.sendNotification(
+        membershipNo: requestId,
+        title: 'Vehicle Rejected',
+        body: 'Your vehicle details were rejected.\n\nREASON: $reason',
+      );
+
       _setProcessing(false);
       return true;
     } catch (e) {
@@ -165,6 +178,13 @@ class VehicleRequestProvider with ChangeNotifier {
         if (photos.containsKey(label)) {
           photos[label]['status'] = 'approved';
           await docRef.update({'vehiclePhotos': photos});
+          
+          await NotificationHelper.sendNotification(
+            membershipNo: requestId,
+            title: 'Vehicle Photo Approved',
+            body: 'Your vehicle photo ($label) has been approved!',
+          );
+          
           notifyListeners();
         }
       }
@@ -198,6 +218,31 @@ class VehicleRequestProvider with ChangeNotifier {
         docs[index]['reviewData'] = details;
 
         await docRef.update({'documents': docs});
+        
+        final titles = [
+          "Revenue License",
+          "Insurance Policy",
+          "Registration Document",
+          "Driving License (Front)",
+          "Driving License (Back)",
+        ];
+        String docTitle = titles.length > index ? titles[index] : "Document";
+        
+        if (status == 'approved') {
+          await NotificationHelper.sendNotification(
+            membershipNo: requestId,
+            title: '$docTitle Approved',
+            body: 'Your $docTitle has been approved!',
+          );
+        } else if (status == 'rejected') {
+          String reason = details['reason'] ?? 'No reason provided';
+          await NotificationHelper.sendNotification(
+            membershipNo: requestId,
+            title: '$docTitle Rejected',
+            body: 'Your $docTitle was rejected.\n\nREASON: $reason',
+          );
+        }
+        
         notifyListeners();
       }
     } catch (e) {
@@ -268,6 +313,13 @@ class VehicleRequestProvider with ChangeNotifier {
           photos[label]['status'] = 'rejected';
           photos[label]['rejectionReason'] = reason;
           await docRef.update({'vehiclePhotos': photos});
+          
+          await NotificationHelper.sendNotification(
+            membershipNo: requestId,
+            title: 'Vehicle Photo Rejected',
+            body: 'Your vehicle photo ($label) was rejected.\n\nREASON: $reason',
+          );
+          
           notifyListeners();
         }
       }

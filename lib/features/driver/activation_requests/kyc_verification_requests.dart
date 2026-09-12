@@ -201,7 +201,7 @@ class KYCVerificationRequests extends StatelessWidget {
       await NotificationHelper.sendNotification(
         membershipNo: membershipNo,
         title: "KYC Rejected",
-        body: "Your KYC documents were rejected. Reason: $reason",
+        body: "Your KYC documents were rejected.\n\nREASON: $reason",
       );
 
       await NotificationHelper.sendNotification(
