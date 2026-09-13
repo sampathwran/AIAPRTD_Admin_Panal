@@ -6,8 +6,95 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:http/http.dart' as http;
 import 'package:aiaprtd_admin_dashboard/core/services/history_service.dart';
 
-class KYCVerificationRequests extends StatelessWidget {
+class KYCVerificationRequests extends StatefulWidget {
   const KYCVerificationRequests({super.key});
+
+  @override
+  State<KYCVerificationRequests> createState() => _KYCVerificationRequestsState();
+}
+
+class _KYCVerificationRequestsState extends State<KYCVerificationRequests> {
+  String selectedStatus = 'pending';
+  String searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4F9),
+      appBar: AppBar(
+        title: const Text(
+          "Biometric KYC Desk",
+          style: TextStyle(
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+            letterSpacing: 0.5,
+          ),
+        ),
+        backgroundColor: Colors.white,
+        foregroundColor: const Color(0xFF1E293B),
+        elevation: 0,
+      ),
+      body: Column(
+        children: [
+          _KycDashboardStats(
+            selectedStatus: selectedStatus,
+            onStatusChanged: (status) {
+              setState(() {
+                selectedStatus = status;
+              });
+            },
+          ),
+          const SizedBox(height: 15),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (value) {
+                setState(() {
+                  searchQuery = value;
+                });
+              },
+              decoration: InputDecoration(
+                hintText: "Search by Membership No or Name...",
+                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 15),
+          Expanded(
+            child: _KYCVerificationRequestsContent(
+              selectedStatus: selectedStatus,
+              searchQuery: searchQuery,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _KYCVerificationRequestsContent extends StatelessWidget {
+  const _KYCVerificationRequestsContent({
+    required this.selectedStatus,
+    required this.searchQuery,
+  });
+
+  final String selectedStatus;
+  final String searchQuery;
 
   // =========================================================================
   // 👑 🎯 THE KING APPROVAL ENGINE: FIRESTORE + WORDPRESS WEB SYNC CALL
@@ -236,26 +323,13 @@ class KYCVerificationRequests extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF3F4F9),
-      appBar: AppBar(
-        title: const Text(
-          "Biometric KYC Desk",
-          style: TextStyle(
-            fontWeight: FontWeight.w900,
-            fontSize: 18,
-            letterSpacing: 0.5,
-          ),
-        ),
-        backgroundColor: Colors.white,
-        foregroundColor: const Color(0xFF1E293B),
-        elevation: 0,
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('verify_kyc')
-            .where('kycApprovalStatus', isEqualTo: 'pending')
-            .snapshots(),
+    Query query = FirebaseFirestore.instance.collection('verify_kyc');
+    if (selectedStatus != 'all') {
+      query = query.where('kycApprovalStatus', isEqualTo: selectedStatus);
+    }
+    
+    return StreamBuilder<QuerySnapshot>(
+      stream: query.snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -287,11 +361,24 @@ class KYCVerificationRequests extends StatelessWidget {
             );
           }
 
-          final docs = snapshot.data!.docs;
+          var filteredDocs = snapshot.data!.docs;
+          if (searchQuery.isNotEmpty) {
+            filteredDocs = filteredDocs.where((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              final searchLower = searchQuery.toLowerCase();
+              final name = (data['fullName'] ?? '').toString().toLowerCase();
+              final membershipNo = (data['membershipNo'] ?? '').toString().toLowerCase();
+              return name.contains(searchLower) || membershipNo.contains(searchLower);
+            }).toList();
+          }
+
+          if (filteredDocs.isEmpty) {
+            return const Center(child: Text("No matching records found."));
+          }
 
           return GridView.builder(
             padding: const EdgeInsets.all(14),
-            itemCount: docs.length,
+            itemCount: filteredDocs.length,
             gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
               maxCrossAxisExtent: 500,
               mainAxisExtent: 210,
@@ -299,8 +386,8 @@ class KYCVerificationRequests extends StatelessWidget {
               mainAxisSpacing: 14,
             ),
             itemBuilder: (context, index) {
-              final kycItem = docs[index].data() as Map<String, dynamic>;
-              final String docId = docs[index].id;
+              final kycItem = filteredDocs[index].data() as Map<String, dynamic>;
+              final String docId = filteredDocs[index].id;
               final String actualMembershipNo = kycItem['membershipNo']?.toString() ?? docId;
 
               return FutureBuilder<DocumentSnapshot>(
@@ -509,8 +596,7 @@ class KYCVerificationRequests extends StatelessWidget {
             },
           );
         },
-      ),
-    );
+      );
   }
 
   Widget _buildModernPreview(String url, {required bool isCircle}) {
@@ -965,6 +1051,159 @@ class KYCVerificationRequests extends StatelessWidget {
     return _RotatableZoomableImageCard(
       title: title,
       imageUrl: imageUrl,
+    );
+  }
+}
+
+class _KycDashboardStats extends StatelessWidget {
+  final String selectedStatus;
+  final ValueChanged<String> onStatusChanged;
+
+  const _KycDashboardStats({
+    required this.selectedStatus,
+    required this.onStatusChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('verify_kyc').snapshots(),
+      builder: (context, snapshot) {
+        int pending = 0;
+        int approved = 0;
+        int rejected = 0;
+        int total = 0;
+
+        if (snapshot.hasData) {
+          final docs = snapshot.data!.docs;
+          total = docs.length;
+          for (var doc in docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            switch (data['kycApprovalStatus']) {
+              case 'pending':
+                pending++;
+                break;
+              case 'approved':
+                approved++;
+                break;
+              case 'rejected':
+                rejected++;
+                break;
+            }
+          }
+        }
+
+        return Padding(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 0),
+          child: Row(
+            children: [
+              _buildStatCard(
+                title: "Total",
+                count: total.toString(),
+                icon: Icons.assignment_outlined,
+                color: Colors.blue,
+                isSelected: selectedStatus == 'all',
+                onTap: () => onStatusChanged('all'),
+              ),
+              const SizedBox(width: 10),
+              _buildStatCard(
+                title: "Pending",
+                count: pending.toString(),
+                icon: Icons.hourglass_empty_rounded,
+                color: Colors.orange,
+                isSelected: selectedStatus == 'pending',
+                onTap: () => onStatusChanged('pending'),
+              ),
+              const SizedBox(width: 10),
+              _buildStatCard(
+                title: "Approved",
+                count: approved.toString(),
+                icon: Icons.check_circle_outline_rounded,
+                color: Colors.green,
+                isSelected: selectedStatus == 'approved',
+                onTap: () => onStatusChanged('approved'),
+              ),
+              const SizedBox(width: 10),
+              _buildStatCard(
+                title: "Rejected",
+                count: rejected.toString(),
+                icon: Icons.cancel_outlined,
+                color: Colors.red,
+                isSelected: selectedStatus == 'rejected',
+                onTap: () => onStatusChanged('rejected'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String count,
+    required IconData icon,
+    required Color color,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? color : Colors.grey.shade200,
+              width: 1.5,
+            ),
+            boxShadow: [
+              if (isSelected)
+                BoxShadow(
+                  color: color.withValues(alpha: 0.3),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                )
+              else
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                color: isSelected ? Colors.white : color,
+                size: 24,
+              ),
+              const SizedBox(height: 8),
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isSelected ? Colors.white : Colors.grey.shade600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                count,
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isSelected ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

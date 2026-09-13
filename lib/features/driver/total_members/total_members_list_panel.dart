@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:http/http.dart' as http;
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
@@ -287,13 +288,55 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
                             // 3. Delete from fees
                             await firestore.collection('web_sync_membership_fee').doc(membershipNo).delete();
                             await firestore.collection('app_membership_fee').doc(membershipNo).delete();
+
+                            // 3.5 Delete from other related collections (Wrap in try-catch to bypass permission errors)
+                            try {
+                              await firestore.collection('verify_kyc').doc(membershipNo).delete();
+                              await firestore.collection('verify_bank').doc(membershipNo).delete();
+                              await firestore.collection('profile_image_requests').doc(membershipNo).delete();
+                              await firestore.collection('member_inactive_reasons').doc(membershipNo).delete();
+                              
+                              var vehicleDocs = await firestore.collection('vehicles').where('membershipNo', isEqualTo: membershipNo).get();
+                              for (var doc in vehicleDocs.docs) {
+                                await doc.reference.delete();
+                              }
+                            } catch (permError) {
+                              debugPrint('Warning: Could not delete secondary records: $permError');
+                            }
+                            
+                            // 4. Delete from WordPress via API
+                            bool wpSuccess = false;
+                            String wpErrorMsg = '';
+                            try {
+                              final response = await http.post(
+                                Uri.parse('https://aiaprtd.lk/wp-json/aiaprtd/v1/delete-member'),
+                                body: {
+                                  'membership_no': membershipNo,
+                                  'password': passwordController.text.trim(),
+                                },
+                              );
+                              if (response.statusCode != 200) {
+                                wpErrorMsg = 'WP Server Error: ${response.body}';
+                              } else {
+                                wpSuccess = true;
+                              }
+                            } catch (wpError) {
+                              wpErrorMsg = 'WP Network Error: $wpError';
+                            }
                             
                             if (mounted) {
                               Navigator.pop(dialogContext);
                               setState(() => _selectedMember = null);
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Member successfully deleted from the system.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
-                              );
+                              
+                              if (wpSuccess) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Member completely deleted (Firebase & WP)!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                                );
+                              } else {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Deleted from Firebase, but WP Failed: $wpErrorMsg', style: const TextStyle(color: Colors.white)), backgroundColor: Colors.orange, duration: const Duration(seconds: 8)),
+                                );
+                              }
                             }
                           } catch (e) {
                             setDialogState(() {

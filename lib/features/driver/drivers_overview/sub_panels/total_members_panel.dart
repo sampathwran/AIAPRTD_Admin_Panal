@@ -1,3 +1,4 @@
+import 'database_migration_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -38,6 +39,129 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
     super.dispose();
   }
 
+  Future<void> _showAddMemberDialog(BuildContext context) async {
+    final TextEditingController _idController = TextEditingController();
+    final TextEditingController _firstNameController = TextEditingController();
+    final TextEditingController _lastNameController = TextEditingController();
+    final TextEditingController _mobileController = TextEditingController();
+    final TextEditingController _nicController = TextEditingController();
+    bool _isSaving = false;
+    bool _isLoadingId = true;
+
+    // Fetch next ID
+    try {
+      final doc = await FirebaseFirestore.instance.collection('system_config').doc('id_management').get();
+      if (doc.exists) {
+        final data = doc.data()!;
+        String prefix = data['prefix']?.toString() ?? '26';
+        int nextAvailable = int.tryParse(data['next_available']?.toString() ?? '0') ?? 0;
+        if (nextAvailable == 0) {
+          int current = int.tryParse(data['current_value']?.toString() ?? '0') ?? 0;
+          nextAvailable = current + 1;
+        }
+        _idController.text = 'AIAPRTD-$prefix-${nextAvailable.toString().padLeft(4, '0')}';
+      } else {
+        _idController.text = 'AIAPRTD-26-0000';
+      }
+    } catch (e) {
+      _idController.text = 'AIAPRTD-26-ERROR';
+    }
+    _isLoadingId = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Add New Member'),
+            content: SizedBox(
+              width: 400,
+              child: _isLoadingId
+                  ? const Center(child: CircularProgressIndicator())
+                  : Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        TextField(
+                          controller: _idController,
+                          decoration: const InputDecoration(labelText: 'Membership Number (Auto-Generated)', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _firstNameController,
+                          decoration: const InputDecoration(labelText: 'First Name', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _lastNameController,
+                          decoration: const InputDecoration(labelText: 'Last Name', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _mobileController,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder()),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _nicController,
+                          decoration: const InputDecoration(labelText: 'NIC', border: OutlineInputBorder()),
+                        ),
+                      ],
+                    ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), foregroundColor: Colors.white),
+                onPressed: _isSaving
+                    ? null
+                    : () async {
+                        if (_idController.text.isEmpty || _firstNameController.text.isEmpty || _mobileController.text.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please fill all required fields!'), backgroundColor: Colors.red));
+                          return;
+                        }
+
+                        setState(() => _isSaving = true);
+                        try {
+                          String memId = _idController.text.trim();
+                          
+                          // Save member
+                          await FirebaseFirestore.instance.collection('member').doc(memId).set({
+                            'membershipNo': memId,
+                            'firstName': _firstNameController.text.trim(),
+                            'lastName': _lastNameController.text.trim(),
+                            'fullName': '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
+                            'mobile': _mobileController.text.trim(),
+                            'mobile_number': _mobileController.text.trim(),
+                            'nic': _nicController.text.trim(),
+                            'profile_status': 'ACTIVE MEMBER',
+                            'createdAt': FieldValue.serverTimestamp(),
+                          });
+
+                          // Increment counter
+                          // No need to increment current_value directly anymore, as the admin should re-scan to find the next empty number.
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Member added successfully!'), backgroundColor: Colors.green));
+                          }
+                        } catch (e) {
+                          setState(() => _isSaving = false);
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                        }
+                      },
+                child: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Save Member'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
   @override
   Widget build(BuildContext context) {
     final memberProvider = Provider.of<MemberProvider>(context);
@@ -140,18 +264,24 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                 ),
                 const SizedBox(width: 8),
                 // NEW: Migrate IDs Button
-                Tooltip(
-                  message: 'Migrate Email IDs to Membership No',
-                  child: ElevatedButton.icon(
-                    onPressed: () =>
-                        _showMigrateIdsDialog(context, filteredMembers),
+                ElevatedButton.icon(
+                    onPressed: () => _showAddMemberDialog(context),
+                    icon: const Icon(Icons.person_add, size: 16, color: Colors.white),
+                    label: const Text('Add Member', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                  ),
+                  const SizedBox(width: 8),
+                  Tooltip(
+                    message: 'Full Web Sync Migration',
+                    child: ElevatedButton.icon(
+                      onPressed: () => showFullDatabaseMigrationDialog(context),
                     icon: const Icon(
                       Icons.sync_problem,
                       size: 16,
                       color: Colors.white,
                     ),
                     label: const Text(
-                      'Fix IDs',
+                      'Start Full Migration',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -1208,3 +1338,11 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
     );
   }
 }
+
+
+
+
+
+
+
+

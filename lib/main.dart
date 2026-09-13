@@ -5,7 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_web_plugins/url_strategy.dart';
 
-import 'dart:html' as html;
+import 'package:aiaprtd_admin_dashboard/core/utils/web_utils.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/passenger_provider.dart';
@@ -22,12 +22,7 @@ void main() async {
   usePathUrlStrategy();
   
   if (kIsWeb) {
-    final uri = Uri.tryParse(html.window.location.href);
-    if (uri != null && uri.queryParameters.containsKey('id') && !uri.path.contains('track')) {
-      final id = uri.queryParameters['id'];
-      html.window.location.href = '/track?id=$id';
-      return;
-    }
+    redirectIfTrackId();
   }
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);

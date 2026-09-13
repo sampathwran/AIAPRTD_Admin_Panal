@@ -928,6 +928,23 @@ class DriverProfileDialog extends StatelessWidget {
                               ),
                             ),
                           ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.green.shade700,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                            ),
+                            onPressed: () => _showAddManualPaymentDialog(context),
+                            icon: const Icon(Icons.add, size: 18),
+                            label: const Text(
+                              'Add Fee',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -1895,6 +1912,153 @@ class DriverProfileDialog extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Future<void> _showAddManualPaymentDialog(BuildContext context) async {
+    final membershipNo = driver['membershipNo']?.toString() ?? '';
+    if (membershipNo.isEmpty) return;
+
+    final TextEditingController amountController = TextEditingController(text: '500');
+    final List<String> allMonths = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    Map<String, bool> selectedMonths = {
+      for (var m in allMonths) m: false
+    };
+    // Default tick the current month
+    String currentMonthName = allMonths[DateTime.now().month - 1];
+    selectedMonths[currentMonthName] = true;
+
+    final List<String> years = [for (int y = 2023; y <= 2030; y++) y.toString()];
+    String selectedYear = DateTime.now().year.toString();
+
+    final List<String> methods = ['Cash', 'Card', 'Bank Transfer', 'Free Membership Fee'];
+    String selectedMethod = 'Cash';
+
+    bool isSaving = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return AlertDialog(
+            title: const Text('Add Fee'),
+            content: SizedBox(
+              width: 400,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedYear,
+                            decoration: const InputDecoration(labelText: 'අවුරුද්ද (Year)', border: OutlineInputBorder()),
+                            items: years.map((y) => DropdownMenuItem(value: y, child: Text(y, style: const TextStyle(color: Colors.black)))).toList(),
+                            onChanged: (val) => setState(() => selectedYear = val!),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonFormField<String>(
+                            value: selectedMethod,
+                            decoration: const InputDecoration(labelText: 'ගෙවීම් ක්‍රමය', border: OutlineInputBorder()),
+                            items: methods.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.black)))).toList(),
+                            onChanged: (val) => setState(() => selectedMethod = val!),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('අදාළ මාස (Select Months):', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 0,
+                      runSpacing: 0,
+                      children: allMonths.map((m) {
+                        return SizedBox(
+                          width: 120,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Checkbox(
+                                value: selectedMonths[m],
+                                onChanged: (val) {
+                                  setState(() => selectedMonths[m] = val ?? false);
+                                },
+                              ),
+                              Text(m, style: const TextStyle(fontSize: 13)),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 16),
+                    TextField(
+                      controller: amountController,
+                      decoration: const InputDecoration(labelText: 'මාසික ගාණ (Amount per month)', border: OutlineInputBorder()),
+                      keyboardType: TextInputType.number,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: Colors.green.shade700, foregroundColor: Colors.white),
+                onPressed: isSaving ? null : () async {
+                  final amount = amountController.text.trim();
+                  if (amount.isEmpty) return;
+                  
+                  final tickedMonths = selectedMonths.entries.where((e) => e.value).map((e) => e.key).toList();
+                  if (tickedMonths.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('කරුණාකර අවම වශයෙන් එක් මාසයක් හෝ තෝරන්න!'), backgroundColor: Colors.orange));
+                    return;
+                  }
+
+                  setState(() => isSaving = true);
+                  
+                  try {
+                    List<Map<String, dynamic>> newPayments = [];
+                    for (int i = 0; i < tickedMonths.length; i++) {
+                      newPayments.add({
+                        'id': DateTime.now().millisecondsSinceEpoch.toString() + '_' + i.toString(),
+                        'date': DateFormat('yyyy-MM-dd').format(DateTime.now()),
+                        'month': tickedMonths[i],
+                        'year': selectedYear,
+                        'amount': amount,
+                        'status': 'APPROVED',
+                        'type': selectedMethod,
+                        'source': 'Admin',
+                        'timestamp': Timestamp.now(), // Fixed Firebase array error
+                      });
+                    }
+
+                    await FirebaseFirestore.instance.collection('app_membership_fee').doc(membershipNo).set({
+                      'payment_history': FieldValue.arrayUnion(newPayments),
+                      'membershipNo': membershipNo,
+                      'updatedAt': FieldValue.serverTimestamp(),
+                    }, SetOptions(merge: true));
+
+                    if (context.mounted) {
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Fee Added Successfully! Close and reopen this profile to see it.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green));
+                    }
+                  } catch (e) {
+                    setState(() => isSaving = false);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+                  }
+                },
+                child: isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Save Payment'),
+              ),
+            ],
+          );
+        },
+      ),
     );
   }
 }

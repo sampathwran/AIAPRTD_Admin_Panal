@@ -38,6 +38,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/member_benefits/member_b
 import 'package:aiaprtd_admin_dashboard/features/driver/p2p_transfers/p2p_transfers_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/withdrawal_requests/withdrawal_requests_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/id_management_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/active_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/online_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/offline_members_panel.dart';
@@ -118,6 +119,7 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     switch (route) {
       case 'overview': return const DriversOverviewPanel();
       case 'total_members': return const TotalMembersPanel();
+      case 'id_management': return const IdManagementPanel();
       case 'activation_requests': return const ActivationRequestsPanel();
       case 'payment_approvals': return const PaymentApprovalsPanel();
       case 'bookings': return const ScheduledBookingsPanel();
@@ -520,5 +522,6 @@ class _DashboardTopBar extends StatelessWidget {
     );
   }
 }
+
 
 

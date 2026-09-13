@@ -27,6 +27,11 @@ class DriverMenuConstants {
       route: 'total_members',
     ),
     AdminMenuItem(
+      title: 'Membership IDs',
+      icon: Icons.badge_rounded,
+      route: 'id_management',
+    ),
+    AdminMenuItem(
       title: 'Activation Requests',
       icon: Icons.how_to_reg_rounded,
       route: 'activation_requests',
@@ -165,3 +170,5 @@ class DriverMenuConstants {
     ),
   ];
 }
+
+
