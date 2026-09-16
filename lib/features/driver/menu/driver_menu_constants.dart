@@ -26,11 +26,7 @@ class DriverMenuConstants {
       icon: Icons.people_alt_rounded,
       route: 'total_members',
     ),
-    AdminMenuItem(
-      title: 'Membership IDs',
-      icon: Icons.badge_rounded,
-      route: 'id_management',
-    ),
+
     AdminMenuItem(
       title: 'Activation Requests',
       icon: Icons.how_to_reg_rounded,
@@ -60,6 +56,11 @@ class DriverMenuConstants {
       title: 'Notifications',
       icon: Icons.notifications_rounded,
       route: 'notifications',
+    ),
+    AdminMenuItem(
+      title: 'WhatsApp Hub',
+      icon: Icons.message_rounded,
+      route: 'whatsapp_hub',
     ),
     AdminMenuItem(
       title: 'System Settings',

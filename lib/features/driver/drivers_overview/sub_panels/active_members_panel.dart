@@ -1,3 +1,4 @@
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
@@ -287,7 +288,7 @@ class _ActiveMembersPanelState extends State<ActiveMembersPanel> {
                                         ),
                                         DataCell(
                                           Text(
-                                            driver['fullName'] ?? 'Unknown',
+                                            getMemberFullName(driver),
                                             style: const TextStyle(
                                               fontSize: 12,
                                             ),

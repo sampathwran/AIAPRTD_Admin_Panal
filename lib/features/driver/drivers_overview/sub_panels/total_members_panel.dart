@@ -1,4 +1,4 @@
-import 'database_migration_dialog.dart';
+﻿import 'database_migration_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -17,9 +17,10 @@ class TotalMembersPanel extends StatefulWidget {
 
 class _TotalMembersPanelState extends State<TotalMembersPanel> {
   String _searchQuery = '';
-
-  final ScrollController _verticalController = ScrollController();
+  int _currentPage = 1;
+  final int _itemsPerPage = 50;
   final ScrollController _horizontalController = ScrollController();
+  final ScrollController _verticalController = ScrollController();
 
   @override
   void initState() {
@@ -179,6 +180,26 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
           vehicleNo.contains(query);
     }).toList();
 
+    int totalPages = (filteredMembers.length / _itemsPerPage).ceil();
+    if (totalPages == 0) totalPages = 1;
+    
+    // Ensure currentPage is valid
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_currentPage > totalPages) {
+        setState(() {
+          _currentPage = totalPages;
+        });
+      }
+    });
+
+    int startIndex = (_currentPage - 1) * _itemsPerPage;
+    int endIndex = startIndex + _itemsPerPage;
+    if (endIndex > filteredMembers.length) {
+      endIndex = filteredMembers.length;
+    }
+    
+    final paginatedMembers = filteredMembers.sublist(startIndex, endIndex);
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Padding(
@@ -234,6 +255,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                     onChanged: (value) {
                       setState(() {
                         _searchQuery = value;
+                        _currentPage = 1;
                       });
                     },
                     style: const TextStyle(fontSize: 11),
@@ -366,6 +388,9 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
             ),
             const SizedBox(height: 12),
 
+            _buildPaginationControls(totalPages),
+            const SizedBox(height: 8),
+
             // Ultra Scrollable Table Canvas
             Expanded(
               child: memberProvider.isLoading
@@ -375,7 +400,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                         strokeWidth: 2.5,
                       ),
                     )
-                  : filteredMembers.isEmpty
+                  : paginatedMembers.isEmpty
                   ? const Center(
                       child: Text(
                         'No registered members found.',
@@ -492,11 +517,11 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                       trackVisibility: true,
                                       child: ListView.builder(
                                         controller: _verticalController,
-                                        itemCount: filteredMembers.length,
+                                        itemCount: paginatedMembers.length,
                                         physics: const BouncingScrollPhysics(),
                                         itemExtent: 65,
                                         itemBuilder: (context, index) {
-                                          final driver = filteredMembers[index];
+                                          final driver = paginatedMembers[index];
                                           final String profileStatusStr =
                                               (driver['profile_status'] ?? '')
                                                   .toString()
@@ -1337,12 +1362,72 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
       ),
     );
   }
+
+  Widget _buildPaginationControls(int totalPages) {
+    if (totalPages <= 1) return const SizedBox.shrink();
+    
+    List<Widget> pageButtons = [];
+    
+    pageButtons.add(
+      IconButton(
+        icon: const Icon(Icons.chevron_left, size: 20),
+        onPressed: _currentPage > 1 ? () { setState(() { _currentPage--; }); } : null,
+      )
+    );
+    
+    for (int i = 1; i <= totalPages; i++) {
+      if (totalPages > 10) {
+        if (i != 1 && i != totalPages && (i < _currentPage - 2 || i > _currentPage + 2)) {
+          if (i == 2 || i == totalPages - 1) {
+            pageButtons.add(const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Text('...')));
+          }
+          continue;
+        }
+      }
+      
+      bool isSelected = i == _currentPage;
+      pageButtons.add(
+        InkWell(
+          onTap: () { setState(() { _currentPage = i; }); },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isSelected ? const Color(0xFF1E3A8A) : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: isSelected ? const Color(0xFF1E3A8A) : Colors.grey.shade300),
+            ),
+            child: Text(
+              i.toString(),
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.black87,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        )
+      );
+    }
+    
+    pageButtons.add(
+      IconButton(
+        icon: const Icon(Icons.chevron_right, size: 20),
+        onPressed: _currentPage < totalPages ? () { setState(() { _currentPage++; }); } : null,
+      )
+    );
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: pageButtons,
+      ),
+    );
+  }
 }
-
-
-
-
-
-
-
-

@@ -4,10 +4,14 @@ import 'package:aiaprtd_admin_dashboard/core/utils/member_pdf_generator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/download_helper.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/edit_driver_profile_dialog.dart';
-
+import 'package:aiaprtd_admin_dashboard/features/driver/messaging_hub/send_whatsapp_dialog.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/messaging_hub/inactive_warning_dialog.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/admin_profile_image_updater.dart';
 class DriverProfileDialog extends StatelessWidget {
   final Map<String, dynamic> driver;
 
@@ -15,20 +19,22 @@ class DriverProfileDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusResult = calculateMemberStatus(driver);
-    final bool isActive = statusResult['isActive'] == true;
-    final String inactiveReason = statusResult['reason'] ?? '';
-    final String statusText = isActive
-        ? 'ACTIVE MEMBER'
-        : (inactiveReason.isNotEmpty
-              ? 'INACTIVE: $inactiveReason'
-              : 'INACTIVE MEMBER');
-    final Color statusColor = isActive
-        ? Colors.green.shade700
-        : Colors.red.shade700;
-    final Color statusBg = isActive ? Colors.green.shade50 : Colors.red.shade50;
+    return StatefulBuilder(
+      builder: (context, setState) {
+        final statusResult = calculateMemberStatus(driver);
+        final bool isActive = statusResult['isActive'] == true;
+        final String inactiveReason = statusResult['reason'] ?? '';
+        final String statusText = isActive
+            ? 'ACTIVE MEMBER'
+            : (inactiveReason.isNotEmpty
+                  ? 'INACTIVE: $inactiveReason'
+                  : 'INACTIVE MEMBER');
+        final Color statusColor = isActive
+            ? Colors.green.shade700
+            : Colors.red.shade700;
+        final Color statusBg = isActive ? Colors.green.shade50 : Colors.red.shade50;
 
-    return SelectionArea(
+        return SelectionArea(
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
@@ -92,6 +98,8 @@ class DriverProfileDialog extends StatelessWidget {
         ),
       ),
     );
+      },
+    );
   }
 
   Widget _buildHeader(
@@ -126,33 +134,9 @@ class DriverProfileDialog extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(
-                    width: 90,
-                    height: 90,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Colors.blue.shade50,
-                      border: Border.all(color: Colors.white, width: 3),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: ClipOval(
-                      child: hasImage
-                          ? CachedNetworkImage(
-                              imageUrl: driver['profileImageUrl'].toString(),
-                              fit: BoxFit.cover,
-                              placeholder: (context, url) =>
-                                  const CircularProgressIndicator(),
-                              errorWidget: (context, url, error) =>
-                                  _buildFallbackInitial(initials),
-                            )
-                          : _buildFallbackInitial(initials),
-                    ),
+                  AdminProfileImageUpdater(
+                    driver: driver,
+                    initials: initials,
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -177,6 +161,38 @@ class DriverProfileDialog extends StatelessWidget {
                       ),
                     ),
                   ),
+                  if (hasImage) ...[
+                    const SizedBox(height: 8),
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      onPressed: () async {
+                        final urlStr = driver['profileImageUrl'].toString();
+                        if (urlStr.isEmpty) return;
+                        
+                        try {
+                          final response = await http.get(Uri.parse(urlStr));
+                          if (response.statusCode == 200) {
+                            final String memNo = driver['membershipNo'] ?? driver['doc_id'] ?? 'member';
+                            await downloadFile(response.bodyBytes, 'profile_$memNo.jpg');
+                          } else {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Failed to download image')));
+                            }
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.download, size: 14),
+                      label: const Text('Download', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(width: 24),
@@ -201,6 +217,40 @@ class DriverProfileDialog extends StatelessWidget {
                         color: Colors.grey,
                       ),
                     ),
+                    if (driver['cancellationWarningSentAt'] != null)
+                      Builder(
+                        builder: (context) {
+                          final Timestamp warningTimestamp = driver['cancellationWarningSentAt'];
+                          final DateTime sentDate = warningTimestamp.toDate();
+                          final DateTime expiryDate = sentDate.add(const Duration(days: 90));
+                          final int daysLeft = expiryDate.difference(DateTime.now()).inDays;
+                          final String formattedDate = DateFormat('yyyy-MM-dd').format(sentDate);
+                          final bool isExpired = daysLeft <= 0;
+                          
+                          return Container(
+                            margin: const EdgeInsets.only(top: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: isExpired ? Colors.red.shade50 : Colors.orange.shade50,
+                              border: Border.all(color: isExpired ? Colors.red.shade200 : Colors.orange.shade200),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(isExpired ? Icons.cancel : Icons.warning_amber_rounded, color: isExpired ? Colors.red : Colors.orange, size: 14),
+                                const SizedBox(width: 6),
+                                Text(
+                                  isExpired 
+                                  ? 'Warning Expired! (Sent $formattedDate)' 
+                                  : 'Warning Sent: $formattedDate ($daysLeft days remaining)',
+                                  style: TextStyle(color: isExpired ? Colors.red.shade800 : Colors.orange.shade800, fontSize: 11, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                      ),
                     const SizedBox(height: 16),
                     Row(
                       children: [
@@ -245,6 +295,51 @@ class DriverProfileDialog extends StatelessWidget {
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: () => showSendWhatsAppDialog(context, driver),
+                          icon: const Icon(Icons.message_rounded, size: 14, color: Colors.white),
+                          label: const Text(
+                            'WhatsApp',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade600,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          ),
+                        ),
+                        if (!isActive)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: ElevatedButton.icon(
+                              onPressed: () async {
+                                await showInactiveWarningDialog(context, driver);
+                              },
+                              icon: const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.white),
+                              label: const Text(
+                                'Send Warning',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.orange.shade700,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ],
@@ -1956,7 +2051,7 @@ class DriverProfileDialog extends StatelessWidget {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedYear,
-                            decoration: const InputDecoration(labelText: 'අවුරුද්ද (Year)', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'à¶…à·€à·”à¶»à·”à¶¯à·Šà¶¯ (Year)', border: OutlineInputBorder()),
                             items: years.map((y) => DropdownMenuItem(value: y, child: Text(y, style: const TextStyle(color: Colors.black)))).toList(),
                             onChanged: (val) => setState(() => selectedYear = val!),
                           ),
@@ -1965,7 +2060,7 @@ class DriverProfileDialog extends StatelessWidget {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             value: selectedMethod,
-                            decoration: const InputDecoration(labelText: 'ගෙවීම් ක්‍රමය', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'à¶œà·™à·€à·“à¶¸à·Š à¶šà·Šâ€à¶»à¶¸à¶º', border: OutlineInputBorder()),
                             items: methods.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.black)))).toList(),
                             onChanged: (val) => setState(() => selectedMethod = val!),
                           ),
@@ -1973,7 +2068,7 @@ class DriverProfileDialog extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text('අදාළ මාස (Select Months):', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('à¶…à¶¯à·à·… à¶¸à·à·ƒ (Select Months):', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 0,
@@ -1999,7 +2094,7 @@ class DriverProfileDialog extends StatelessWidget {
                     const SizedBox(height: 16),
                     TextField(
                       controller: amountController,
-                      decoration: const InputDecoration(labelText: 'මාසික ගාණ (Amount per month)', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'à¶¸à·à·ƒà·’à¶š à¶œà·à¶« (Amount per month)', border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
                     ),
                   ],
@@ -2016,7 +2111,7 @@ class DriverProfileDialog extends StatelessWidget {
                   
                   final tickedMonths = selectedMonths.entries.where((e) => e.value).map((e) => e.key).toList();
                   if (tickedMonths.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('කරුණාකර අවම වශයෙන් එක් මාසයක් හෝ තෝරන්න!'), backgroundColor: Colors.orange));
+                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('à¶šà¶»à·”à¶«à·à¶šà¶» à¶…à·€à¶¸ à·€à·à¶ºà·™à¶±à·Š à¶‘à¶šà·Š à¶¸à·à·ƒà¶ºà¶šà·Š à·„à· à¶­à·à¶»à¶±à·Šà¶±!'), backgroundColor: Colors.orange));
                     return;
                   }
 

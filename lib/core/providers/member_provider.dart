@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 
 class MemberProvider with ChangeNotifier {
   StreamSubscription<QuerySnapshot>? _memberSubscription;
@@ -155,7 +156,7 @@ class MemberProvider with ChangeNotifier {
               // 🛠️ SAFETY LAYER
               data['nic'] = data['nic']?.toString() ?? '-';
               data['mobile'] = data['mobile']?.toString() ?? '-';
-              data['fullName'] = data['fullName']?.toString() ?? 'Unknown';
+              data['fullName'] = getMemberFullName(data);
               data['firstName'] = data['firstName']?.toString() ?? '';
               data['lastName'] = data['lastName']?.toString() ?? '';
               data['vehicleNumber'] = data['vehicleNumber']?.toString() ?? '-';

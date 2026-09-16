@@ -1,3 +1,4 @@
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
@@ -309,8 +310,7 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
                                               SizedBox(
                                                 width: 180,
                                                 child: Text(
-                                                  driver['fullName'] ??
-                                                      'Unknown',
+                                                  getMemberFullName(driver),
                                                   maxLines: 1,
                                                   overflow:
                                                       TextOverflow.ellipsis,

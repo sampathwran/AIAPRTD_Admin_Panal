@@ -1,3 +1,4 @@
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image_picker/image_picker.dart';
@@ -434,7 +435,7 @@ class _AssignBenefitsTabState extends State<AssignBenefitsTab> {
     DocumentSnapshot memberDoc,
   ) async {
     final memberData = memberDoc.data() as Map<String, dynamic>;
-    final String memberName = memberData['fullName'] ?? 'Unknown Member';
+    final String memberName = getMemberFullName(memberData);
     final String memberNo = memberData['membershipNo'] ?? memberDoc.id;
 
     // Ensure it's a modifiable list of strings
@@ -581,7 +582,7 @@ class _AssignBenefitsTabState extends State<AssignBenefitsTab> {
                     ),
                     child: ListTile(
                       leading: const CircleAvatar(child: Icon(Icons.person)),
-                      title: Text(data['fullName'] ?? 'Unknown Member'),
+                      title: Text(getMemberFullName(data)),
                       subtitle: Text(
                         "${data['mobile'] ?? ''} • ${data['membershipNo'] ?? doc.id}",
                       ),

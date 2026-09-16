@@ -1,3 +1,4 @@
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -260,7 +261,7 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
           (m) => m['membershipNo'] == driverId,
           orElse: () => <String, dynamic>{},
         );
-        final name = member['fullName'] ?? 'Unknown Member';
+        final name = getMemberFullName(member);
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,

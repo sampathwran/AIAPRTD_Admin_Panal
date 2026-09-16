@@ -1,3 +1,4 @@
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -518,8 +519,7 @@ class _NewMembersPanelState extends State<NewMembersPanel> {
                                                 SizedBox(
                                                   width: 200,
                                                   child: Text(
-                                                    driver['fullName'] ??
-                                                        'Unknown',
+                                                    getMemberFullName(driver),
                                                     maxLines: 1,
                                                     overflow:
                                                         TextOverflow.ellipsis,

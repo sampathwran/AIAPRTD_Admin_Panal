@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'dart:async';
 
 class KycRequestProvider with ChangeNotifier {
@@ -64,7 +65,7 @@ class KycRequestProvider with ChangeNotifier {
 
               // 🛠️ SAFETY LAYER: Null Values හැන්ඩල් කිරීම
               data['membershipNo'] = data['membershipNo']?.toString() ?? '-';
-              data['fullName'] = data['fullName']?.toString() ?? 'Unknown';
+              data['fullName'] = getMemberFullName(data);
               data['user_email'] = data['user_email']?.toString() ?? '-';
               data['mobile'] = data['mobile']?.toString() ?? '-';
               data['nic'] = data['nic']?.toString() ?? '-';

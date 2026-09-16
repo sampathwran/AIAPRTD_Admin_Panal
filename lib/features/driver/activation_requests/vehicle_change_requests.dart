@@ -48,6 +48,46 @@ class _VehicleChangeRequestsState extends State<VehicleChangeRequests> {
           onPressed: () => Navigator.pop(context),
         ),
         actions: [
+          if (selectedStatus == 'pending')
+            IconButton(
+              icon: const Icon(Icons.delete_sweep, color: Colors.redAccent),
+              tooltip: "Clear All Pending Requests",
+              onPressed: () async {
+                bool confirm = await showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("Clear Pending List?"),
+                        content: const Text(
+                            "Are you sure you want to archive all currently pending vehicle requests? This will clean up the list. If members upload documents again, they will reappear here."),
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text("Cancel")),
+                          TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text("Clear",
+                                  style: TextStyle(color: Colors.red))),
+                        ],
+                      ),
+                    ) ??
+                    false;
+
+                if (confirm && context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Clearing pending list...")),
+                  );
+                  await Provider.of<VehicleRequestProvider>(context,
+                          listen: false)
+                      .archiveAllPendingRequests();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text("Pending list cleared successfully!")),
+                    );
+                  }
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.sync, color: Colors.blue),
             tooltip: "Migrate Old Vehicles",

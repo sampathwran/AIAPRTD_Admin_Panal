@@ -8,6 +8,7 @@ import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
 import 'package:aiaprtd_admin_dashboard/features/dashboard_shell/widgets/admin_sidebar.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/overview_panel.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/messaging_hub/messaging_hub_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/menu/driver_menu_constants.dart';
 import 'package:aiaprtd_admin_dashboard/features/passenger/menu/passenger_menu_constants.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/drivers_overview_panel.dart';
@@ -38,7 +39,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/member_benefits/member_b
 import 'package:aiaprtd_admin_dashboard/features/driver/p2p_transfers/p2p_transfers_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/withdrawal_requests/withdrawal_requests_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/total_members_panel.dart';
-import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/id_management_panel.dart';
+// import 'package:aiaprtd_admin_dashboard/features/driver/system_settings/id_management_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/active_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/online_members_panel.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/offline_members_panel.dart';
@@ -119,13 +120,14 @@ class _MainDashboardLayoutState extends State<MainDashboardLayout> {
     switch (route) {
       case 'overview': return const DriversOverviewPanel();
       case 'total_members': return const TotalMembersPanel();
-      case 'id_management': return const IdManagementPanel();
+      // case 'id_management': return const IdManagementPanel();
       case 'activation_requests': return const ActivationRequestsPanel();
       case 'payment_approvals': return const PaymentApprovalsPanel();
       case 'bookings': return const ScheduledBookingsPanel();
       case 'support_tickets': return const SupportTicketsPanel();
       case 'votes': return const VotesPanel();
       case 'notifications': return const NotificationsPanel();
+        case 'whatsapp_hub': return const MessagingHubPanel();
       case 'vehicle_rates': return const VehicleCategoryRatesPanel();
       case 'settings': return const SystemSettingsPanel();
       case 'special_days': return const SpecialDaysPanel();
@@ -522,6 +524,8 @@ class _DashboardTopBar extends StatelessWidget {
     );
   }
 }
+
+
 
 
 

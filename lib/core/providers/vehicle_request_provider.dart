@@ -466,6 +466,34 @@ class VehicleRequestProvider with ChangeNotifier {
   }
 
   // =========================================================================
+  // 7.6 පරණ බාගෙට අප්ලෝඩ් කරපු Pending ටික අයින් කිරීම (Clear Pending List)
+  // =========================================================================
+  Future<void> archiveAllPendingRequests() async {
+    _setProcessing(true);
+    try {
+      final FirebaseFirestore firestore = FirebaseFirestore.instance;
+      QuerySnapshot pendingSnap = await firestore
+          .collection('vehicles')
+          .where('status', isEqualTo: 'pending')
+          .get();
+
+      if (pendingSnap.docs.isNotEmpty) {
+        // Use batch to update all at once
+        final WriteBatch batch = firestore.batch();
+        for (var doc in pendingSnap.docs) {
+          batch.update(doc.reference, {'status': 'archived'});
+        }
+        await batch.commit();
+        debugPrint("Archived ${pendingSnap.docs.length} pending requests.");
+      }
+      _setProcessing(false);
+    } catch (e) {
+      debugPrint("Error archiving pending requests: $e");
+      _setProcessing(false);
+    }
+  }
+
+  // =========================================================================
   // 📡 8. DYNAMIC FIXED RATES UPDATER ENGINE
   // =========================================================================
   Future<bool> updateVehicleRates({

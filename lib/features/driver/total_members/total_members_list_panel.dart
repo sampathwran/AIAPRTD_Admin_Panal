@@ -23,6 +23,15 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
   final ScrollController _horizontalController = ScrollController();
   String _searchQuery = '';
 
+  String _getMemberFullName(Map<String, dynamic> member) {
+    String fullName = member['fullName']?.toString().trim() ?? '';
+    if (fullName.isNotEmpty) return fullName;
+    String fName = member['first_name']?.toString().trim() ?? member['firstName']?.toString().trim() ?? '';
+    String lName = member['last_name']?.toString().trim() ?? member['lastName']?.toString().trim() ?? '';
+    if (fName.isNotEmpty || lName.isNotEmpty) return '$fName $lName'.trim();
+    return 'Unknown';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -50,15 +59,41 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
 
     final memberProvider = context.watch<MemberProvider>();
     final filteredMembers = memberProvider.allMembersList.where((member) {
-      final membershipNo = (member['membershipNo'] ?? '')
-          .toString()
-          .toLowerCase();
-      final fullName = (member['fullName'] ?? '').toString().toLowerCase();
+      final membershipNo = (member['membershipNo'] ?? '').toString().toLowerCase();
+      final fullName = _getMemberFullName(member).toLowerCase();
       final mobile = (member['mobile'] ?? '').toString().toLowerCase();
-      final query = _searchQuery.toLowerCase();
+      final email = (member['email'] ?? '').toString().toLowerCase();
+      final nic = (member['nic'] ?? '').toString().toLowerCase();
+      
+      String vehicleNo = '';
+      if (member['currentVehicle'] != null) {
+        final cv = member['currentVehicle'];
+        if (cv['details'] != null && cv['details']['vehicleNumber'] != null) {
+          vehicleNo = cv['details']['vehicleNumber'].toString().toLowerCase();
+        } else if (cv['vehicleNumber'] != null) {
+          vehicleNo = cv['vehicleNumber'].toString().toLowerCase();
+        }
+      }
+
+      final query = _searchQuery.trim().toLowerCase();
+      if (query.isEmpty) return true;
+
+      // Cleaned version for fuzzy matching (removes spaces, dashes, etc.)
+      final cleanQuery = query.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+      // Helper to clean fields
+      String clean(String val) => val.replaceAll(RegExp(r'[^a-z0-9]'), '');
+
       return membershipNo.contains(query) ||
+          clean(membershipNo).contains(cleanQuery) ||
           fullName.contains(query) ||
-          mobile.contains(query);
+          mobile.contains(query) ||
+          clean(mobile).contains(cleanQuery) ||
+          email.contains(query) ||
+          nic.contains(query) ||
+          clean(nic).contains(cleanQuery) ||
+          vehicleNo.contains(query) ||
+          clean(vehicleNo).contains(cleanQuery);
     }).toList();
 
     final activeCount = filteredMembers.where((d) {
@@ -148,7 +183,7 @@ class _TotalMembersListPanelState extends State<TotalMembersListPanel> {
           AdminSectionHeader(
             title: 'Member master profile',
             subtitle:
-                '${member['membershipNo'] ?? '-'} · ${member['fullName'] ?? 'Unknown member'}',
+                '${member['membershipNo'] ?? '-'} • ${_getMemberFullName(member)}',
             icon: Icons.badge_rounded,
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
@@ -393,7 +428,7 @@ class _DirectoryToolbar extends StatelessWidget {
             controller: controller,
             onChanged: onChanged,
             decoration: InputDecoration(
-              hintText: 'Search membership number, name, or phone',
+              hintText: 'Search Name, Mobile, Vehicle, Email, ID...',
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               suffixIcon: query.isEmpty
                   ? null
@@ -626,7 +661,7 @@ class _MemberRow extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(right: 16.0),
                     child: Text(
-                      member['fullName']?.toString() ?? '-',
+                      _getMemberFullName(member),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
@@ -689,3 +724,4 @@ class _MemberRow extends StatelessWidget {
     );
   }
 }
+
