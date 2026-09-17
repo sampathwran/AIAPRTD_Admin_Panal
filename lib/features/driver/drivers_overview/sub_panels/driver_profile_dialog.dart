@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/member_pdf_generator.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -147,13 +148,53 @@ class DriverProfileDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  'Pending Approvals',
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 12,
-                  ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Pending Approvals',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        final buffer = StringBuffer();
+                        buffer.writeln('Pending Approvals:');
+                        if (data['admin_block_permanently'] == true) {
+                          buffer.writeln('• Admin Block Permanently: BLOCKED');
+                        }
+                        if (data['admin_block_temporarily'] == true) {
+                          buffer.writeln('• Admin Block Temporarily: BLOCKED');
+                        }
+                        data.forEach((key, value) {
+                          if (key == 'admin_block_permanently' || key == 'admin_block_temporarily' || key == 'last_updated' || key == 'membershipNo' || key == 'uid' || key == 'status') {
+                            return;
+                          }
+                          if (value.toString().toLowerCase() != 'approved') {
+                            final formattedKey = key.split('_').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
+                            buffer.writeln('• $formattedKey: ${value.toString().toUpperCase()}');
+                          }
+                        });
+                        Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Pending reasons copied to clipboard')),
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Icon(Icons.copy, size: 14, color: Colors.red),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 ...reasonWidgets,
