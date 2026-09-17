@@ -767,22 +767,6 @@ class DriverProfileDialog extends StatelessWidget {
         final appDoc = snapshot.data![0];
         final webDoc = snapshot.data![1];
 
-        if (!appDoc.exists && !webDoc.exists) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.payment, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text(
-                  'No Membership Fee records found.',
-                  style: TextStyle(color: Colors.grey),
-                ),
-              ],
-            ),
-          );
-        }
-
         final appData = appDoc.exists
             ? (appDoc.data() as Map<String, dynamic>? ?? {})
             : {};
