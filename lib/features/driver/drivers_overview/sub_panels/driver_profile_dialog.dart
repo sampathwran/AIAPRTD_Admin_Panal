@@ -137,6 +137,7 @@ class DriverProfileDialog extends StatelessWidget {
         }
 
         return Container(
+          constraints: const BoxConstraints(maxHeight: 140),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.red.shade50,
