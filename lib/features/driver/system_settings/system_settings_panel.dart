@@ -15,7 +15,7 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
   Future<void> _repairInactiveReasons() async {
     setState(() {
       _isMigrating = true;
-      _migrationStatus = 'Checking missing inactive reasons...';
+      _migrationStatus = 'Repairing inactive reasons...';
     });
     try {
       final db = FirebaseFirestore.instance;
@@ -25,17 +25,50 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
         final id = doc.id;
         final inactiveRef = db.collection('member_inactive_reasons').doc(id);
         final inactiveDoc = await inactiveRef.get();
+        final memData = doc.data();
+        final uid = memData['auth_uid'] ?? memData['uid'] ?? '';
+        
+        bool needsRepair = false;
+        
         if (!inactiveDoc.exists) {
+          needsRepair = true;
+        } else {
+          final data = inactiveDoc.data() as Map<String, dynamic>;
+          if (data.containsKey('restored_by_admin')) {
+            needsRepair = true;
+          }
+        }
+
+        if (needsRepair) {
           await inactiveRef.set({
+            'admin_block_permanently': false,
+            'admin_block_temporarily': false,
+            'driving_licence': 'missing',
+            'face_verification': 'missing',
+            'id_card_image': 'missing',
+            'insurance_policy': 'missing',
+            'kyc_details': 'missing',
+            'last_updated': FieldValue.serverTimestamp(),
+            'membershipNo': id,
+            'membership_fee': 'missing',
+            'profile_image': 'missing',
+            'revenue_licence': 'missing',
             'status': 'INACTIVE',
-            'inactive_reasons': ['Profile verifying...'],
-            'restored_by_admin': true,
+            'uid': uid,
+            'vehicle_image_back': 'missing',
+            'vehicle_image_front': 'missing',
+            'vehicle_image_interior': 'missing',
+            'vehicle_image_left_side': 'missing',
+            'vehicle_image_right_side': 'missing',
+            'vehicle_registration_document': 'missing',
+            'inactive_reasons': FieldValue.delete(),
+            'restored_by_admin': FieldValue.delete(),
           }, SetOptions(merge: true));
           restored++;
         }
       }
       setState(() {
-        _migrationStatus = 'Done! Restored $restored missing documents.';
+        _migrationStatus = 'Done! Repaired $restored documents.';
         _isMigrating = false;
       });
     } catch (e) {
@@ -205,5 +238,6 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
     );
   }
 }
+
 
 
