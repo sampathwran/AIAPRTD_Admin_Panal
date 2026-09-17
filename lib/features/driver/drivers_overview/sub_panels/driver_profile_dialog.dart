@@ -975,25 +975,34 @@ class DriverProfileDialog extends StatelessWidget {
                                 lastDate: DateTime.now(),
                               );
                               if (selectedDate != null) {
-                                await FirebaseFirestore.instance
-                                    .collection('vehicles')
-                                    .doc(driver['membershipNo'])
-                                    .update({
-                                      'joinDate': selectedDate
-                                          .toIso8601String(),
-                                    });
-                                setState(() {
-                                  driver['joinDate'] = selectedDate
-                                      .toIso8601String();
-                                });
-                                if (context.mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text(
-                                        'Join Date updated successfully!',
-                                      ),
-                                    ),
-                                  );
+                                final isoString = selectedDate.toIso8601String();
+                                try {
+                                  // Save to member collection
+                                  await FirebaseFirestore.instance
+                                      .collection('member')
+                                      .doc(driver['membershipNo'] ?? driver['doc_id'] ?? driver['uid'])
+                                      .set({'joinDate': isoString}, SetOptions(merge: true));
+
+                                  // Also save to vehicles collection just in case
+                                  await FirebaseFirestore.instance
+                                      .collection('vehicles')
+                                      .doc(driver['membershipNo'] ?? driver['doc_id'] ?? driver['uid'])
+                                      .set({'joinDate': isoString}, SetOptions(merge: true));
+
+                                  setState(() {
+                                    driver['joinDate'] = isoString;
+                                  });
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Join Date updated successfully!')),
+                                    );
+                                  }
+                                } catch (e) {
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Error updating join date: $e'), backgroundColor: Colors.red),
+                                    );
+                                  }
                                 }
                               }
                             },
