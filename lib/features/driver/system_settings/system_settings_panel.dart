@@ -12,6 +12,40 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
   bool _isMigrating = false;
   String _migrationStatus = '';
 
+  Future<void> _repairInactiveReasons() async {
+    setState(() {
+      _isMigrating = true;
+      _migrationStatus = 'Checking missing inactive reasons...';
+    });
+    try {
+      final db = FirebaseFirestore.instance;
+      final membersSnap = await db.collection('member').get();
+      int restored = 0;
+      for (var doc in membersSnap.docs) {
+        final id = doc.id;
+        final inactiveRef = db.collection('member_inactive_reasons').doc(id);
+        final inactiveDoc = await inactiveRef.get();
+        if (!inactiveDoc.exists) {
+          await inactiveRef.set({
+            'status': 'INACTIVE',
+            'inactive_reasons': ['Profile verifying...'],
+            'restored_by_admin': true,
+          }, SetOptions(merge: true));
+          restored++;
+        }
+      }
+      setState(() {
+        _migrationStatus = 'Done! Restored $restored missing documents.';
+        _isMigrating = false;
+      });
+    } catch (e) {
+      setState(() {
+        _migrationStatus = 'Error: $e';
+        _isMigrating = false;
+      });
+    }
+  }
+
   Future<void> _runEmailIdMigration() async {
     setState(() {
       _isMigrating = true;
@@ -127,11 +161,25 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Data Migration Tools',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
+                    const Text(
+                      'Data Migration Tools',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
+                      onPressed: _isMigrating ? null : _repairInactiveReasons,
+                      icon: const Icon(Icons.build),
+                      label: const Text('Repair Missing Inactive Reasons Docs'),
+                      style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Legacy Data Migration',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 8),
                   const Text(
                     'Use this tool to fix users who logged in with their Email Address instead of their Membership Number. It will move their data to the correct Membership Number Document ID and clear up duplicate records.',
                     style: TextStyle(color: Colors.grey),
@@ -157,3 +205,5 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
     );
   }
 }
+
+
