@@ -774,11 +774,10 @@ class DriverProfileDialog extends StatelessWidget {
             ? (webDoc.data() as Map<String, dynamic>? ?? {})
             : {};
 
-        final appHistory = appData['payment_history'] as List<dynamic>? ?? [];
-        final appPending = appData['pending_payments'] as List<dynamic>? ?? [];
+        final appHistory = appData['payment_history'] is List ? appData['payment_history'] as List<dynamic> : [];
+        final appPending = appData['pending_payments'] is List ? appData['pending_payments'] as List<dynamic> : [];
 
-        final webHistoryRaw =
-            webData['payment_history'] as List<dynamic>? ?? [];
+        final webHistoryRaw = webData['payment_history'] is List ? webData['payment_history'] as List<dynamic> : [];
 
         final webPending = webHistoryRaw.where((p) {
           if (p is Map<String, dynamic>) {
@@ -2043,8 +2042,9 @@ class DriverProfileDialog extends StatelessWidget {
                       children: [
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            isExpanded: true,
                             value: selectedYear,
-                            decoration: const InputDecoration(labelText: 'à¶…à·€à·”à¶»à·”à¶¯à·Šà¶¯ (Year)', border: OutlineInputBorder()),
+                            decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
                             items: years.map((y) => DropdownMenuItem(value: y, child: Text(y, style: const TextStyle(color: Colors.black)))).toList(),
                             onChanged: (val) => setState(() => selectedYear = val!),
                           ),
@@ -2052,16 +2052,17 @@ class DriverProfileDialog extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: DropdownButtonFormField<String>(
+                            isExpanded: true,
                             value: selectedMethod,
-                            decoration: const InputDecoration(labelText: 'à¶œà·™à·€à·“à¶¸à·Š à¶šà·Šâ€à¶»à¶¸à¶º', border: OutlineInputBorder()),
-                            items: methods.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.black)))).toList(),
+                            decoration: const InputDecoration(labelText: 'Method', border: OutlineInputBorder()),
+                            items: methods.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.black, fontSize: 13)))).toList(),
                             onChanged: (val) => setState(() => selectedMethod = val!),
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text('à¶…à¶¯à·à·… à¶¸à·à·ƒ (Select Months):', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text('Select Months:', style: TextStyle(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 0,
@@ -2087,7 +2088,7 @@ class DriverProfileDialog extends StatelessWidget {
                     const SizedBox(height: 16),
                     TextField(
                       controller: amountController,
-                      decoration: const InputDecoration(labelText: 'à¶¸à·à·ƒà·’à¶š à¶œà·à¶« (Amount per month)', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(labelText: 'Amount per month', border: OutlineInputBorder()),
                       keyboardType: TextInputType.number,
                     ),
                   ],
@@ -2119,7 +2120,8 @@ class DriverProfileDialog extends StatelessWidget {
                         'month': tickedMonths[i],
                         'year': selectedYear,
                         'amount': amount,
-                        'status': 'APPROVED',
+                          'reason': 'Monthly Membership Fee',
+                          'status': 'APPROVED',
                         'type': selectedMethod,
                         'source': 'Admin',
                         'timestamp': DateTime.now().toIso8601String(),
@@ -2158,3 +2160,8 @@ class _InfoItem {
 
   _InfoItem(this.label, this.value);
 }
+
+
+
+
+
