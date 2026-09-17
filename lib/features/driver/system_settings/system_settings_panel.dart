@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../../core/utils/status_helpers.dart';
 
 class SystemSettingsPanel extends StatefulWidget {
   const SystemSettingsPanel({super.key});
@@ -28,6 +29,18 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
         final memData = doc.data();
         final uid = memData['auth_uid'] ?? memData['uid'] ?? '';
         
+        final feeDoc = await db.collection('app_membership_fee').doc(id).get();
+        String feeStatus = 'missing';
+        if (feeDoc.exists) {
+          final feeData = feeDoc.data() as Map<String, dynamic>;
+          final feeCheck = checkMembershipFeeStatus(feeData);
+          if (feeCheck['isFeePaidValid'] == true) {
+            feeStatus = 'approved';
+          } else {
+            feeStatus = 'pending';
+          }
+        }
+
         bool needsRepair = false;
         
         if (!inactiveDoc.exists) {
@@ -36,34 +49,40 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
           final data = inactiveDoc.data() as Map<String, dynamic>;
           if (data.containsKey('restored_by_admin')) {
             needsRepair = true;
+          } else if (data['membership_fee'] == 'missing' && feeStatus == 'approved') {
+            needsRepair = true;
           }
         }
 
         if (needsRepair) {
-          await inactiveRef.set({
-            'admin_block_permanently': false,
-            'admin_block_temporarily': false,
-            'driving_licence': 'missing',
-            'face_verification': 'missing',
-            'id_card_image': 'missing',
-            'insurance_policy': 'missing',
-            'kyc_details': 'missing',
-            'last_updated': FieldValue.serverTimestamp(),
-            'membershipNo': id,
-            'membership_fee': 'missing',
-            'profile_image': 'missing',
-            'revenue_licence': 'missing',
-            'status': 'INACTIVE',
-            'uid': uid,
-            'vehicle_image_back': 'missing',
-            'vehicle_image_front': 'missing',
-            'vehicle_image_interior': 'missing',
-            'vehicle_image_left_side': 'missing',
-            'vehicle_image_right_side': 'missing',
-            'vehicle_registration_document': 'missing',
-            'inactive_reasons': FieldValue.delete(),
-            'restored_by_admin': FieldValue.delete(),
-          }, SetOptions(merge: true));
+          if (inactiveDoc.exists && !inactiveDoc.data()!.containsKey('restored_by_admin')) {
+            await inactiveRef.update({'membership_fee': feeStatus});
+          } else {
+            await inactiveRef.set({
+              'admin_block_permanently': false,
+              'admin_block_temporarily': false,
+              'driving_licence': 'missing',
+              'face_verification': 'missing',
+              'id_card_image': 'missing',
+              'insurance_policy': 'missing',
+              'kyc_details': 'missing',
+              'last_updated': FieldValue.serverTimestamp(),
+              'membershipNo': id,
+              'membership_fee': feeStatus,
+              'profile_image': 'missing',
+              'revenue_licence': 'missing',
+              'status': 'INACTIVE',
+              'uid': uid,
+              'vehicle_image_back': 'missing',
+              'vehicle_image_front': 'missing',
+              'vehicle_image_interior': 'missing',
+              'vehicle_image_left_side': 'missing',
+              'vehicle_image_right_side': 'missing',
+              'vehicle_registration_document': 'missing',
+              'inactive_reasons': FieldValue.delete(),
+              'restored_by_admin': FieldValue.delete(),
+            }, SetOptions(merge: true));
+          }
           restored++;
         }
       }
@@ -238,6 +257,7 @@ class _SystemSettingsPanelState extends State<SystemSettingsPanel> {
     );
   }
 }
+
 
 
 
