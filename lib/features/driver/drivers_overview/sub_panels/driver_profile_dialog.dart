@@ -23,12 +23,7 @@ class DriverProfileDialog extends StatelessWidget {
       builder: (context, setState) {
         final statusResult = calculateMemberStatus(driver);
         final bool isActive = statusResult['isActive'] == true;
-        final String inactiveReason = statusResult['reason'] ?? '';
-        final String statusText = isActive
-            ? 'ACTIVE MEMBER'
-            : (inactiveReason.isNotEmpty
-                  ? 'INACTIVE: $inactiveReason'
-                  : 'INACTIVE MEMBER');
+        final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
         final Color statusColor = isActive
             ? Colors.green.shade700
             : Colors.red.shade700;
@@ -99,6 +94,105 @@ class DriverProfileDialog extends StatelessWidget {
       ),
     );
       },
+    );
+  }
+
+  Widget _buildInactiveReasonsList(String membershipNo) {
+    if (membershipNo.isEmpty) return const SizedBox.shrink();
+
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance.collection('member_inactive_reasons').doc(membershipNo).get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
+        }
+
+        if (!snapshot.hasData || !snapshot.data!.exists) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+        final List<Widget> reasonWidgets = [];
+
+        if (data['admin_block_permanently'] == true) {
+          reasonWidgets.add(_buildReasonRow('Admin Block Permanently', 'blocked', true));
+        }
+        if (data['admin_block_temporarily'] == true) {
+          reasonWidgets.add(_buildReasonRow('Admin Block Temporarily', 'blocked', true));
+        }
+
+        data.forEach((key, value) {
+          if (key == 'admin_block_permanently' || key == 'admin_block_temporarily' || key == 'last_updated' || key == 'membershipNo' || key == 'uid' || key == 'status') {
+            return;
+          }
+          if (value.toString().toLowerCase() != 'approved') {
+            final formattedKey = key.split('_').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
+            reasonWidgets.add(_buildReasonRow(formattedKey, value.toString(), false));
+          }
+        });
+
+        if (reasonWidgets.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.red.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.red.shade200),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Pending Approvals',
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                ...reasonWidgets,
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildReasonRow(String title, String status, bool isCritical) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 4.0),
+            child: Icon(Icons.circle, size: 6, color: isCritical ? Colors.red.shade900 : Colors.red.shade700),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: 11,
+                  color: isCritical ? Colors.red.shade900 : Colors.red.shade700,
+                  height: 1.2,
+                ),
+                children: [
+                  TextSpan(text: '$title: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+                  TextSpan(text: status.toUpperCase()),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -345,6 +439,13 @@ class DriverProfileDialog extends StatelessWidget {
                   ],
                 ),
               ),
+              if (!isActive)
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 16.0, right: 8.0),
+                    child: _buildInactiveReasonsList(driver['membershipNo'] ?? driver['doc_id'] ?? driver['uid'] ?? ''),
+                  ),
+                ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.grey),
                 onPressed: () => Navigator.pop(context),
