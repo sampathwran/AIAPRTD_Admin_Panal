@@ -83,7 +83,7 @@ class DriverProfileDialog extends StatelessWidget {
                           children: [
                             _buildPersonalDetailsTab(),
                             _buildVehicleDetailsTab(),
-                            _buildMembershipFeeTab(),
+                            _buildMembershipFeeTab(context, setState),
                             _buildTransactionHistoryTab(),
                             _buildBankDetailsTab(),
                           ],
@@ -732,7 +732,7 @@ class DriverProfileDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildMembershipFeeTab() {
+  Widget _buildMembershipFeeTab(BuildContext context, StateSetter setState) {
     final membershipNo = driver['membershipNo'];
     if (membershipNo == null || membershipNo.toString().isEmpty) {
       return const Center(
@@ -1091,7 +1091,7 @@ class DriverProfileDialog extends StatelessWidget {
                       style: TextStyle(color: Colors.grey),
                     )
                   else
-                    _buildPaymentTable(allPending),
+                    _buildPaymentTable(context, setState, allPending),
 
                   const SizedBox(height: 32),
                   const Divider(height: 1, color: Color(0xFFE2E8F0)),
@@ -1105,7 +1105,7 @@ class DriverProfileDialog extends StatelessWidget {
                       style: TextStyle(color: Colors.grey),
                     )
                   else
-                    _buildPaymentTable(allHistory),
+                    _buildPaymentTable(context, setState, allHistory),
                 ],
               ),
             );
@@ -1306,7 +1306,7 @@ class DriverProfileDialog extends StatelessWidget {
     }
   }
 
-  Widget _buildPaymentTable(List<dynamic> payments) {
+  Widget _buildPaymentTable(BuildContext context, StateSetter setState, List<dynamic> payments) {
     // Sort payments by target month/year descending (newest month first)
     final sortedPayments = List<Map<String, dynamic>>.from(
       payments.whereType<Map<String, dynamic>>(),
@@ -1466,15 +1466,22 @@ class DriverProfileDialog extends StatelessWidget {
                   ),
                 ),
                 DataCell(
-                  slipUrl.isNotEmpty
-                      ? IconButton(
-                          icon: const Icon(Icons.image, color: Colors.blue),
-                          onPressed: () {
-                            // Can show dialog with image if needed
-                          },
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (slipUrl.isNotEmpty)
+                        IconButton(
+                          icon: const Icon(Icons.image, color: Colors.blue, size: 20),
+                          onPressed: () {},
                           tooltip: 'View Slip',
-                        )
-                      : const Text('-', style: TextStyle(color: Colors.grey)),
+                        ),
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red, size: 20),
+                        tooltip: 'Delete Payment',
+                        onPressed: () => _deletePayment(context, setState, p),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             );
@@ -1482,6 +1489,61 @@ class DriverProfileDialog extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _deletePayment(BuildContext context, StateSetter setState, Map<String, dynamic> payment) async {
+    final membershipNo = driver['membershipNo'];
+    if (membershipNo == null) return;
+
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Payment?'),
+        content: const Text('Are you sure you want to delete this payment record? This action cannot be undone.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Delete', style: TextStyle(color: Colors.white))
+          ),
+        ],
+      )
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final db = FirebaseFirestore.instance;
+      // Remove from app_membership_fee
+      final appRef = db.collection('app_membership_fee').doc(membershipNo);
+      final appSnap = await appRef.get();
+      if (appSnap.exists) {
+        final data = appSnap.data() as Map<String, dynamic>;
+        final List<dynamic> history = data['payment_history'] is List ? data['payment_history'] : [];
+        final newList = history.where((p) => p['id'] != payment['id']).toList();
+        await appRef.update({'payment_history': newList});
+      }
+
+      // Remove from web_sync_membership_fee
+      final webRef = db.collection('web_sync_membership_fee').doc(membershipNo);
+      final webSnap = await webRef.get();
+      if (webSnap.exists) {
+        final data = webSnap.data() as Map<String, dynamic>;
+        final List<dynamic> history = data['payment_history'] is List ? data['payment_history'] : [];
+        final newList = history.where((p) => p['id'] != payment['id']).toList();
+        await webRef.update({'payment_history': newList});
+      }
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Payment deleted successfully.')));
+        setState(() {}); // Re-trigger FutureBuilder
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
   }
 
   Widget _buildTransactionHistoryTab() {
@@ -2160,6 +2222,12 @@ class _InfoItem {
 
   _InfoItem(this.label, this.value);
 }
+
+
+
+
+
+
 
 
 
