@@ -1487,7 +1487,7 @@ class DriverProfileDialog extends StatelessWidget {
           borderRadius: BorderRadius.circular(8),
         ),
         child: DataTable(
-          columnSpacing: 43,
+          columnSpacing: 47,
           horizontalMargin: 24,
           headingRowColor: WidgetStateProperty.all(Colors.blue.shade50),
           dataRowMinHeight: 45,
