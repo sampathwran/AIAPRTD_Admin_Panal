@@ -98,11 +98,11 @@ class _SendWhatsAppDialogState extends State<_SendWhatsAppDialog> {
     final String urlStr = 'https://wa.me/$cleanPhone?text=${Uri.encodeComponent(finalMessage)}';
     final Uri url = Uri.parse(urlStr);
 
-    if (await canLaunchUrl(url)) {
+    try {
       await launchUrl(url, mode: LaunchMode.externalApplication);
       if (mounted) Navigator.pop(context);
-    } else {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not launch WhatsApp.')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not launch WhatsApp: $e')));
     }
   }
 

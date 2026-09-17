@@ -1,4 +1,5 @@
-﻿import 'database_migration_dialog.dart';
+import 'database_migration_dialog.dart';
+import 'document_migration_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
@@ -287,16 +288,32 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                 const SizedBox(width: 8),
                 // NEW: Migrate IDs Button
                 ElevatedButton.icon(
-                    onPressed: () => _showAddMemberDialog(context),
-                    icon: const Icon(Icons.person_add, size: 16, color: Colors.white),
-                    label: const Text('Add Member', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                  onPressed: () => _showAddMemberDialog(context),
+                  icon: const Icon(Icons.person_add, size: 16, color: Colors.white),
+                  label: const Text('Add Member', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF1E3A8A), padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Migrate Single Member ID',
+                  child: ElevatedButton.icon(
+                    onPressed: () => showDocumentMigrationDialog(context),
+                    icon: const Icon(Icons.move_up, size: 16, color: Colors.white),
+                    label: const Text(
+                      'Migrate Single ID',
+                      style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  Tooltip(
-                    message: 'Full Web Sync Migration',
-                    child: ElevatedButton.icon(
-                      onPressed: () => showFullDatabaseMigrationDialog(context),
+                ),
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: 'Full Web Sync Migration',
+                  child: ElevatedButton.icon(
+                    onPressed: () => showFullDatabaseMigrationDialog(context),
                     icon: const Icon(
                       Icons.sync_problem,
                       size: 16,
@@ -311,11 +328,8 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
+                      backgroundColor: Colors.red.shade700,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(6),
                       ),
