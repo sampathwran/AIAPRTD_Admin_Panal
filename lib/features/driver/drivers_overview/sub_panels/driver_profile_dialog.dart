@@ -2122,7 +2122,8 @@ class DriverProfileDialog extends StatelessWidget {
                         'status': 'APPROVED',
                         'type': selectedMethod,
                         'source': 'Admin',
-                        'timestamp': Timestamp.now(), // Fixed Firebase array error
+                        'timestamp': DateTime.now().toIso8601String(),
+                        'approvedAt': DateTime.now().toIso8601String(),
                       });
                     }
 
