@@ -48,7 +48,8 @@ Map<String, dynamic> checkMembershipFeeStatus(Map<String, dynamic>? data) {
     targetYearStr = prevYear.toString();
   }
 
-  final List<dynamic> paymentHistory = data['payment_history'] ?? [];
+  final paymentHistoryRaw = data['payment_history'];
+  final List<dynamic> paymentHistory = paymentHistoryRaw is List ? paymentHistoryRaw : [];
   final List<dynamic> allPaymentsToCheck = [...paymentHistory];
 
   bool hasPaidForTargetMonth = false;
