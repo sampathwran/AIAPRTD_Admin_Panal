@@ -50,15 +50,7 @@ class _InactiveMembersPanelState extends State<InactiveMembersPanel> {
     }).toList();
 
     final filteredMembers = inactiveMembers.where((driver) {
-      final name = (driver['fullName'] ?? '').toString().toLowerCase();
-      final mobile = (driver['mobile'] ?? '').toString().toLowerCase();
-      final vehicleNo = (driver['vehicleNumber'] ?? '')
-          .toString()
-          .toLowerCase();
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) ||
-          mobile.contains(query) ||
-          vehicleNo.contains(query);
+      return matchesSearchQuery(driver, _searchQuery);
     }).toList();
 
     return Scaffold(

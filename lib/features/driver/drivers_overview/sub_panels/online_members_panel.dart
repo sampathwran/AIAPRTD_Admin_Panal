@@ -45,15 +45,7 @@ class _OnlineMembersPanelState extends State<OnlineMembersPanel> {
 
     // සර්ච් බාර් එකෙන් ලයිව් ෆිල්ටර් කරන කෑල්ල
     final filteredMembers = onlineMembers.where((driver) {
-      final name = (driver['fullName'] ?? '').toString().toLowerCase();
-      final mobile = (driver['mobile'] ?? '').toString().toLowerCase();
-      final vehicleNo = (driver['vehicleNumber'] ?? '')
-          .toString()
-          .toLowerCase();
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) ||
-          mobile.contains(query) ||
-          vehicleNo.contains(query);
+      return matchesSearchQuery(driver, _searchQuery);
     }).toList();
 
     return Scaffold(

@@ -79,15 +79,7 @@ class _NewMembersPanelState extends State<NewMembersPanel> {
 
     // Filter by search query first
     final filteredMembers = allMembers.where((driver) {
-      final name = (driver['fullName'] ?? '').toString().toLowerCase();
-      final mobile = (driver['mobile'] ?? '').toString().toLowerCase();
-      final vehicleNo = (driver['vehicleNumber'] ?? '')
-          .toString()
-          .toLowerCase();
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) ||
-          mobile.contains(query) ||
-          vehicleNo.contains(query);
+      return matchesSearchQuery(driver, _searchQuery);
     }).toList();
 
     // Split into Unviewed and Recently Viewed

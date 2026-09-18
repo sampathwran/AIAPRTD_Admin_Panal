@@ -13,10 +13,20 @@ import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_pan
 import 'package:aiaprtd_admin_dashboard/features/driver/messaging_hub/send_whatsapp_dialog.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/messaging_hub/inactive_warning_dialog.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/admin_profile_image_updater.dart';
-class DriverProfileDialog extends StatelessWidget {
+import 'package:provider/provider.dart';
+import 'package:aiaprtd_admin_dashboard/core/providers/vehicle_request_provider.dart';
+
+class DriverProfileDialog extends StatefulWidget {
   final Map<String, dynamic> driver;
 
   const DriverProfileDialog({super.key, required this.driver});
+
+  @override
+  State<DriverProfileDialog> createState() => _DriverProfileDialogState();
+}
+
+class _DriverProfileDialogState extends State<DriverProfileDialog> {
+  Map<String, dynamic> get driver => widget.driver;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +34,7 @@ class DriverProfileDialog extends StatelessWidget {
       builder: (context, setState) {
         final statusResult = calculateMemberStatus(driver);
         final bool isActive = statusResult['isActive'] == true;
-        final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
+\n        final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
         final Color statusColor = isActive
             ? Colors.green.shade700
             : Colors.red.shade700;
@@ -34,9 +44,7 @@ class DriverProfileDialog extends StatelessWidget {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
-          width: 950,
-          height: 750,
-          decoration: BoxDecoration(
+\n          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
@@ -333,6 +341,7 @@ class DriverProfileDialog extends StatelessWidget {
               ),
               const SizedBox(width: 24),
               Expanded(
+                flex: 3,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -481,13 +490,7 @@ class DriverProfileDialog extends StatelessWidget {
                   ],
                 ),
               ),
-              if (!isActive)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.only(left: 16.0, right: 8.0),
-                    child: _buildInactiveReasonsList(driver['membershipNo']?.toString() ?? '', driver['uid']?.toString() ?? driver['doc_id']?.toString() ?? ''),
-                  ),
-                ),
+\n                ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.grey),
                 onPressed: () => Navigator.pop(context),
@@ -1762,6 +1765,59 @@ class DriverProfileDialog extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final provider = Provider.of<VehicleRequestProvider>(
+                                context,
+                                listen: false,
+                              );
+                              await provider.fixMemberSync(driver['membershipNo'], driver['uid'] ?? driver['membershipNo']);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(content: Text('Member sync fixed!')),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.sync_problem_rounded, size: 18),
+                            label: const Text("Fix Sync Issues"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orange,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: () async {
+                              final provider = Provider.of<VehicleRequestProvider>(
+                                context,
+                                listen: false,
+                              );
+                              await provider.fixMissingImageUrls(driver['membershipNo']);
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Attempted to fix missing image URLs! Please refresh."),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                            icon: const Icon(Icons.image_search_rounded, size: 18),
+                            label: const Text("Fix Missing Photos"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -2357,6 +2413,102 @@ class DriverProfileDialog extends StatelessWidget {
           );
         },
       ),
+    );
+  }
+}
+
+class _InactiveReasonsListWidget extends StatelessWidget {
+  final String membershipNo;
+  const _InactiveReasonsListWidget({required this.membershipNo});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance.collection('member_inactive_reasons').doc(membershipNo).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(width: 250, child: Center(child: CircularProgressIndicator()));
+        }
+        if (!snapshot.hasData || !snapshot.data!.exists || snapshot.data!.data() == null) {
+          return const SizedBox.shrink();
+        }
+
+        final data = snapshot.data!.data() as Map<String, dynamic>;
+        if (data.isEmpty) return const SizedBox.shrink();
+
+        bool hasReasons = false;
+        String copyText = "Inactive Reasons for $membershipNo:\n";
+        List<Widget> reasonWidgets = [];
+
+        data.forEach((key, value) {
+          if (value.toString().isNotEmpty && value.toString() != 'false' && value.toString() != 'approved') {
+            hasReasons = true;
+            copyText += "$key: $value\n";
+            reasonWidgets.add(
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("• ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                    Expanded(
+                      child: Text(
+                        "$key: $value",
+                        style: const TextStyle(fontSize: 12, color: Colors.black87),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+        });
+
+        if (!hasReasons) return const SizedBox.shrink();
+
+        return Container(
+          margin: const EdgeInsets.only(left: 24, right: 16),
+          padding: const EdgeInsets.only(left: 12),
+          decoration: BoxDecoration(
+            border: Border(left: BorderSide(color: Colors.red.shade400, width: 3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Pending / Missing",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.red),
+                  ),
+                  InkWell(
+                    onTap: () {
+                      Clipboard.setData(ClipboardData(text: copyText));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Copied reasons to clipboard!')));
+                    },
+                    child: const Padding(
+                      padding: EdgeInsets.all(4.0),
+                      child: Icon(Icons.copy, size: 14, color: Colors.red),
+                    ),
+                  )
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 120,
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: reasonWidgets,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/request_details_page.dart';
@@ -94,7 +95,7 @@ class _RequestListState extends State<RequestList> {
             final data = doc.data() as Map<String, dynamic>;
 
             final memberName = data['memberName'] ?? 'Unknown Member';
-            final membershipNo = data['membershipNo'] ?? 'No ID';
+            final membershipNo = data['membershipNo']?.toString().isNotEmpty == true ? data['membershipNo'] : doc.id;
             final profileImage = data['profileImage'] ?? '';
             final status = data['status'] ?? 'pending';
             final vehicleName = data['vehicleName'] ?? 'Vehicle Details N/A';
@@ -114,12 +115,15 @@ class _RequestListState extends State<RequestList> {
               vehicleName: vehicleName,
               hasPendingDocs: hasPendingDocs,
               onViewPressed: () {
+                html.window.history.pushState(null, 'Request Details', '/dashboard/driver/activation_requests?subpage=RequestDetails&requestId=${doc.id}');
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => RequestDetailsPage(requestId: doc.id),
                   ),
-                );
+                ).then((_) {
+                  html.window.history.pushState(null, 'Admin Dashboard', '/dashboard/driver/activation_requests');
+                });
               },
             );
           },

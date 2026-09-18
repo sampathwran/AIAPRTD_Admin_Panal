@@ -155,7 +155,7 @@ class MemberProvider with ChangeNotifier {
 
               // 🛠️ SAFETY LAYER
               data['nic'] = data['nic']?.toString() ?? '-';
-              data['mobile'] = data['mobile']?.toString() ?? '-';
+              data['mobile'] = (data['mobile'] ?? data['phone'] ?? data['phoneNumber'])?.toString() ?? '-';
               data['fullName'] = getMemberFullName(data);
               data['firstName'] = data['firstName']?.toString() ?? '';
               data['lastName'] = data['lastName']?.toString() ?? '';
@@ -342,7 +342,8 @@ class MemberProvider with ChangeNotifier {
             final mNo = doc.id;
             final data = doc.data() as Map<String, dynamic>;
 
-            final List<dynamic> history = data['payment_history'] ?? [];
+            final dynamic historyRaw = data['payment_history'];
+            final List<dynamic> history = (historyRaw is List) ? historyRaw : [];
             _cachedMembershipFees[mNo] = history;
 
             final index = _allMembersList.indexWhere(

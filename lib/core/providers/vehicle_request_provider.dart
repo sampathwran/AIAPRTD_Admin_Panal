@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:aiaprtd_admin_dashboard/core/services/history_service.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/notification_helper.dart';
 
@@ -10,6 +11,264 @@ class VehicleRequestProvider with ChangeNotifier {
   void _setProcessing(bool value) {
     _isProcessing = value;
     notifyListeners();
+  }
+
+  // =========================================================================
+  // Fix ALL Members Sync and Unknown Names
+  // =========================================================================
+  Future<void> fixAllMembersGlobalSync() async {
+    try {
+      _setProcessing(true);
+      final firestore = FirebaseFirestore.instance;
+      
+      final vehiclesSnap = await firestore.collection('vehicles').get();
+      int updatedCount = 0;
+
+      for (var vDoc in vehiclesSnap.docs) {
+        String membershipNo = vDoc.id;
+        Map<String, dynamic> vData = vDoc.data();
+        bool needsUpdate = false;
+        Map<String, dynamic> updates = {};
+
+        // 1. Fix missing membershipNo
+        if (vData['membershipNo'] == null || vData['membershipNo'].toString().isEmpty) {
+          updates['membershipNo'] = membershipNo;
+          needsUpdate = true;
+        }
+
+        // 2. Fix missing memberName
+        if (vData['memberName'] == null || vData['memberName'] == 'Unknown Member' || vData['memberName'].toString().isEmpty) {
+          final membersQuery = await firestore.collection('members').where('membershipNo', isEqualTo: membershipNo).limit(1).get();
+          if (membersQuery.docs.isNotEmpty) {
+            String realName = membersQuery.docs.first.data()['name'] ?? 'Unknown Member';
+            updates['memberName'] = realName;
+            
+            // Also grab uid if available
+            if (membersQuery.docs.first.data()['uid'] != null) {
+                updates['uid'] = membersQuery.docs.first.data()['uid'];
+            }
+            needsUpdate = true;
+          }
+        }
+
+        // Apply direct vehicle updates
+        if (needsUpdate) {
+          await vDoc.reference.update(updates);
+          updatedCount++;
+        }
+
+        // 3. Fix Sync Lock
+        final reasonQuery = await firestore.collection('member_inactive_reasons').where('membershipNo', isEqualTo: membershipNo).limit(1).get();
+        if (reasonQuery.docs.isNotEmpty) {
+           final reasonDoc = reasonQuery.docs.first;
+           final rData = reasonDoc.data();
+           final fields = [
+             'vehicle_registration_document', 'revenue_licence', 'insurance_policy', 'driving_licence',
+             'vehicle_image_front', 'vehicle_image_back', 'vehicle_image_left_side', 'vehicle_image_right_side', 'vehicle_image_interior',
+           ];
+           bool hasPending = false;
+           for (var field in fields) {
+             if (rData.containsKey(field) && (rData[field] == 'pending_approval' || rData[field] == 'pending')) {
+               hasPending = true;
+               break;
+             }
+           }
+           
+           if (hasPending && vData['status'] != 'pending') {
+              await vDoc.reference.update({'status': 'pending'});
+           }
+        }
+      }
+      
+      print("Global sync finished! Updated $updatedCount vehicles.");
+
+    } catch (e) {
+      print('Error in fixAllMembersGlobalSync: $e');
+    } finally {
+      _setProcessing(false);
+    }
+  }
+
+  // =========================================================================
+  // Fix Member Sync (Manually sync 'member_inactive_reasons' and 'vehicles')
+  // =========================================================================
+  Future<void> fixMemberSync(String membershipNo, String uid) async {
+    try {
+      _setProcessing(true);
+      
+      // 1. Fetch member_inactive_reasons
+      final query = await FirebaseFirestore.instance
+          .collection('member_inactive_reasons')
+          .where('membershipNo', isEqualTo: membershipNo)
+          .limit(1)
+          .get();
+          
+      if (query.docs.isEmpty) {
+        _setProcessing(false);
+        return;
+      }
+      
+      final reasonDoc = query.docs.first;
+      final data = reasonDoc.data();
+      
+      // Fields to check
+      final fields = [
+        'vehicle_registration_document',
+        'revenue_licence',
+        'insurance_policy',
+        'driving_licence',
+        'vehicle_image_front',
+        'vehicle_image_back',
+        'vehicle_image_left_side',
+        'vehicle_image_right_side',
+        'vehicle_image_interior',
+      ];
+      
+      bool hasPending = false;
+      for (var field in fields) {
+        if (data.containsKey(field) && (data[field] == 'pending_approval' || data[field] == 'pending')) {
+          hasPending = true;
+          break;
+        }
+      }
+      
+      // 2. Fetch vehicles document
+      final vehicleRef = FirebaseFirestore.instance.collection('vehicles').doc(membershipNo);
+      final vehicleDoc = await vehicleRef.get();
+      
+      if (hasPending) {
+        // If they genuinely have pending fields but the vehicle is not pending, force it!
+        if (vehicleDoc.exists) {
+          final vData = vehicleDoc.data()!;
+          if (vData['status'] != 'pending') {
+            await vehicleRef.update({'status': 'pending'});
+          }
+        }
+      } else {
+        // If they have NO pending fields but are still stuck in INACTIVE!
+        // We should clear their lock! (Or mark everything approved).
+        final updateData = <String, dynamic>{};
+        for (var field in fields) {
+          if (data.containsKey(field) && data[field] == 'missing') {
+             // Leave missing alone
+          } else {
+             // updateData[field] = 'approved'; 
+          }
+        }
+        
+        if (data['status'] == 'INACTIVE' && updateData.isNotEmpty) {
+           await reasonDoc.reference.update(updateData);
+        }
+      }
+      
+    } catch (e) {
+      print('Error fixing sync: $e');
+    } finally {
+      _setProcessing(false);
+    }
+  }
+
+  // =========================================================================
+  // Fix Missing Image URLs (Scans Firebase Storage and updates DB if URL is empty)
+  // =========================================================================
+  Future<void> fixMissingImageUrls(String membershipNo) async {
+    try {
+      _setProcessing(true);
+      final docRef = FirebaseFirestore.instance.collection('vehicles').doc(membershipNo);
+      final snap = await docRef.get();
+      if (!snap.exists) return;
+
+      final data = snap.data()!;
+      bool updated = false;
+
+      // 1. Fix Documents (doc_0.jpg, doc_1.jpg etc.)
+      if (data.containsKey('documents')) {
+        List<dynamic> docs = List.from(data['documents']);
+        for (int i = 0; i < docs.length; i++) {
+          if ((docs[i]['url'] == null || docs[i]['url'].toString().isEmpty) &&
+              (docs[i]['status'] == 'pending_approval' || docs[i]['status'] == 'approved' || docs[i]['status'] == 'pending')) {
+            try {
+               final ref = FirebaseStorage.instance.ref().child('compliance_docs/$membershipNo/doc_$i.jpg');
+               final url = await ref.getDownloadURL();
+               docs[i]['url'] = url;
+               updated = true;
+               print("Fixed URL for doc_$i");
+            } catch(e) {
+               try {
+                  final ref = FirebaseStorage.instance.ref().child('compliance_docs/$membershipNo/doc_$i.png');
+                  final url = await ref.getDownloadURL();
+                  docs[i]['url'] = url;
+                  updated = true;
+               } catch(e2) {}
+            }
+          }
+        }
+        if (updated) {
+          await docRef.update({'documents': docs});
+        }
+      }
+
+      // 2. Fix Vehicle Photos
+      if (data.containsKey('vehiclePhotos')) {
+        Map<String, dynamic> photos = Map<String, dynamic>.from(data['vehiclePhotos']);
+        bool photosUpdated = false;
+
+        // Cleanup duplicates (e.g. keep "Front" instead of "Front View" if both exist, or rename "Front View" to "Front")
+        final standardLabels = ['Front', 'Back', 'Left Side', 'Right Side', 'Interior'];
+        final Map<String, dynamic> cleanedPhotos = {};
+        
+        for (var label in standardLabels) {
+           if (photos.containsKey(label)) {
+              cleanedPhotos[label] = photos[label];
+           } else if (photos.containsKey('$label View')) {
+              cleanedPhotos[label] = photos['$label View'];
+              photosUpdated = true;
+           } else {
+              // Not uploaded yet
+           }
+        }
+        
+        if (photos.length != cleanedPhotos.length) {
+           photos = cleanedPhotos;
+           photosUpdated = true;
+        }
+
+        try {
+          final listResult = await FirebaseStorage.instance.ref().child('vehicle_photos/$membershipNo').listAll();
+          final availableFiles = listResult.items;
+
+          for (var entry in photos.entries) {
+            String label = entry.key; // e.g. "Front", "Back"
+            var photoData = entry.value as Map<String, dynamic>;
+            
+            if ((photoData['url'] == null || photoData['url'].toString().isEmpty) &&
+               (photoData['status'] == 'pending_approval' || photoData['status'] == 'approved' || photoData['status'] == 'pending')) {
+              
+              String guessName = label.toLowerCase().split(' ').first; // "front", "back", "left", "right", "interior"
+              for(var item in availableFiles) {
+                 if(item.name.toLowerCase().contains(guessName)) {
+                    final url = await item.getDownloadURL();
+                    photos[label]['url'] = url;
+                    photosUpdated = true;
+                    print("Fixed URL for photo $label using file ${item.name}");
+                    break;
+                 }
+              }
+            }
+          }
+          if(photosUpdated) {
+             await docRef.update({'vehiclePhotos': photos});
+          }
+        } catch(e) {
+           print("Error listing vehicle photos: $e");
+        }
+      }
+
+    } catch (e) {
+      print('Error fixing URLs: $e');
+    } finally {
+      _setProcessing(false);
+    }
   }
 
   // =========================================================================
@@ -179,6 +438,18 @@ class VehicleRequestProvider with ChangeNotifier {
           photos[label]['status'] = 'approved';
           await docRef.update({'vehiclePhotos': photos});
           
+          // Sync to inactive reasons
+          String fieldName = '';
+          if (label == 'Front') fieldName = 'vehicle_image_front';
+          else if (label == 'Back') fieldName = 'vehicle_image_back';
+          else if (label == 'Left Side') fieldName = 'vehicle_image_left_side';
+          else if (label == 'Right Side') fieldName = 'vehicle_image_right_side';
+          else if (label == 'Interior') fieldName = 'vehicle_image_interior';
+          
+          if (fieldName.isNotEmpty) {
+            await _syncToInactiveReasons(requestId, fieldName, 'approved');
+          }
+          
           await NotificationHelper.sendNotification(
             membershipNo: requestId,
             title: 'Vehicle Photo Approved',
@@ -218,6 +489,17 @@ class VehicleRequestProvider with ChangeNotifier {
         docs[index]['reviewData'] = details;
 
         await docRef.update({'documents': docs});
+        
+        // Sync to inactive reasons
+        String fieldName = '';
+        if (index == 0) fieldName = 'vehicle_registration_document';
+        else if (index == 1) fieldName = 'revenue_licence';
+        else if (index == 2) fieldName = 'insurance_policy';
+        else if (index == 3 || index == 4) fieldName = 'driving_licence';
+        
+        if (fieldName.isNotEmpty) {
+          await _syncToInactiveReasons(requestId, fieldName, status);
+        }
         
         final titles = [
           "Revenue License",
@@ -314,6 +596,18 @@ class VehicleRequestProvider with ChangeNotifier {
           photos[label]['rejectionReason'] = reason;
           await docRef.update({'vehiclePhotos': photos});
           
+          // Sync to inactive reasons
+          String fieldName = '';
+          if (label == 'Front') fieldName = 'vehicle_image_front';
+          else if (label == 'Back') fieldName = 'vehicle_image_back';
+          else if (label == 'Left Side') fieldName = 'vehicle_image_left_side';
+          else if (label == 'Right Side') fieldName = 'vehicle_image_right_side';
+          else if (label == 'Interior') fieldName = 'vehicle_image_interior';
+          
+          if (fieldName.isNotEmpty) {
+            await _syncToInactiveReasons(requestId, fieldName, 'rejected');
+          }
+          
           await NotificationHelper.sendNotification(
             membershipNo: requestId,
             title: 'Vehicle Photo Rejected',
@@ -325,6 +619,27 @@ class VehicleRequestProvider with ChangeNotifier {
       }
     } catch (e) {
       debugPrint("Error rejecting photo: $e");
+    }
+  }
+
+  // =========================================================================
+  // SYNC WITH MEMBER INACTIVE REASONS
+  // =========================================================================
+  Future<void> _syncToInactiveReasons(String membershipNo, String fieldName, String status) async {
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('member_inactive_reasons')
+          .where('membershipNo', isEqualTo: membershipNo)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        await query.docs.first.reference.update({
+          fieldName: status,
+        });
+      }
+    } catch (e) {
+      print('Error syncing to inactive reasons: $e');
     }
   }
 

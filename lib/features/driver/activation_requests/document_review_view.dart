@@ -21,6 +21,7 @@ class DocumentReviewView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print("DEBUG: [DocumentReviewView] build method called! Documents count: ${documents.length}");
     final titles = [
       "Revenue License",
       "Insurance Policy",
@@ -49,7 +50,8 @@ class DocumentReviewView extends StatelessWidget {
             ? icons[index]
             : Icons.description_rounded;
 
-        final currentStatus = doc['status'] ?? 'pending';
+        final currentStatus = (doc['status'] ?? 'pending').toString().toLowerCase();
+        print("DEBUG: [DocumentReviewView] Document index $index ($title): status = '${doc['status']}', currentStatus = '$currentStatus', url = '${doc['url']}'");
         Color statusColor = Colors.orange;
         if (currentStatus == 'approved') statusColor = Colors.green;
         if (currentStatus == 'rejected') statusColor = Colors.red;
@@ -79,7 +81,7 @@ class DocumentReviewView extends StatelessWidget {
               ),
             ),
             subtitle: Text(
-              currentStatus.toString().toUpperCase(),
+              (currentStatus == 'pending_approval' ? 'pending' : currentStatus).toString().toUpperCase(),
               style: TextStyle(
                 fontSize: 11,
                 color: statusColor,
@@ -217,30 +219,48 @@ class DocumentReviewView extends StatelessWidget {
           InteractiveViewer(
             maxScale: 4.0,
             child: Center(
-              child: Image.network(
-                doc['url'] ?? '',
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return const Center(child: CircularProgressIndicator());
-                },
-                errorBuilder: (context, error, stackTrace) => const Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.broken_image_rounded,
-                        size: 40,
-                        color: Colors.grey,
+              child: (doc['url'] == null || doc['url'].toString().isEmpty)
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.image_not_supported_rounded,
+                            size: 40,
+                            color: Colors.grey,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            "No image uploaded",
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 8),
-                      Text(
-                        "Failed to load image",
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                    )
+                  : Image.network(
+                      doc['url'] ?? '',
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(child: CircularProgressIndicator());
+                      },
+                      errorBuilder: (context, error, stackTrace) => const Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.broken_image_rounded,
+                              size: 40,
+                              color: Colors.grey,
+                            ),
+                            SizedBox(height: 8),
+                            Text(
+                              "Failed to load image",
+                              style: TextStyle(color: Colors.grey, fontSize: 12),
+                            ),
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
             ),
           ),
           Positioned(

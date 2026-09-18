@@ -1,3 +1,4 @@
+import 'dart:html' as html;
 import 'database_migration_dialog.dart';
 import 'document_migration_dialog.dart';
 import 'package:flutter/material.dart';
@@ -753,13 +754,16 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
                                                       constraints:
                                                           const BoxConstraints(),
                                                       onPressed: () {
+                                                        html.window.history.pushState(null, 'Driver Profile', '/dashboard/driver/total_members?memberId=${driver['uid']}');
                                                         showDialog(
                                                           context: context,
                                                           builder: (context) =>
                                                               DriverProfileDialog(
                                                                 driver: driver,
                                                               ),
-                                                        );
+                                                        ).then((_) {
+                                                          html.window.history.pushState(null, 'Total Members', '/dashboard/driver/total_members');
+                                                        });
                                                       },
                                                     ),
                                                   ),

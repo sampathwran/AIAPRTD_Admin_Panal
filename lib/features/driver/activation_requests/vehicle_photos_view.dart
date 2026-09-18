@@ -40,8 +40,10 @@ class VehiclePhotosView extends StatelessWidget {
         final String label = entry.key;
         final Map<String, dynamic> photoData =
             entry.value as Map<String, dynamic>;
-        final String status = photoData['status'] ?? 'pending';
+        final String status = (photoData['status'] ?? 'pending').toString().toLowerCase();
         final String imageUrl = photoData['url'] ?? '';
+
+        print("DEBUG: [VehiclePhotosView] Photo label $label: status = '${photoData['status']}', currentStatus = '$status', url = '$imageUrl'");
 
         Color statusColor = Colors.orange;
         if (status == 'approved') statusColor = Colors.green;
@@ -68,25 +70,38 @@ class VehiclePhotosView extends StatelessWidget {
               Expanded(
                 child: Stack(
                   children: [
-                    Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return const Center(child: CircularProgressIndicator());
-                      },
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey.shade100,
-                        child: const Center(
-                          child: Icon(
-                            Icons.broken_image_rounded,
-                            color: Colors.grey,
+                    imageUrl.isEmpty
+                        ? Container(
+                            color: Colors.grey.shade100,
+                            child: const Center(
+                              child: Icon(
+                                Icons.image_not_supported_rounded,
+                                color: Colors.grey,
+                                size: 32,
+                              ),
+                            ),
+                          )
+                        : Image.network(
+                            imageUrl,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                            loadingBuilder: (context, child, loadingProgress) {
+                              if (loadingProgress == null) return child;
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            },
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(
+                              color: Colors.grey.shade100,
+                              child: const Center(
+                                child: Icon(
+                                  Icons.broken_image_rounded,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                    ),
                     // Click to Zoom Overlay Button
                     Positioned.fill(
                       child: Material(
@@ -135,7 +150,11 @@ class VehiclePhotosView extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Actions Setup
+<<<<<<< HEAD
                     (status == 'pending' || status == 'pending_approval')
+=======
+                    (status.toLowerCase() == 'pending' || status.toLowerCase() == 'pending_approval')
+>>>>>>> 69777f4 (Fix search logic across all driver list panels)
                         ? Row(
                             children: [
                               Expanded(
@@ -207,7 +226,7 @@ class VehiclePhotosView extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              status.toUpperCase(),
+                              (status == 'pending_approval' ? 'pending' : status).toUpperCase(),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 11,
@@ -243,14 +262,32 @@ class VehiclePhotosView extends StatelessWidget {
         insetPadding: const EdgeInsets.all(12),
         child: Stack(
           alignment: Alignment.center,
-          children: [
-            InteractiveViewer(
-              maxScale: 4.0,
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(url, fit: BoxFit.contain),
+            children: [
+              InteractiveViewer(
+                maxScale: 4.0,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: url.isEmpty ? Container(
+                    color: Colors.white,
+                    width: 300,
+                    height: 300,
+                    child: const Center(
+                      child: Icon(Icons.image_not_supported_rounded, color: Colors.grey, size: 48),
+                    ),
+                  ) : Image.network(
+                    url, 
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: Colors.white,
+                      width: 300,
+                      height: 300,
+                      child: const Center(
+                        child: Icon(Icons.broken_image_rounded, color: Colors.grey, size: 48),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
             Positioned(
               top: 10,
               right: 10,

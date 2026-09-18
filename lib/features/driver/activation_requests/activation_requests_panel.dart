@@ -1,7 +1,11 @@
 // ignore_for_file: spell_check_on_languages
+import 'dart:html' as html;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
+
+import 'package:provider/provider.dart';
+import 'package:aiaprtd_admin_dashboard/core/providers/vehicle_request_provider.dart';
 
 import 'package:aiaprtd_admin_dashboard/core/theme/admin_theme.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/bank_account_details_change.dart';
@@ -11,6 +15,7 @@ import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/prof
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/vehicle_change_requests.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/activation_history_screen.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/recent_history_list.dart';
+import 'package:aiaprtd_admin_dashboard/features/driver/activation_requests/fix_all_members_dialog.dart';
 
 class ActivationRequestsPanel extends StatelessWidget {
   const ActivationRequestsPanel({super.key});
@@ -133,6 +138,22 @@ class ActivationRequestsPanel extends StatelessWidget {
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const FixAllMembersDialog(),
+                        );
+                      },
+                      icon: const Icon(Icons.sync_problem_rounded, size: 18),
+                      label: const Text("Fix All Member Syncs"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.orange,
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     IconButton(
                       icon: const Icon(
                         Icons.history_rounded,
@@ -140,13 +161,16 @@ class ActivationRequestsPanel extends StatelessWidget {
                       ),
                       tooltip: "View History",
                       onPressed: () {
+                        html.window.history.pushState(null, 'Admin Dashboard', '/dashboard/driver/activation_requests?subpage=Activation%20History');
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (context) =>
                                 const ActivationHistoryScreen(),
                           ),
-                        );
+                        ).then((_) {
+                          html.window.history.pushState(null, 'Admin Dashboard', '/dashboard/driver/activation_requests');
+                        });
                       },
                     ),
                     const SizedBox(width: 8),
@@ -351,10 +375,15 @@ class _RequestCategoryCard extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         borderRadius: BorderRadius.circular(8),
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (_) => item.page),
-        ),
+        onTap: () {
+          html.window.history.pushState(null, 'Admin Dashboard', '/dashboard/driver/activation_requests?subpage=${Uri.encodeComponent(item.title)}');
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => item.page),
+          ).then((_) {
+            html.window.history.pushState(null, 'Admin Dashboard', '/dashboard/driver/activation_requests');
+          });
+        },
         child: AdminSurface(
           elevated: true,
           padding: const EdgeInsets.all(16),
