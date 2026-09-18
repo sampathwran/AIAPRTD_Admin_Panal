@@ -135,7 +135,7 @@ class VehiclePhotosView extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Actions Setup
-                    status == 'pending'
+                    (status == 'pending' || status == 'pending_approval')
                         ? Row(
                             children: [
                               Expanded(

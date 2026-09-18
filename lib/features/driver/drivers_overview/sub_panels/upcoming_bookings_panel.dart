@@ -172,7 +172,7 @@ class _UpcomingBookingsPanelState extends State<UpcomingBookingsPanel> {
               ?.toString()
               .toLowerCase() ??
           '';
-      return status == 'pending';
+      return (status == 'pending' || status == 'pending_approval');
     }).toList();
 
     final ongoingDocs = allDocs.where((doc) {

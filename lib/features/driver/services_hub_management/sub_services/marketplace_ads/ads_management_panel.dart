@@ -78,7 +78,7 @@ class _AdsManagementPanelState extends State<AdsManagementPanel> {
                     "Pending Approvals",
                     FirebaseFirestore.instance
                         .collection('marketplace_ads')
-                        .where('status', isEqualTo: 'pending')
+                        .where('status', whereIn: ['pending', 'pending_approval'])
                         .snapshots(),
                   ),
                   _buildCountTab(

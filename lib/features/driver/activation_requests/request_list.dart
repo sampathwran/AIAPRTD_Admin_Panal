@@ -101,7 +101,7 @@ class _RequestListState extends State<RequestList> {
             bool hasPendingDocs = false;
             if (data['documents'] is List) {
               final docList = data['documents'] as List;
-              hasPendingDocs = docList.any((d) => d is Map && d['status'] == 'pending');
+              hasPendingDocs = docList.any((d) => d is Map && (d['status'] == 'pending' || d['status'] == 'pending_approval'));
             }
 
             return RequestCard(

@@ -35,7 +35,7 @@ class ProfileUpdateRequests extends StatelessWidget {
         // 💡 🎯 FIXED: අලුත් කලෙක්ෂන් එකට (profile_image_requests) පොයින්ට් කළා
         stream: FirebaseFirestore.instance
             .collection('profile_image_requests')
-            .where('status', isEqualTo: 'pending')
+            .where('status', whereIn: ['pending', 'pending_approval'])
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {

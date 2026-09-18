@@ -30,6 +30,7 @@ class DashboardStats extends StatelessWidget {
             final data = doc.data() as Map<String, dynamic>;
             switch (data['status']) {
               case 'pending':
+              case 'pending_approval':
                 pending++;
                 break;
               case 'approved':

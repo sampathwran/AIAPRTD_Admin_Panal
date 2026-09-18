@@ -19,24 +19,24 @@ class ActivationRequestsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final profileStream = FirebaseFirestore.instance
         .collection('requests')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: ['pending', 'pending_approval'])
         .where('requestType', isEqualTo: 'profile_update')
         .snapshots();
     final vehicleStream = FirebaseFirestore.instance
         .collection('vehicles')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: ['pending', 'pending_approval'])
         .snapshots();
     final kycStream = FirebaseFirestore.instance
         .collection('verify_kyc')
-        .where('kycApprovalStatus', isEqualTo: 'pending')
+        .where('kycApprovalStatus', whereIn: ['pending', 'pending_approval'])
         .snapshots();
     final bankStream = FirebaseFirestore.instance
         .collection('verify_bank')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: ['pending', 'pending_approval'])
         .snapshots();
     final imageStream = FirebaseFirestore.instance
         .collection('profile_image_requests')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: ['pending', 'pending_approval'])
         .snapshots();
 
     final combinedStream = CombineLatestStream.list<QuerySnapshot>([

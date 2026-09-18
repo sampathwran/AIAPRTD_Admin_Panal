@@ -8,7 +8,7 @@ class WithdrawalRequestsService {
   Stream<List<Map<String, dynamic>>> streamPendingRequests() {
     return _firestore
         .collection('withdrawal_requests')
-        .where('status', isEqualTo: 'pending')
+        .where('status', whereIn: ['pending', 'pending_approval'])
         .orderBy('timestamp', descending: true)
         .snapshots()
         .map((snapshot) {

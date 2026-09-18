@@ -1547,7 +1547,7 @@ class DriverProfileDialog extends StatelessWidget {
             Color statusColor = Colors.grey;
             if (status == 'approved')
               statusColor = Colors.green;
-            else if (status == 'pending')
+            else if ((status == 'pending' || status == 'pending_approval'))
               statusColor = Colors.orange;
             else if (status == 'rejected')
               statusColor = Colors.red;

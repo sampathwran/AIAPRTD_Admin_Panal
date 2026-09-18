@@ -303,7 +303,7 @@ class ProfileImageRequests extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('profile_image_requests')
-            .where('status', isEqualTo: 'pending')
+            .where('status', whereIn: ['pending', 'pending_approval'])
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {

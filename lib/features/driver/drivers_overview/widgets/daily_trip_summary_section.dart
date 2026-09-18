@@ -339,7 +339,7 @@ class _DailyTripSummarySectionState extends State<DailyTripSummarySection> {
         }
 
         if (type.contains('withdrawal') ||
-            status == 'pending' ||
+            (status == 'pending' || status == 'pending_approval') ||
             type.contains('request')) {
           txnRequests++;
         }
@@ -422,7 +422,7 @@ class _DailyTripSummarySectionState extends State<DailyTripSummarySection> {
                   statusMatch = status == 'completed' || tState == 'completed';
                 } else if (dialogFilter == 'Pending') {
                   statusMatch =
-                      status == 'pending' ||
+                      (status == 'pending' || status == 'pending_approval') ||
                       status == 'searching' ||
                       tState == 'searching';
                 } else if (dialogFilter == 'Canceled') {

@@ -11,7 +11,7 @@ class ProfileUpdateRequests extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('requests')
-            .where('status', isEqualTo: 'pending')
+            .where('status', whereIn: ['pending', 'pending_approval'])
             .where('requestType', isEqualTo: 'profile_update')
             .snapshots(),
         builder: (context, snapshot) {

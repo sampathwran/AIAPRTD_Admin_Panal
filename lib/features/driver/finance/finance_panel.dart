@@ -130,7 +130,7 @@ class _FinancePanelState extends State<FinancePanel>
                         'yyyy-MM-dd HH:mm',
                       ).format((data['timestamp'] as Timestamp).toDate())
                     : 'N/A';
-                final isPending = data['status'] == 'pending';
+                final isPending = (data['status'] == 'pending' || data['status'] == 'pending_approval');
                 final bank = data['bankDetails'] ?? {};
 
                 return DataRow(
@@ -314,7 +314,7 @@ class _FinancePanelState extends State<FinancePanel>
                         'yyyy-MM-dd HH:mm',
                       ).format((data['timestamp'] as Timestamp).toDate())
                     : 'N/A';
-                final isPending = data['status'] == 'pending';
+                final isPending = (data['status'] == 'pending' || data['status'] == 'pending_approval');
 
                 return DataRow(
                   cells: [

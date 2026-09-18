@@ -1316,6 +1316,7 @@ class _TitleBar extends StatelessWidget {
       case 'cancelled':
         return Colors.red;
       case 'pending':
+              case 'pending_approval':
         return Colors.orange;
       default:
         return Colors.grey;

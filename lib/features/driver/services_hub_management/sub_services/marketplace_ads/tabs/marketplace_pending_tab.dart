@@ -102,7 +102,7 @@ class MarketplacePendingTab extends StatelessWidget {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('marketplace_ads')
-          .where('status', isEqualTo: 'pending')
+          .where('status', whereIn: ['pending', 'pending_approval'])
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData)

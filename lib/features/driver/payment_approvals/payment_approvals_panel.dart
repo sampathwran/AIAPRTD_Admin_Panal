@@ -65,7 +65,7 @@ class _PaymentApprovalsPanelState extends State<PaymentApprovalsPanel> {
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection('app_usage_payments')
-                        .where('status', isEqualTo: 'pending')
+                        .where('status', whereIn: ['pending', 'pending_approval'])
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {

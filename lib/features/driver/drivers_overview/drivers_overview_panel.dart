@@ -203,7 +203,7 @@ class _DriversOverviewPanelState extends State<DriversOverviewPanel> {
                             final data = doc.data() as Map<String, dynamic>;
                             final status =
                                 data['status']?.toString().toLowerCase() ?? '';
-                            if (status == 'pending') upcomingBookings++;
+                            if ((status == 'pending' || status == 'pending_approval')) upcomingBookings++;
                           }
                         }
 
@@ -1093,7 +1093,7 @@ class _DailyTripSummarySectionState extends State<_DailyTripSummarySection> {
         }
 
         if (type.contains('withdrawal') ||
-            status == 'pending' ||
+            (status == 'pending' || status == 'pending_approval') ||
             type.contains('request')) {
           txnRequests++;
         }

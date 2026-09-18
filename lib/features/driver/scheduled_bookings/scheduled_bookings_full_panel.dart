@@ -186,7 +186,7 @@ class _ScheduledBookingsFullPanelState
               ?.toString()
               .toLowerCase() ??
           '';
-      return status == 'pending';
+      return (status == 'pending' || status == 'pending_approval');
     }).toList();
 
     final ongoingPickupDocs = categoryFilteredDocs.where((doc) {

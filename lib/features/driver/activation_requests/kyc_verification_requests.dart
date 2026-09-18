@@ -1081,6 +1081,7 @@ class _KycDashboardStats extends StatelessWidget {
             final data = doc.data() as Map<String, dynamic>;
             switch (data['kycApprovalStatus']) {
               case 'pending':
+              case 'pending_approval':
                 pending++;
                 break;
               case 'approved':

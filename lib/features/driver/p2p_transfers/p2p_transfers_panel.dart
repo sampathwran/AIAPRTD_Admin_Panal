@@ -324,6 +324,7 @@ class _P2PTransfersPanelState extends State<P2PTransfersPanel> {
       case 'settled':
         return Colors.green;
       case 'pending':
+              case 'pending_approval':
         return Colors.orange;
       case 'pending_admin_verification':
         return Colors.blue;
