@@ -324,7 +324,9 @@ class _KYCVerificationRequestsContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Query query = FirebaseFirestore.instance.collection('verify_kyc');
-    if (selectedStatus != 'all') {
+    if (selectedStatus == 'pending') {
+      query = query.where('kycApprovalStatus', whereIn: ['pending', 'pending_approval']);
+    } else if (selectedStatus != 'all') {
       query = query.where('kycApprovalStatus', isEqualTo: selectedStatus);
     }
     

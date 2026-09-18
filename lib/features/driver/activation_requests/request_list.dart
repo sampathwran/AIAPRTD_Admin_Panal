@@ -37,7 +37,9 @@ class _RequestListState extends State<RequestList> {
   void _initStream() {
     _lastStatus = widget.selectedStatus;
     Query query = FirebaseFirestore.instance.collection('vehicles');
-    if (_lastStatus != 'all') {
+    if (_lastStatus == 'pending') {
+      query = query.where('status', whereIn: ['pending', 'pending_approval']);
+    } else if (_lastStatus != 'all') {
       query = query.where('status', isEqualTo: _lastStatus);
     }
     _stream = query.snapshots();

@@ -98,21 +98,21 @@ class DriverProfileDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildInactiveReasonsList(String memberId) {
-    if (memberId.isEmpty) return const SizedBox.shrink();
+  Widget _buildInactiveReasonsList(String membershipNo, String uid) {
+    if (membershipNo.isEmpty && uid.isEmpty) return const SizedBox.shrink();
 
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('member_inactive_reasons').doc(memberId).get(),
+    return FutureBuilder<QuerySnapshot>(
+      future: uid.isNotEmpty ? FirebaseFirestore.instance.collection('member_inactive_reasons').where('uid', isEqualTo: uid).limit(1).get() : FirebaseFirestore.instance.collection('member_inactive_reasons').where('membershipNo', isEqualTo: membershipNo).limit(1).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
         }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
           return const SizedBox.shrink();
         }
 
-        final data = snapshot.data!.data() as Map<String, dynamic>? ?? {};
+        final data = snapshot.data!.docs.first.data() as Map<String, dynamic>? ?? {};
         final List<Widget> reasonWidgets = [];
 
         if (data['admin_block_permanently'] == true) {
@@ -485,7 +485,7 @@ class DriverProfileDialog extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16.0, right: 8.0),
-                    child: _buildInactiveReasonsList(driver['doc_id'] ?? driver['uid'] ?? driver['membershipNo'] ?? ''),
+                    child: _buildInactiveReasonsList(driver['membershipNo']?.toString() ?? '', driver['uid']?.toString() ?? driver['doc_id']?.toString() ?? ''),
                   ),
                 ),
               IconButton(
