@@ -98,11 +98,11 @@ class DriverProfileDialog extends StatelessWidget {
     );
   }
 
-  Widget _buildInactiveReasonsList(String membershipNo) {
-    if (membershipNo.isEmpty) return const SizedBox.shrink();
+  Widget _buildInactiveReasonsList(String memberId) {
+    if (memberId.isEmpty) return const SizedBox.shrink();
 
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('member_inactive_reasons').doc(membershipNo).get(),
+      future: FirebaseFirestore.instance.collection('member_inactive_reasons').doc(memberId).get(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2)));
@@ -128,7 +128,7 @@ class DriverProfileDialog extends StatelessWidget {
           }
           if (value.toString().toLowerCase() != 'approved') {
             final formattedKey = key.split('_').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
-            reasonWidgets.add(_buildReasonRow(formattedKey, value.toString(), false));
+            reasonWidgets.add(_buildReasonRow(formattedKey, value.toString().replaceAll('_', ' ').toUpperCase(), false));
           }
         });
 
@@ -176,7 +176,7 @@ class DriverProfileDialog extends StatelessWidget {
                           }
                           if (value.toString().toLowerCase() != 'approved') {
                             final formattedKey = key.split('_').map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '').join(' ');
-                            buffer.writeln('• $formattedKey: ${value.toString().toUpperCase()}');
+                            buffer.writeln('• $formattedKey: ${value.toString().replaceAll('_', ' ').toUpperCase()}');
                           }
                         });
                         Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
@@ -485,7 +485,7 @@ class DriverProfileDialog extends StatelessWidget {
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.only(left: 16.0, right: 8.0),
-                    child: _buildInactiveReasonsList(driver['membershipNo'] ?? driver['doc_id'] ?? driver['uid'] ?? ''),
+                    child: _buildInactiveReasonsList(driver['doc_id'] ?? driver['uid'] ?? driver['membershipNo'] ?? ''),
                   ),
                 ),
               IconButton(
