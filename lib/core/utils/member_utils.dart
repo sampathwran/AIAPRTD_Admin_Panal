@@ -22,9 +22,9 @@ bool matchesSearchQuery(Map<String, dynamic> member, String queryStr) {
   final nic = (member['nic'] ?? '').toString().toLowerCase();
   
   String vehicleNo = '';
-  if (member['currentVehicle'] != null) {
-    final cv = member['currentVehicle'];
-    if (cv['details'] != null && cv['details']['vehicleNumber'] != null) {
+  if (member['currentVehicle'] is Map) {
+    final cv = member['currentVehicle'] as Map;
+    if (cv['details'] is Map && cv['details']['vehicleNumber'] != null) {
       vehicleNo = cv['details']['vehicleNumber'].toString().toLowerCase();
     } else if (cv['vehicleNumber'] != null) {
       vehicleNo = cv['vehicleNumber'].toString().toLowerCase();
@@ -34,9 +34,24 @@ bool matchesSearchQuery(Map<String, dynamic> member, String queryStr) {
   }
 
   String clean(String val) => val.replaceAll(RegExp(r'[^a-z0-9]'), '');
+  String digitsOnly(String val) => val.replaceAll(RegExp(r'[^0-9]'), '');
 
-  return membershipNo.contains(query) ||
-      clean(membershipNo).contains(cleanQuery) ||
+  final altMem1 = (member['membership_no'] ?? '').toString().toLowerCase();
+  final altMem2 = (member['member_no'] ?? '').toString().toLowerCase();
+  
+  final queryDigits = digitsOnly(query);
+
+  bool checkMem(String m) {
+    if (m.isEmpty) return false;
+    if (m.contains(query)) return true;
+    if (clean(m).contains(cleanQuery)) return true;
+    if (queryDigits.isNotEmpty && digitsOnly(m).contains(queryDigits)) return true;
+    return false;
+  }
+
+  return checkMem(membershipNo) ||
+      checkMem(altMem1) ||
+      checkMem(altMem2) ||
       fullName.contains(query) ||
       mobile.contains(query) ||
       clean(mobile).contains(cleanQuery) ||

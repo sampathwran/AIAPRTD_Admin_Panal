@@ -34,7 +34,7 @@ class _DriverProfileDialogState extends State<DriverProfileDialog> {
       builder: (context, setState) {
         final statusResult = calculateMemberStatus(driver);
         final bool isActive = statusResult['isActive'] == true;
-\n        final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
+        final String statusText = isActive ? 'ACTIVE MEMBER' : 'INACTIVE MEMBER';
         final Color statusColor = isActive
             ? Colors.green.shade700
             : Colors.red.shade700;
@@ -44,7 +44,9 @@ class _DriverProfileDialogState extends State<DriverProfileDialog> {
       child: Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Container(
-\n          decoration: BoxDecoration(
+          width: 950,
+          constraints: const BoxConstraints(maxHeight: 850),
+          decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
           ),
@@ -107,6 +109,9 @@ class _DriverProfileDialogState extends State<DriverProfileDialog> {
   }
 
   Widget _buildInactiveReasonsList(String membershipNo, String uid) {
+    if (uid == membershipNo || uid.startsWith('AIAPRTD-') || uid.length < 10) {
+      uid = ''; // Invalid UID, fallback to membershipNo query
+    }
     if (membershipNo.isEmpty && uid.isEmpty) return const SizedBox.shrink();
 
     return FutureBuilder<QuerySnapshot>(
@@ -490,7 +495,14 @@ class _DriverProfileDialogState extends State<DriverProfileDialog> {
                   ],
                 ),
               ),
-\n                ),
+              if (!isActive)
+                Expanded(
+                  flex: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 32.0, right: 24.0),
+                    child: _buildInactiveReasonsList(driver['membershipNo']?.toString() ?? '', driver['uid']?.toString() ?? driver['doc_id']?.toString() ?? ''),
+                  ),
+                ),
               IconButton(
                 icon: const Icon(Icons.close_rounded, color: Colors.grey),
                 onPressed: () => Navigator.pop(context),

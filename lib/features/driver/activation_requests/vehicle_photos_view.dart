@@ -150,11 +150,7 @@ class VehiclePhotosView extends StatelessWidget {
                     const SizedBox(height: 8),
 
                     // Actions Setup
-<<<<<<< HEAD
-                    (status == 'pending' || status == 'pending_approval')
-=======
                     (status.toLowerCase() == 'pending' || status.toLowerCase() == 'pending_approval')
->>>>>>> 69777f4 (Fix search logic across all driver list panels)
                         ? Row(
                             children: [
                               Expanded(
@@ -226,7 +222,7 @@ class VehiclePhotosView extends StatelessWidget {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              (status == 'pending_approval' ? 'pending' : status).toUpperCase(),
+                              (status.toLowerCase() == 'pending_approval' ? 'pending' : status).toUpperCase(),
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 11,

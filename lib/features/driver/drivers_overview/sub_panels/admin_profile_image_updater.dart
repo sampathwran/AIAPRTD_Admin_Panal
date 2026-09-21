@@ -98,6 +98,68 @@ class _AdminProfileImageUpdaterState extends State<AdminProfileImageUpdater> {
     }
   }
 
+  Future<void> _unlockImage() async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unlock Profile Image?'),
+        content: const Text('This will allow the member to change their profile image again.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.orange),
+            child: const Text('Unlock'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final String memNo = widget.driver['membershipNo'] ?? widget.driver['doc_id'] ?? 'unknown';
+      final String docId = widget.driver['doc_id'] ?? memNo;
+
+      await FirebaseFirestore.instance.collection('member').doc(docId).update({
+        'isProfileImageLocked': false,
+      });
+
+      widget.driver['isProfileImageLocked'] = false;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile image unlocked.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to unlock image: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasImage = widget.driver['profileImageUrl'] != null &&
@@ -162,7 +224,7 @@ class _AdminProfileImageUpdaterState extends State<AdminProfileImageUpdater> {
           bottom: -4,
           right: -4,
           child: InkWell(
-            onTap: _isUploading ? null : _pickAndUploadImage,
+            onTap: _isUploading ? null : (isLocked ? _unlockImage : _pickAndUploadImage),
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
@@ -173,7 +235,7 @@ class _AdminProfileImageUpdaterState extends State<AdminProfileImageUpdater> {
               child: Icon(
                 isLocked ? Icons.lock_rounded : Icons.camera_alt_rounded,
                 color: Colors.white,
-                size: 14,
+                size: 12,
               ),
             ),
           ),

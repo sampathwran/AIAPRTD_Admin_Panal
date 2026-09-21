@@ -81,7 +81,7 @@ class DocumentReviewView extends StatelessWidget {
               ),
             ),
             subtitle: Text(
-              (currentStatus == 'pending_approval' ? 'pending' : currentStatus).toString().toUpperCase(),
+              (currentStatus.toLowerCase() == 'pending_approval' ? 'pending' : currentStatus).toString().toUpperCase(),
               style: TextStyle(
                 fontSize: 11,
                 color: statusColor,
