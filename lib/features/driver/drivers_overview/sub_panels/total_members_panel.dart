@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:provider/provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/providers/member_provider.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/status_helpers.dart';
+import 'package:aiaprtd_admin_dashboard/core/utils/member_utils.dart';
 import 'package:aiaprtd_admin_dashboard/core/utils/csv_exporter.dart';
 import 'package:aiaprtd_admin_dashboard/features/driver/drivers_overview/sub_panels/driver_profile_dialog.dart';
 
@@ -171,15 +172,7 @@ class _TotalMembersPanelState extends State<TotalMembersPanel> {
     final allMembers = memberProvider.allMembersList;
 
     final filteredMembers = allMembers.where((driver) {
-      final name = (driver['fullName'] ?? '').toString().toLowerCase();
-      final mobile = (driver['mobile'] ?? '').toString().toLowerCase();
-      final vehicleNo = (driver['vehicleNumber'] ?? '')
-          .toString()
-          .toLowerCase();
-      final query = _searchQuery.toLowerCase();
-      return name.contains(query) ||
-          mobile.contains(query) ||
-          vehicleNo.contains(query);
+      return matchesSearchQuery(driver, _searchQuery);
     }).toList();
 
     int totalPages = (filteredMembers.length / _itemsPerPage).ceil();
