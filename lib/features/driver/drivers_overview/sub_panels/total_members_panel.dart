@@ -1,4 +1,4 @@
-import 'dart:html' as html;
+import 'package:universal_html/html.dart' as html;
 import 'database_migration_dialog.dart';
 import 'document_migration_dialog.dart';
 import 'package:flutter/material.dart';
